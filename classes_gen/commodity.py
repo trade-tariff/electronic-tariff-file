@@ -30,8 +30,36 @@ class Commodity(object):
         self.leaf = None
         self.hierarchy = []
         self.hierarchy_string = ""
+        self.measures = []
+        self.measures_inherited = []
         
+    def perform_measure_magic(self):
+        if self.leaf == "1":
+            for commodity in self.hierarchy:
+                for measure in commodity.measures:
+                    commodity.measures_inherited.append(measure)
+                    # print('%s gets measure %d from commodity %s' % (self.COMMODITY_CODE, measure.measure_sid, commodity.COMMODITY_CODE))
+                
+            self.get_end_use()
+            
+    def get_end_use(self):
+        # There may be some other criteria that need to be considered here
+        # At least temporarily, we are just checking to see if there is a 
+        # 105 measure, and this signifies that the comm code is end use
+        # The 105 may be inherited down
+        self.is_end_use = False
+        for measure in self.measures_inherited:
+            if measure.measure_type_id == "105":
+                self.is_end_use = True
+                break
+        if self.is_end_use:
+            self.COMMODITY_END_USE_ALLWD = "Y"
+            print('Found an end use commodity code %s' % (self.COMMODITY_CODE))
+        else:
+            self.COMMODITY_END_USE_ALLWD = "N"
+
     def build_hierarchy_string(self):
+        # This function is not fully working - need to understand the logic for the Taric codes + n
         token = ""
         self.hierarchy.append(self)
         if len(self.hierarchy) > 0:
@@ -59,7 +87,6 @@ class Commodity(object):
         
         self.ALPHA_SIZE = str(len(self.ALPHA_TEXT)).zfill(11) 
             
-        
     def create_extract_line(self):
         self.extract_line = self.RECORD_TYPE
         self.extract_line += self.COMMODITY_CODE

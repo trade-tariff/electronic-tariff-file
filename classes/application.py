@@ -35,7 +35,7 @@ class Application(object):
     def get_commodities(self):
         self.commodities = []
         # for i in range(0, 10):
-        for i in range(1, 2):
+        for i in range(0, 1):
             self.get_measures(i)
             self.write_measures()
             iteration = str(i) + "%"
@@ -57,11 +57,26 @@ class Application(object):
                 commodity.significant_digits = row[10]
                 self.commodities.append(commodity)
 
+            self.assign_measures()
             self.build_commodity_hierarchy()
+            self.perform_measure_magic()
 
             for commodity in self.commodities:
                 commodity.create_extract_line()
 
+    def perform_measure_magic(self):
+        for commodity in self.commodities:
+            commodity.perform_measure_magic()
+        pass
+    
+    def assign_measures(self):
+        for measure in self.measures:
+            for commodity in self.commodities:
+                if measure.goods_nomenclature_item_id == commodity.COMMODITY_CODE:
+                    commodity.measures.append(measure)
+                    # print("Appending a measure")
+                    break
+    
     def get_measures(self, iteration):
         self.measures = []
         the_date = "20210201"

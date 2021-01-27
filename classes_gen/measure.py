@@ -28,9 +28,9 @@ class Measure(object):
         self.CMDTY_MEASURE_EX_HEAD_IND = "N"
         self.FREE_CIRC_DOTI_REQD_IND = "X"
         self.QUOTA_NO = "000000"
-        self.QUOTA_CODE_UK = "1111"
+        self.QUOTA_CODE_UK = "0000" # Always four zeroes
         self.QUOTA_UNIT_OF_QUANTITY_CODE = "222"
-        self.MEASURE_AMENDMENT_IND = "X"
+        self.MEASURE_AMENDMENT_IND = "A"
         
         # Taric / CDS data
         self.measure_type_id = None
@@ -39,6 +39,10 @@ class Measure(object):
         self.resolve_geography()
         self.resolve_dates()
         self.lookup_measure_types(measure_types)
+        if self.ordernumber != "" and self.ordernumber is not None:
+            self.QUOTA_NO = self.ordernumber
+            
+        self.CMDTY_MEASURE_EX_HEAD_IND = ("0" * 85) + self.CMDTY_MEASURE_EX_HEAD_IND
         
     def resolve_dates(self):
         self.TARIFF_MEASURE_EDATE = f.YYYYMMDD(self.validity_start_date)
@@ -91,5 +95,5 @@ class Measure(object):
         self.extract_line += self.QUOTA_CODE_UK
         self.extract_line += self.QUOTA_UNIT_OF_QUANTITY_CODE
         self.extract_line += self.MEASURE_AMENDMENT_IND
-        self.extract_line += "   " + self.goods_nomenclature_item_id
+        # self.extract_line += "   " + self.goods_nomenclature_item_id
         self.extract_line += CommonString.line_feed
