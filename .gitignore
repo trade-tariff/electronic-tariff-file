@@ -113,4 +113,7 @@ data/excel/
 data/icl_vme/
 data/in/
 data/out/
+data/dit/
+data/comm_code_list/
 specification/
+questions/
