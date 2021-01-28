@@ -48,7 +48,17 @@ class Measure(object):
         
     def resolve_dates(self):
         self.TARIFF_MEASURE_EDATE = f.YYYYMMDD(self.validity_start_date)
-        pass
+
+    def get_import_export(self):
+        if self.trade_movement_code == 0:
+            self.is_import = True
+            self.is_export = False
+        if self.trade_movement_code == 1:
+            self.is_import = False
+            self.is_export = True
+        else:
+            self.is_import = True
+            self.is_export = True
     
     def create_measure_duties(self):
         # This is intended to resolve the following

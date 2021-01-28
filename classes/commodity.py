@@ -1,3 +1,5 @@
+from classes.enums import CommonString
+
 class Commodity(object):
     def __init__(self, line):
         self.line = line
@@ -19,8 +21,15 @@ class Commodity(object):
         self.COMMODITY_END_USE_ALLWD = self.line[62:63]
         self.COMMODITY_IMP_EXP_USE = self.line[63:64]
         self.COMMODITY_AMEND_IND = self.line[64:65]
-        self.COMM_DECLARATION_UNIT_NO = self.line[65:67]
-        self.UNIT_OF_QUANTITY = self.line[67:70]
+        self.UNIT1 = self.line[65:69]
+        self.UNIT2 = self.line[69:73]
+        self.UNIT3 = self.line[73:77]
         self.ALPHA_SIZE = self.line[77:81]
         self.ALPHA_TEXT = self.line[81:].rstrip()
         self.line = ""
+        
+        # f = open("spvs.txt", "a")
+        
+        # if self.SPV_CODE.strip() != "":
+        #     f.write(self.COMMODITY_CODE + "," + self.SPV_CODE + "\n")
+        # f.close()

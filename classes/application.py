@@ -17,9 +17,11 @@ from classes_gen.commodity import Commodity
 from classes_gen.measure import Measure
 from classes_gen.measure_component import MeasureComponent
 from classes_gen.measure_type import MeasureType
+from classes_gen.seasonal_rate import SeasonalRate
 from classes_gen.supplementary_unit import SupplementaryUnit
 from classes_gen.geographical_area import GeographicalArea
 from classes_gen.commodity_footnote import CommodityFootnote
+from classes_gen.simplified_procedure_value import SimplifiedProcedureValue
 
 
 class Application(object):
@@ -35,14 +37,15 @@ class Application(object):
         self.get_commodity_footnotes()
         self.open_extract()
         self.get_commodities()
-        self.write_commodities()
+        # self.write_commodities()
         self.write_footnotes()
         self.close_extract()
 
     def get_commodities(self):
-        self.commodities = []
         # for i in range(0, 10):
+        # self.commodities = []
         for i in range(0, 1):
+            self.commodities = []
             tic = time.perf_counter()
             print("\nDEALING WITH COMMODITY CODES STARTING WITH " + str(i))
             self.get_measure_components(i)
@@ -75,14 +78,18 @@ class Application(object):
             for commodity in self.commodities:
                 commodity.apply_commodity_inheritance()
                 commodity.sort_inherited_measures()
+                commodity.get_additional_code_indicator()
+                commodity.apply_seasonal_rates(self.seasonal_rates)
                 commodity.get_end_use()
                 commodity.get_supplementary_units(self.supplementary_units)
                 commodity.get_commodity_additional_codes()
+                commodity.get_spv(self.spvs)
                 
             for commodity in self.commodities:
                 commodity.create_extract_line()
             
             toc = time.perf_counter()
+            self.write_commodities()
             print(f"Ran in {toc - tic:0.2f} seconds")
 
     def assign_measure_components(self):
@@ -137,7 +144,8 @@ class Application(object):
         print("Getting measures")
         self.measures = []
         the_date = "20210201"
-        sql = """select m.*, mt.measure_type_series_id, mt.measure_component_applicable_code
+        sql = """select m.*, mt.measure_type_series_id,
+        mt.measure_component_applicable_code, mt.trade_movement_code
         from utils.measures_real_end_dates m, measure_types mt
         where m.measure_type_id = mt.measure_type_id
         and left(goods_nomenclature_item_id, """ + str(len(str(iteration))) + """) = '""" + str(iteration) + """'
@@ -167,6 +175,8 @@ class Application(object):
             measure.validity_end_date = row[19]
             measure.measure_type_series_id = row[20]
             measure.measure_component_applicable_code = row[21]
+            measure.trade_movement_code = row[22]
+            measure.get_import_export()
             
             measure.expand_raw_data(self.measure_types, self.geographical_areas)
             measure.create_extract_line()
@@ -394,10 +404,13 @@ class Application(object):
 
     def get_reference_data(self):
         self.get_measure_types()
+        self.get_seasonal_rates()
+        self.get_spvs()
         self.get_geographical_areas()
         self.get_supplementary_units_reference()
 
     def get_measure_types(self):
+        print("Getting measure types")
         self.measure_types = []
         filename = os.path.join(self.reference_folder, "measure_types.csv")
         with open(filename) as csv_file:
@@ -406,7 +419,28 @@ class Application(object):
                 measure_type = MeasureType(row[0], row[1], row[2], row[3])
                 self.measure_types.append(measure_type)
 
+    def get_seasonal_rates(self):
+        print("Getting seasonal rates")
+        self.seasonal_rates = []
+        filename = os.path.join(self.reference_folder, "seasonal_rates.csv")
+        with open(filename) as csv_file:
+            csv_reader = csv.reader(csv_file, delimiter=',')
+            for row in csv_reader:
+                seasonal_rate = SeasonalRate(row[0], row[1], row[2], row[3], row[4])
+                self.seasonal_rates.append(seasonal_rate)
+
+    def get_spvs(self):
+        print("Getting SPVs")
+        self.spvs = []
+        filename = os.path.join(self.reference_folder, "spvs.csv")
+        with open(filename) as csv_file:
+            csv_reader = csv.reader(csv_file, delimiter=',')
+            for row in csv_reader:
+                spv = SimplifiedProcedureValue(row[0], row[1])
+                self.spvs.append(spv)
+
     def get_supplementary_units_reference(self):
+        print("Getting supplementary units")
         self.supplementary_units = []
         filename = os.path.join(self.reference_folder, "supplementary_units.csv")
         with open(filename) as csv_file:
@@ -416,6 +450,7 @@ class Application(object):
                 self.supplementary_units.append(supplementary_unit)
 
     def get_geographical_areas(self):
+        print("Getting geographical areas")
         self.geographical_areas = []
         filename = os.path.join(self.reference_folder, "geographical_areas.csv")
         with open(filename) as csv_file:

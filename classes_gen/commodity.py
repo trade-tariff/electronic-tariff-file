@@ -16,13 +16,12 @@ class Commodity(object):
         self.END_OF_SEASON_DATE = "000000"
         self.START_OF_SEASON_DATE = "000000"
         self.SPV_CODE = "       "
-        self.COMMODITY_TYPE = "0"
-        self.WAREHOUSE_COMMODITY_IND = "N"
-        self.COMMODITY_END_USE_ALLWD = "N"
-        self.COMMODITY_IMP_EXP_USE = "0"
-        self.COMMODITY_AMEND_IND = " "
-        self.COMM_DECLARATION_UNIT_NO = "10"
-        self.UNIT_OF_QUANTITY = "232"
+        self.COMMODITY_TYPE = "0" # Keep set to 0 for all. What's thew worst that can happen?
+        self.WAREHOUSE_COMMODITY_IND = "N" # This is always set to "N"
+        self.COMMODITY_END_USE_ALLWD = "N" # Basing this on the judgement call of 103 versus 105 duty
+        self.COMMODITY_IMP_EXP_USE = "0" # Always zero
+        self.COMMODITY_AMEND_IND = " " # An amendment indicator - has this changed since last time? 1st instance this will be set to A (I think)
+        self.UNIT_OF_QUANTITY = "1023" + CommonString.unit_divider + "0000" + CommonString.unit_divider + "0000" # The applicable supplementary unit(s) - we're making this 12 digits long
         self.ALPHA_SIZE = ""
         self.ALPHA_TEXT = ""
 
@@ -37,6 +36,7 @@ class Commodity(object):
         self.measures_inherited = []
         self.footnotes = []
         self.additional_codes = []
+        self.seasonal = False
         
     def apply_commodity_inheritance(self):
         if self.leaf == "1":
@@ -55,11 +55,10 @@ class Commodity(object):
         for measure in self.measures_inherited:
             if measure.additional_code_type_id is not None:
                 self.additional_codes.append(measure.additional_code)
-                print("Assigning an additional code to commodity " + self.COMMODITY_CODE)
             
     def get_supplementary_units(self, supplementary_units_reference):
         self.get_supplementary_unit = None
-        supp_types = ['109', '110', '111']
+        supp_types = ['109', '110', 'x111']
         found_quantity_code = False
         for measure in self.measures_inherited:
             if measure.measure_type_id in supp_types:
@@ -81,8 +80,61 @@ class Commodity(object):
                 if found_quantity_code == False:
                     print ("Missing supp code on comm code " + self.COMMODITY_CODE)
                 else:
+                    self.UNIT_OF_QUANTITY = "1023" + CommonString.unit_divider + "2" + self.supplementary_unit.quantity_code + CommonString.unit_divider + "0000"
                     break
-                    
+
+    def apply_seasonal_rates(self, seasonal_rates):
+        for seasonal_rate in seasonal_rates:
+            for item in self.hierarchy:
+                if item.COMMODITY_CODE == seasonal_rate.goods_nomenclature_item_id:
+                    self.seasonal = True
+                    self.END_OF_SEASON_DATE = seasonal_rate.to_date
+                    self.START_OF_SEASON_DATE = seasonal_rate.from_date
+                    break
+
+    def get_additional_code_indicator(self):
+        """
+        CODE IMPORT          EXPORT
+        E    Optional        Optional
+        F    Optional        Not Applicable
+        G    Not Applicable  Mandatory - there can't be any of these while there are few export measures
+        H    Not Applicable  Optional
+        I    Not Applicable  Not Applicable
+        """
+        self.has_import_additional_codes = False
+        self.has_export_additional_codes = False
+        for item in self.hierarchy:
+            for measure in item.measures:
+                if measure.additional_code_type_id is not None and measure.additional_code_type_id != "":
+                    if measure.additional_code_type_id not in ('V', 'X'):
+                        if measure.is_import:
+                            self.has_import_additional_codes = True
+                        if measure.is_export:
+                            self.has_export_additional_codes = True
+        
+        if self.has_import_additional_codes:
+            if self.has_export_additional_codes:
+                self.EC_SUPP_CODE_IND = "E"
+            else:
+                self.EC_SUPP_CODE_IND = "F"
+        elif self.has_export_additional_codes:
+            self.EC_SUPP_CODE_IND = "H"
+        else:
+            self.EC_SUPP_CODE_IND = "I"
+
+    def get_spv(self, spvs):
+        found = False
+        for spv in spvs:
+            if spv.goods_nomenclature_item_id == self.COMMODITY_CODE:
+                found = True
+                self.SPV_CODE = spv.spv_code
+                break
+
+        if not found:
+            self.SPV_CODE = "       "
+            
+        # This is based on the fact that there are no Unit Price measures in the database
+        self.SPV_CODE = "       "
 
     def get_end_use(self):
         # There may be some other criteria that need to be considered here
@@ -133,7 +185,7 @@ class Commodity(object):
         else:
             self.ALPHA_TEXT = self.description
         
-        self.ALPHA_SIZE = str(len(self.ALPHA_TEXT)).zfill(11) 
+        self.ALPHA_SIZE = str(len(self.ALPHA_TEXT)).zfill(4) 
             
     def create_extract_line(self):
         self.extract_line = self.RECORD_TYPE + CommonString.divider
@@ -151,7 +203,7 @@ class Commodity(object):
         self.extract_line += self.COMMODITY_END_USE_ALLWD + CommonString.divider
         self.extract_line += self.COMMODITY_IMP_EXP_USE + CommonString.divider
         self.extract_line += self.COMMODITY_AMEND_IND + CommonString.divider
-        self.extract_line += self.COMM_DECLARATION_UNIT_NO + CommonString.divider
+        # self.extract_line += self.COMM_DECLARATION_UNIT_NO + CommonString.divider
         self.extract_line += self.UNIT_OF_QUANTITY + CommonString.divider
         self.extract_line += self.ALPHA_SIZE + CommonString.divider
         self.extract_line += self.ALPHA_TEXT
