@@ -22,6 +22,7 @@ from classes_gen.supplementary_unit import SupplementaryUnit
 from classes_gen.geographical_area import GeographicalArea
 from classes_gen.commodity_footnote import CommodityFootnote
 from classes_gen.simplified_procedure_value import SimplifiedProcedureValue
+from classes_gen.measure_excluded_geographical_area import MeasureExcludedGeographicalArea
 
 
 class Application(object):
@@ -29,15 +30,15 @@ class Application(object):
         self.get_folders()
         load_dotenv('.env')
         self.DATABASE_UK = os.getenv('DATABASE_UK')
-        self.WRITE_MEASURES = os.getenv('WRITE_MEASURES')
-        
+        self.WRITE_MEASURES = int(os.getenv('WRITE_MEASURES'))
+        self.WRITE_ADDITIONAL_CODES = int(os.getenv('WRITE_ADDITIONAL_CODES'))
+
     def create_icl_vme(self):
         self.get_reference_data()
         self.get_footnotes()
         self.get_commodity_footnotes()
         self.open_extract()
         self.get_commodities()
-        # self.write_commodities()
         self.write_footnotes()
         self.close_extract()
 
@@ -49,8 +50,10 @@ class Application(object):
             tic = time.perf_counter()
             print("\nDEALING WITH COMMODITY CODES STARTING WITH " + str(i))
             self.get_measure_components(i)
+            self.get_measure_excluded_geographical_areas(i)
             self.get_measures(i)
             self.assign_measure_components()
+            self.assign_measure_excluded_geographical_areas()
             self.create_measure_duties()
             iteration = str(i) + "%"
             date = "20210201"
@@ -82,7 +85,6 @@ class Application(object):
                 commodity.apply_seasonal_rates(self.seasonal_rates)
                 commodity.get_end_use()
                 commodity.get_supplementary_units(self.supplementary_units)
-                commodity.get_commodity_additional_codes()
                 commodity.get_spv(self.spvs)
                 
             for commodity in self.commodities:
@@ -100,13 +102,21 @@ class Application(object):
                     measure.measure_components.append(measure_component)
                     break
 
+    def assign_measure_excluded_geographical_areas(self):
+        print("Assigning measure excluded geographical areas")
+        for measure_excluded_geographical_area in self.measure_excluded_geographical_areas:
+            for measure in self.measures:
+                if measure.measure_sid == measure_excluded_geographical_area.measure_sid:
+                    measure.measure_excluded_geographical_areas.append(measure_excluded_geographical_area)
+                    break
+
     def create_measure_duties(self):
         print("Creating measure duties")
         for measure in self.measures:
             measure.create_measure_duties()
     
     def assign_measures(self):
-        print("Assigning measures")
+        print("Assigning measure excluded geographical areas")
         for measure in self.measures:
             for commodity in self.commodities:
                 if commodity.productline_suffix == "80":
@@ -140,6 +150,26 @@ class Application(object):
             
             self.measure_components.append(measure_component)
     
+    def get_measure_excluded_geographical_areas(self, iteration):
+        print("Getting measure excluded geographical areas")
+        self.measure_excluded_geographical_areas = []
+        the_date = "20210201"
+        sql = """select mega.measure_sid, mega.excluded_geographical_area, mega.geographical_area_sid 
+        from measure_excluded_geographical_areas mega, utils.measures_real_end_dates m
+        where m.measure_sid = mega.measure_sid 
+        and left(m.goods_nomenclature_item_id, """ + str(len(str(iteration))) + """) = '""" + str(iteration) + """'
+        and (m.validity_end_date is null or m.validity_end_date > '""" + the_date + """')
+        order by mega.measure_sid, mega.excluded_geographical_area;"""
+        d = Database()
+        rows = d.run_query(sql)
+        for row in rows:
+            measure_excluded_geographical_area = MeasureExcludedGeographicalArea()
+            measure_excluded_geographical_area.measure_sid = row[0]
+            measure_excluded_geographical_area.excluded_geographical_area = row[1]
+            measure_excluded_geographical_area.geographical_area_sid = row[2]
+
+            self.measure_excluded_geographical_areas.append(measure_excluded_geographical_area)
+
     def get_measures(self, iteration):
         print("Getting measures")
         self.measures = []
@@ -225,6 +255,11 @@ class Application(object):
         for commodity in self.commodities:
             if commodity.leaf == "1":
                 self.extract_file.write(commodity.extract_line)
+                if self.WRITE_ADDITIONAL_CODES == 1:
+                    if commodity.additional_code_string != "":
+                        print("here")
+                        self.extract_file.write(commodity.additional_code_string)
+
                 if self.WRITE_MEASURES == 1:
                     for measure in commodity.measures_inherited:
                         if measure.measure_type_series_id not in barred_series:

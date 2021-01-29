@@ -35,6 +35,7 @@ class Measure(object):
         # Taric / CDS data
         self.measure_type_id = None
         self.measure_components = []
+        self.measure_excluded_geographical_areas = []
         
     def expand_raw_data(self, measure_types, geographical_areas):
         self.resolve_geography(geographical_areas)

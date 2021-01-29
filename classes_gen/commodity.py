@@ -37,6 +37,7 @@ class Commodity(object):
         self.footnotes = []
         self.additional_codes = []
         self.seasonal = False
+        self.additional_code_string = ""
         
     def apply_commodity_inheritance(self):
         if self.leaf == "1":
@@ -50,12 +51,6 @@ class Commodity(object):
         self.measures_inherited.sort(key=lambda x: x.measure_type_id, reverse=False)
         pass
     
-    def get_commodity_additional_codes(self):
-        self.additional_codes = []
-        for measure in self.measures_inherited:
-            if measure.additional_code_type_id is not None:
-                self.additional_codes.append(measure.additional_code)
-            
     def get_supplementary_units(self, supplementary_units_reference):
         self.get_supplementary_unit = None
         supp_types = ['109', '110', 'x111']
@@ -91,7 +86,7 @@ class Commodity(object):
                     self.END_OF_SEASON_DATE = seasonal_rate.to_date
                     self.START_OF_SEASON_DATE = seasonal_rate.from_date
                     break
-
+            
     def get_additional_code_indicator(self):
         """
         CODE IMPORT          EXPORT
@@ -101,16 +96,17 @@ class Commodity(object):
         H    Not Applicable  Optional
         I    Not Applicable  Not Applicable
         """
+        self.additional_codes = []
         self.has_import_additional_codes = False
         self.has_export_additional_codes = False
-        for item in self.hierarchy:
-            for measure in item.measures:
-                if measure.additional_code_type_id is not None and measure.additional_code_type_id != "":
-                    if measure.additional_code_type_id not in ('V', 'X'):
-                        if measure.is_import:
-                            self.has_import_additional_codes = True
-                        if measure.is_export:
-                            self.has_export_additional_codes = True
+        for measure in self.measures_inherited:
+            if measure.additional_code_type_id is not None and measure.additional_code_type_id != "":
+                if measure.additional_code_type_id not in ('V', 'X'):
+                    self.additional_codes.append(measure.additional_code)
+                    if measure.is_import:
+                        self.has_import_additional_codes = True
+                    if measure.is_export:
+                        self.has_export_additional_codes = True
         
         if self.has_import_additional_codes:
             if self.has_export_additional_codes:
@@ -121,6 +117,22 @@ class Commodity(object):
             self.EC_SUPP_CODE_IND = "H"
         else:
             self.EC_SUPP_CODE_IND = "I"
+            
+        self.get_additional_code_string()
+        
+    def get_additional_code_string(self):
+        # CA000291409150
+        self.additional_code_string = ""
+        if len(self.additional_codes) > 0:
+            self.additional_codes.sort()
+            self.additional_code_string = "CA"
+            self.additional_code_string += str(len(self.additional_codes)).rjust(4, "0")
+            for additional_code in self.additional_codes:
+                print("Ya")
+                self.additional_code_string += additional_code
+
+            print(self.additional_code_string)
+            self.additional_code_string += CommonString.line_feed
 
     def get_spv(self, spvs):
         found = False
