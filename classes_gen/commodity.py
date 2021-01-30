@@ -39,10 +39,8 @@ class Commodity(object):
         self.seasonal = False
         self.additional_code_string = ""
         
-        self.determine_commodity_type()
-        
     def determine_commodity_type(self):
-        if self.leaf == "1":
+        if int(self.leaf) == 1:
             if self.significant_digits == 10:
                 self.COMMODITY_TYPE = "2"
             else:
@@ -139,7 +137,6 @@ class Commodity(object):
             self.additional_code_string = "CA"
             self.additional_code_string += str(len(self.additional_codes)).rjust(4, "0")
             for additional_code in self.additional_codes:
-                print("Ya")
                 self.additional_code_string += additional_code
 
             print(self.additional_code_string)
@@ -184,25 +181,31 @@ class Commodity(object):
     def build_hierarchy_string(self):
         # This function is not fully working - need to understand the logic for the Taric codes + n
         token = ""
+        taric_token_count = 0
         self.hierarchy.append(self)
-        if len(self.hierarchy) > 0:
+        depth = len(self.hierarchy)
+        if depth > 0:
+            current_depth = 0
             for item in self.hierarchy:
-                if item.significant_digits != 2:
-                    if item.significant_digits == 10:
-                        token = "++++"
+                current_depth += 1
+                if item.significant_digits != 2: # ignore chapters
+                    if item.significant_digits == 10: # We are into the Taric codes
+                        taric_token_count += 1
+                        if taric_token_count == 1:
+                            token = "++++"
+                        else:
+                            if current_depth == depth:
+                                token = ": - "
+                            else:
+                                token = ":"
                     else:
-                        if item.number_indents == 0:
+                        if current_depth == 2: # remember the chapter
                             token = ""
-                        elif item.number_indents == 1:
+                            # print("Blank token")
+                        elif current_depth == 3:
                             token = ":"
-                        elif item.number_indents == 2:
-                            token = ":*"
-                        elif item.number_indents == 3:
-                            token = ":**"
-                        elif item.number_indents == 4:
-                            token = ":***"
-                        elif item.number_indents == 5:
-                            token = ":****"
+                        else:
+                            token = ":" + ("*" * (current_depth - 3))
                     self.hierarchy_string += token + item.description
             self.ALPHA_TEXT = self.hierarchy_string
         else:

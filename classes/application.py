@@ -32,6 +32,7 @@ class Application(object):
         self.DATABASE_UK = os.getenv('DATABASE_UK')
         self.WRITE_MEASURES = int(os.getenv('WRITE_MEASURES'))
         self.WRITE_ADDITIONAL_CODES = int(os.getenv('WRITE_ADDITIONAL_CODES'))
+        self.WRITE_FOOTNOTES = int(os.getenv('WRITE_FOOTNOTES'))
 
     def create_icl_vme(self):
         self.get_reference_data()
@@ -72,6 +73,7 @@ class Application(object):
                 commodity.number_indents = int(row[6])
                 commodity.leaf = row[9]
                 commodity.significant_digits = row[10]
+                commodity.determine_commodity_type()
                 self.commodities.append(commodity)
 
             self.assign_measures()
@@ -391,11 +393,12 @@ class Application(object):
         self.extract_file.write(self.commodity_header)
 
     def write_footnotes(self):
-        print("Writing footnotes")
-        self.write_footnote_header()
-        for footnote in self.footnotes:
-            self.extract_file.write(footnote.extract_line)
-        self.write_footnote_footer()
+        if self.WRITE_FOOTNOTES == 1:
+            print("Writing footnotes")
+            self.write_footnote_header()
+            for footnote in self.footnotes:
+                self.extract_file.write(footnote.extract_line)
+            self.write_footnote_footer()
 
     def YYYYMMDD(self, d):
         if d is None:
