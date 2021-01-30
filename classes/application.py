@@ -253,7 +253,7 @@ class Application(object):
         barred_series = ['E', 'F', 'G', 'H', 'K', 'L', 'M', "N", "O", "R", "S", "Z"]
         self.write_commodity_header()
         for commodity in self.commodities:
-            if commodity.leaf == "1":
+            if commodity.leaf == "1" or (commodity.significant_digits == 8 and commodity.productline_suffix == "80"):
                 self.extract_file.write(commodity.extract_line)
                 if self.WRITE_ADDITIONAL_CODES == 1:
                     if commodity.additional_code_string != "":

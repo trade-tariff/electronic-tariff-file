@@ -16,7 +16,7 @@ class Commodity(object):
         self.END_OF_SEASON_DATE = "000000"
         self.START_OF_SEASON_DATE = "000000"
         self.SPV_CODE = "       "
-        self.COMMODITY_TYPE = "0" # Keep set to 0 for all. What's thew worst that can happen?
+        self.COMMODITY_TYPE = "0" # Set it determine_commodity_type
         self.WAREHOUSE_COMMODITY_IND = "N" # This is always set to "N"
         self.COMMODITY_END_USE_ALLWD = "N" # Basing this on the judgement call of 103 versus 105 duty
         self.COMMODITY_IMP_EXP_USE = "0" # Always zero
@@ -38,6 +38,17 @@ class Commodity(object):
         self.additional_codes = []
         self.seasonal = False
         self.additional_code_string = ""
+        
+        self.determine_commodity_type()
+        
+    def determine_commodity_type(self):
+        if self.leaf == "1":
+            if self.significant_digits == 10:
+                self.COMMODITY_TYPE = "2"
+            else:
+                self.COMMODITY_TYPE = "0"
+        else:
+            self.COMMODITY_TYPE = "1"
         
     def apply_commodity_inheritance(self):
         if self.leaf == "1":
