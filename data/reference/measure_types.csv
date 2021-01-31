@@ -6,6 +6,13 @@
 142,DS,PRF,A00,MEASURE-TYPE-CODE is 100 for FTA, 101 for GSP - Preferential tariff
 145,DS,PRF,A00,MEASURE-TYPE-CODE is 100 for FTA, 101 for GSP -  Preference under end use
 
+# Quotas
+122,DQ,100,A00
+123,DQ,100,A00
+143,DQ,100,A00
+145,DQ,100,A00
+147,DQ,100,A00
+
 # Suspensions - all of these are guesses
 112,DS,200,A00,Autonomous tariff suspension
 115,DS,204,A00,Autonomous suspension under end-use
@@ -21,13 +28,6 @@
 552,AD,ADD,A30
 553,AD,CVP,A45
 554,AD,CVD,A40
-
-# Quotas
-122,DQ,,A00
-123,DQ,,A00
-143,DQ,,A00
-145,DQ,,A00
-147,DQ,,A00
 
 # Prohibitions and restrictions - original CHIEF list (national measures)
 AHC,PR,AHC,   ,Animal Health Certificate

@@ -46,7 +46,7 @@ class Application(object):
     def get_commodities(self):
         # for i in range(0, 10):
         # self.commodities = []
-        for i in range(1, 2):
+        for i in range(0, 1):
             self.commodities = []
             tic = time.perf_counter()
             print("\nDEALING WITH COMMODITY CODES STARTING WITH " + str(i))
@@ -212,7 +212,7 @@ class Application(object):
             measure.get_import_export()
             
             measure.expand_raw_data(self.measure_types, self.geographical_areas)
-            measure.create_extract_line()
+            measure.create_extract_line_per_geography()
 
             self.measures.append(measure)
 
