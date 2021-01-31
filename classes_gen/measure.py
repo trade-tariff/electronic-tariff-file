@@ -15,7 +15,7 @@ class Measure(object):
         self.TARIFF_MEASURE_LTIME = "000000"
         self.ORIGIN_COUNTRY_CODE = "  "
         self.ORIGIN_COUNTRY_GROUP_CODE = "    "
-        self.ORIGIN_ADD_CHARGE_TYPE = "X"
+        self.ORIGIN_ADD_CHARGE_TYPE = "0"
         self.DESTINATION_COUNTRY_CODE = "AA"
         self.DESTINATION_CTY_GRP_CODE = "A999"
         self.DESTINATION_ADD_CH_TYPE = "X"
@@ -31,6 +31,7 @@ class Measure(object):
         self.QUOTA_CODE_UK = "0000" # Always four zeroes
         self.QUOTA_UNIT_OF_QUANTITY_CODE = "222"
         self.MEASURE_AMENDMENT_IND = "A"
+        self.found_measure_type = False
         
         # Taric / CDS data
         self.measure_type_id = None
@@ -145,6 +146,7 @@ class Measure(object):
         self.MEASURE_TYPE_CODE = self.measure_type_id
 
         if self.measure_type_id == "305":
+            self.found_measure_type = True
             # All of the following are VAT
             self.MEASURE_GROUP_CODE = "VT"
             self.TAX_TYPE_CODE = "B00"
@@ -158,6 +160,7 @@ class Measure(object):
                 self.MEASURE_TYPE_CODE = "673"
 
         elif self.measure_type_id == "306":
+            self.found_measure_type = True
             # All of the following are excise
             self.MEASURE_GROUP_CODE = "EX"
             if self.additional_code == "X99A":
@@ -177,45 +180,75 @@ class Measure(object):
                 self.TAX_TYPE_CODE = self.additional_code.replace("X", "")
                 
         else:
+            if self.measure_type_id == "750":
+                a = 1
             for measure_type in measure_types:
                 if measure_type.taric_measure_type == self.measure_type_id:
                     self.MEASURE_GROUP_CODE = measure_type.measure_group_code
-                    if measure_type.measure_type_code == "PRF":
+                    if measure_type.measure_type_code == "PRF": # Preferential measures need to differentiate GSP + others
+                        self.found_measure_type = True
                         if self.geographical_area_id in ('2005', '2029', '2027'):
                             self.MEASURE_TYPE_CODE = "101"
                         else:
                             self.MEASURE_TYPE_CODE = "100"
                     else:
-                        self.MEASURE_TYPE_CODE = measure_type.measure_type_code
+                        if measure_type.measure_type_code != "":
+                            self.MEASURE_TYPE_CODE = measure_type.measure_type_code
+                            self.found_measure_type = True
+                        else:
+                            self.found_measure_type = False
+
                     self.TAX_TYPE_CODE = measure_type.tax_type_code
                     break
+                
+        self.determine_origin_add_charge()
+        
+    def determine_origin_add_charge(self):
+        # Only used for anti-dumping duties
+        # 0 – Not set
+        # 1 – Definitive (measure types 552 and 554)
+        # 2 – Provisional (measure types 551 and 553)
+        # 3 – Mixed (never used)
+
+        if self.MEASURE_GROUP_CODE == "AD":
+            if self.measure_type_id in ("551", "553"): # Provisional
+                self.ORIGIN_ADD_CHARGE_TYPE = "2"
+            elif self.measure_type_id in ("552", "554"): # Definitive
+                self.ORIGIN_ADD_CHARGE_TYPE = "1"
+            else:
+                self.ORIGIN_ADD_CHARGE_TYPE = "0"
+        else:
+            self.ORIGIN_ADD_CHARGE_TYPE = "0"
 
     def create_extract_line(self):
-        self.extract_line = self.RECORD_TYPE + CommonString.divider
-        self.extract_line += self.MEASURE_GROUP_CODE + CommonString.divider
-        self.extract_line += self.MEASURE_TYPE_CODE + CommonString.divider
-        self.extract_line += self.TAX_TYPE_CODE + CommonString.divider
-        self.extract_line += self.TARIFF_MEASURE_EDATE + CommonString.divider
-        self.extract_line += self.TARIFF_MEASURE_ETIME + CommonString.divider
-        self.extract_line += self.TARIFF_MEASURE_LDATE + CommonString.divider
-        self.extract_line += self.TARIFF_MEASURE_LTIME + CommonString.divider
-        self.extract_line += self.ORIGIN_COUNTRY_CODE + CommonString.divider
-        self.extract_line += self.ORIGIN_COUNTRY_GROUP_CODE + CommonString.divider
-        self.extract_line += self.ORIGIN_ADD_CHARGE_TYPE + CommonString.divider
-        self.extract_line += self.DESTINATION_COUNTRY_CODE + CommonString.divider
-        self.extract_line += self.DESTINATION_CTY_GRP_CODE + CommonString.divider
-        self.extract_line += self.DESTINATION_ADD_CH_TYPE + CommonString.divider
-        self.extract_line += self.UNIT_OF_QUANTITY_CODE + CommonString.divider
-        self.extract_line += self.QUANTITY_CODE + CommonString.divider
-        self.extract_line += self.UNIT_ACCOUNT + CommonString.divider
-        self.extract_line += self.SPECIFIC_RATE + CommonString.divider
-        self.extract_line += self.AD_VALOREM_RATE + CommonString.divider
-        self.extract_line += self.DUTY_TYPE + CommonString.divider
-        self.extract_line += self.CMDTY_MEASURE_EX_HEAD_IND + CommonString.divider
-        self.extract_line += self.FREE_CIRC_DOTI_REQD_IND + CommonString.divider
-        self.extract_line += self.QUOTA_NO + CommonString.divider
-        self.extract_line += self.QUOTA_CODE_UK + CommonString.divider
-        self.extract_line += self.QUOTA_UNIT_OF_QUANTITY_CODE + CommonString.divider
-        self.extract_line += self.MEASURE_AMENDMENT_IND
-        self.extract_line += "   " + self.goods_nomenclature_item_id
-        self.extract_line += CommonString.line_feed
+        if self.found_measure_type == True:
+            self.extract_line = self.RECORD_TYPE + CommonString.divider
+            self.extract_line += self.MEASURE_GROUP_CODE + CommonString.divider
+            self.extract_line += self.MEASURE_TYPE_CODE + CommonString.divider
+            self.extract_line += self.TAX_TYPE_CODE + CommonString.divider
+            self.extract_line += self.TARIFF_MEASURE_EDATE + CommonString.divider
+            self.extract_line += self.TARIFF_MEASURE_ETIME + CommonString.divider
+            self.extract_line += self.TARIFF_MEASURE_LDATE + CommonString.divider
+            self.extract_line += self.TARIFF_MEASURE_LTIME + CommonString.divider
+            self.extract_line += self.ORIGIN_COUNTRY_CODE + CommonString.divider
+            self.extract_line += self.ORIGIN_COUNTRY_GROUP_CODE + CommonString.divider
+            self.extract_line += self.ORIGIN_ADD_CHARGE_TYPE + CommonString.divider
+            self.extract_line += self.DESTINATION_COUNTRY_CODE + CommonString.divider
+            self.extract_line += self.DESTINATION_CTY_GRP_CODE + CommonString.divider
+            self.extract_line += self.DESTINATION_ADD_CH_TYPE + CommonString.divider
+            self.extract_line += self.UNIT_OF_QUANTITY_CODE + CommonString.divider
+            self.extract_line += self.QUANTITY_CODE + CommonString.divider
+            self.extract_line += self.UNIT_ACCOUNT + CommonString.divider
+            self.extract_line += self.SPECIFIC_RATE + CommonString.divider
+            self.extract_line += self.AD_VALOREM_RATE + CommonString.divider
+            self.extract_line += self.DUTY_TYPE + CommonString.divider
+            self.extract_line += self.CMDTY_MEASURE_EX_HEAD_IND + CommonString.divider
+            self.extract_line += self.FREE_CIRC_DOTI_REQD_IND + CommonString.divider
+            self.extract_line += self.QUOTA_NO + CommonString.divider
+            self.extract_line += self.QUOTA_CODE_UK + CommonString.divider
+            self.extract_line += self.QUOTA_UNIT_OF_QUANTITY_CODE + CommonString.divider
+            self.extract_line += self.MEASURE_AMENDMENT_IND
+            self.extract_line += "   " + self.goods_nomenclature_item_id
+            self.extract_line += CommonString.line_feed
+        else:
+            self.extract_line = ""

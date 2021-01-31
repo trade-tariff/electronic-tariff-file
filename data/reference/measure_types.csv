@@ -1,120 +1,128 @@
-# MFNs,,,
-103,DS,001,A00
-105,DS,001,A00
-# Preferences,,,
-142,DS,PRF,A00,(100 for FTA, 101 for GSP)
-145,DS,PRF,A00,(100 for FTA, 101 for GSP)
-# Suspensions,,,
-112,DS,200,A00,Guesswork
-115,DS,204,A00,Guesswork
-117,DS,205,A00,Guesswork
-119,DS,206,A00,Guesswork
-# Excise,is,done,by programmatic rules
-# Antidumping,,,
+# MFNs
+103,DS,001,A00,Third country duty
+105,DS,001,A00,Third country duty under end use
+
+# Preferences
+142,DS,PRF,A00,MEASURE-TYPE-CODE is 100 for FTA, 101 for GSP - Preferential tariff
+145,DS,PRF,A00,MEASURE-TYPE-CODE is 100 for FTA, 101 for GSP -  Preference under end use
+
+# Suspensions - all of these are guesses
+112,DS,200,A00,Autonomous tariff suspension
+115,DS,204,A00,Autonomous suspension under end-use
+117,DS,205,A00,Suspension - goods for certain categories of ships, boats and other vessels and for drilling or production platforms
+119,DS,206,A00,Airworthiness tariff suspension
+
+# Excise is all managed via rules in the application
+
+# VAT is all managed via rules in the application
+
+# Antidumping
 551,AD,ADP,A35
 552,AD,ADD,A30
 553,AD,CVP,A45
 554,AD,CVD,A40
-305,VT,,XXX
-306,EX,,XXX
-277,PR,,XXX
-278,PR,,XXX
-481,PR,,XXX
-485,PR,,XXX
-072,PR,,XXX
-089,PR,,XXX
-092,PR,,XXX
-# Quotas,,,XXX
+
+# Quotas
 122,DQ,,A00
 123,DQ,,A00
 143,DQ,,A00
 145,DQ,,A00
 147,DQ,,A00
-# Prohibitions and restrictions,,,XXX
-350,PR,AHC,XXX
-351,PR,,XXX
-352,PR,,XXX
-353,PR,,XXX
-354,PR,,XXX
-355,PR,,XXX
-356,PR,,XXX
-357,PR,,XXX
-358,PR,,XXX
-359,PR,,XXX
-360,PR,,XXX
-361,PR,,XXX
-362,PR,,XXX
-363,PR,,XXX
-410,PR,,XXX
-420,PR,,XXX
-464,PR,,XXX
-465,PR,,XXX
-467,PR,,XXX
-473,PR,,XXX
-474,PR,,XXX
-475,PR,,XXX
-476,PR,,XXX
-477,PR,,XXX
-478,PR,,XXX
-479,PR,,XXX
-482,PR,,XXX
-483,PR,,XXX
-705,PR,,XXX
-706,PR,,XXX
-707,PR,,XXX
-708,PR,,XXX
-709,PR,,XXX
-710,PR,,XXX
-711,PR,,XXX
-712,PR,,XXX
-713,PR,,XXX
-714,PR,,XXX
-715,PR,,XXX
-716,PR,,XXX
-717,PR,,XXX
-718,PR,,XXX
-719,PR,,XXX
-722,PR,,XXX
-724,PR,,XXX
-725,PR,,XXX
-728,PR,,XXX
-730,PR,,XXX
-735,PR,,XXX
-740,PR,,XXX
-745,PR,,XXX
-746,PR,,XXX
-747,PR,,XXX
-748,PR,,XXX
-749,PR,,XXX
-750,PR,,XXX
-751,PR,,XXX
-755,PR,,XXX
-760,PR,,XXX
-761,PR,,XXX
-766,PR,,XXX
-770,PR,,XXX
-771,PR,,XXX
-772,PR,,XXX
-773,PR,,XXX
-774,PR,,XXX
-AHC,PR,,XXX
-AIL,PR,,XXX
-ATT,PR,,XXX
-CEX,PR,,XXX
-CHM,PR,,XXX
-COE,PR,,XXX
-COI,PR,,XXX
-CVD,PR,,XXX
-DPO,PR,,XXX
-ECM,PR,,XXX
-EHC,PR,,XXX
-EQC,PR,,XXX
-EWP,PR,,XXX
-HOP,PR,,XXX
-HSE,PR,,XXX
-IWP,PR,,XXX
-PHC,PR,,XXX
-PRE,PR,,XXX
-PRT,PR,,XXX
-QRC,PR,,XXX
-SFS,PR,,
+
+# Prohibitions and restrictions - original CHIEF list (national measures)
+AHC,PR,AHC,   ,Animal Health Certificate
+AIL,PR,AIL,   ,Health and Safety Executive Import Licensing Firearms and Ammunition
+ATT,PR,ATT,   ,Attestation Document (horticulture and potatoes)
+CEX,PR,CEX,   ,DCMS Open General Export Licence
+CHM,PR,CHM,   ,Controlled Chemical licence / authorisation
+COE,HO,CON,   ,Home Office Controlled Drugs (export)
+COI,PR,CON,   ,HMI Conformity Certificate (fruit and veg) issued in UK
+CVD,PR,CVD,   ,Common Veterinary Entry Document (CVED)
+ECM,PR,CHM,   ,Controlled Chemical licence / authorisation
+EHC,PR,EHC,   ,DEFRA - Health Certificate (e.g. Live Animals)
+EQC,PR,EQC,   ,Certificate of Conformity
+EWP,PR,EWP,   ,DEFRA Waste Shipment Permit
+HOP,PR,HOP,   ,Home Office pre-cursor chemical authorisation
+HSE,PR,HSE,   ,Health and Safety Executive (imports)
+IWP,PR,IWP,   ,EA Import waste permit
+PHC,PR,PHC,   ,Phytosanitary Certificate (import)
+PRE,PR,PRE,   ,Home Office Pre-cursor chemicals
+PRT,PR,PRT,   ,Home Office Controlled Drugs (import)
+QRC,PR,QRC,   ,Quarantine Release Certificate
+SFS,PR,SFS,   ,Seal Fur
+DPO,DP,960,   ,Documentary Proof of Origin
+
+# Prohibitions and restrictions - national measures, converted onto TAP
+350,PR,AHC,   ,Animal Health Certificate
+351,PR,AIL,   ,Health and Safety Executive Import Licensing Firearms and Ammunition
+352,PR,ATT,   ,Attestation Document (horticulture and potatoes)
+353,PR,CEX,   ,DCMS Open General Export Licence
+354,HO,CON,   ,Home Office Controlled Drugs (export)
+355,PR,CON,   ,HMI Conformity Certificate (fruit and veg) issued in UK
+356,PR,CVD,   ,Common Veterinary Entry Document (CVED)
+357,PR,EQC,   ,Certificate of Conformity
+358,PR,PRE,   ,Home Office pre-cursor chemical authorisation
+359,PR,HSE,   ,Health and Safety Executive (imports)
+360,PR,PHC,   ,Phytosanitary Certificate (import)
+361,PR,HOP,   ,Home Office Pre-cursor chemicals
+362,PR,PRT,   ,Home Office Controlled Drugs (import)
+363,PR,QRC,   ,Quarantine Release Certificate
+410,PR,CVD,   ,Veterinary control
+
+# Prohibitions and restrictions - previously EU measures
+072,PR,,   ,Import licence
+277,PR,,   ,Import prohibition
+278,PR,,   ,Export prohibition
+420,PR,,   ,Entry into free circulation (prior surveillance)
+464,PR,,   ,Declaration of subheading submitted to end-use provisions
+465,PR,,   ,Restriction on entry into free circulation
+467,PR,,   ,Restriction on export
+473,PR,,   ,Export authorization
+474,PR,,   ,Entry into free circulation (quantitative limitation)
+475,PR,,   ,Restriction on entry into free circulation
+476,PR,,   ,Restriction on export
+477,PR,,   ,Entry into free circulation (outward processing traffic)
+478,PR,,   ,Export authorization (Dual use)
+479,PR,,   ,Export control on dangerous chemicals
+481,PR,,   ,Declaration of subheading submitted to restrictions (import)
+482,PR,,   ,Declaration of subheading submitted to restrictions (net weight/supplementary unit)
+483,PR,,   ,Declaration of subheading submitted to restrictions (value)
+485,PR,,   ,Declaration of subheading submitted to restrictions (export)
+705,PR,,   ,Import prohibition on goods for torture and repression
+706,PR,,   ,Goods for torture and repression, export prohibition
+707,PR,,   ,Import control
+708,PR,,   ,Goods for torture and repression, export restriction
+709,PR,,   ,Export control
+710,PR,,   ,Import control - CITES
+711,PR,,   ,Import control on restricted goods and technologies
+712,PR,,   ,Import control - IAS
+713,PR,,   ,Import control on genetically modified organisms (GMO) and products containing GMOs
+714,PR,,   ,Import control
+715,PR,,   ,Export control - CITES
+716,PR,,   ,Export control measure for fish
+717,PR,,   ,Export control on restricted goods and technologies
+718,PR,,   ,Export control on luxury goods
+719,PR,,   ,Control on illegal, unreported and unregulated fishing
+722,PR,,   ,Entry into free circulation (restriction - feed and food)
+724,PR,,   ,Import control of fluorinated greenhouse gases
+725,PR,,   ,Export control on ozone-depleting substances
+728,PR,,   ,Import control on luxury goods
+730,PR,,   ,Compliance with the pre-export checks requirements
+735,PR,,   ,Export control on cultural goods
+740,PR,,   ,Export control on cat and dog fur
+745,PR,,   ,Import control on cat and dog fur
+746,PR,,   ,Import control on seal products
+747,PR,,   ,Import control of timber and timber products subject to the FLEGT licensing scheme
+748,PR,,   ,Import control of mercury
+749,PR,,   ,Export control of mercury
+750,PR,,   ,Import control of organic products
+751,PR,,   ,Export control - Waste
+755,PR,,   ,Import control - waste
+760,PR,,   ,Import control
+761,PR,,   ,Import control on REACH
+766,PR,,   ,Export control
+770,PR,,   ,Import control of timber and timber products subject to the FLEGT licensing scheme-Ghana
+771,PR,,   ,Import control of timber and timber products subject to the FLEGT licensing scheme-Cameroon
+772,PR,,   ,Import control of timber and timber products subject to the FLEGT licensing scheme-Republic of Congo
+773,PR,,   ,Import control of timber and timber products subject to the FLEGT licensing scheme-Central Africa Republic
+774,PR,,   ,Import control of timber and timber products subject to the FLEGT licensing scheme-Vietnam

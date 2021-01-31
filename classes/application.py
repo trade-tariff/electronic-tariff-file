@@ -46,7 +46,7 @@ class Application(object):
     def get_commodities(self):
         # for i in range(0, 10):
         # self.commodities = []
-        for i in range(9, 10):
+        for i in range(1, 2):
             self.commodities = []
             tic = time.perf_counter()
             print("\nDEALING WITH COMMODITY CODES STARTING WITH " + str(i))
@@ -222,7 +222,8 @@ class Application(object):
         barred_series = ['E', 'F', 'G', 'H', 'K', 'L', 'M', "N", "O", "R", "S", "Z"]
         for measure in self.measures:
             if measure.measure_type_series_id not in barred_series:
-                self.extract_file.write(measure.extract_line)
+                if measure.found_measure_type == True:
+                    self.extract_file.write(measure.extract_line)
 
     def rebase_chapters(self):
         print("Rebasing chapters")
@@ -454,8 +455,9 @@ class Application(object):
         with open(filename) as csv_file:
             csv_reader = csv.reader(csv_file, delimiter=',')
             for row in csv_reader:
-                measure_type = MeasureType(row[0], row[1], row[2], row[3])
-                self.measure_types.append(measure_type)
+                if len(row) >= 4:
+                    measure_type = MeasureType(row[0], row[1], row[2], row[3])
+                    self.measure_types.append(measure_type)
 
     def get_seasonal_rates(self):
         print("Getting seasonal rates")
@@ -494,5 +496,6 @@ class Application(object):
         with open(filename) as csv_file:
             csv_reader = csv.reader(csv_file, delimiter=',')
             for row in csv_reader:
-                geographical_area = GeographicalArea(row[0], row[1])
-                self.geographical_areas.append(geographical_area)
+                if len(row) >= 3:
+                    geographical_area = GeographicalArea(row[0], row[1], row[2])
+                    self.geographical_areas.append(geographical_area)

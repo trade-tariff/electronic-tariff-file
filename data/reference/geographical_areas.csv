@@ -1,10 +1,11 @@
-# GSP,,
-2005,G022,GSP LDC (Annex IV)
-2020,#GS#,GSP General
-2027,G087,GSP+ (Incentive)
-# Other,,
-1008,G012,All third countries
-1011,    ,Erga Omnes
-1006,#CA#,Canada re-imports
-2200,G188,Central America
-1032,G038,Economic Partnership Agreements
+# GSP (Generalisd system of preferences)
+2005,G022,Y,GSP LDC (Annex IV)
+2020,#GS#,Y,GSP General
+2027,G087,Y,GSP+ (Incentive)
+
+# Other
+1008,G012,Y,All third countries
+1011,    ,Y,Erga Omnes
+1006,#CA#,N,Canada re-imports
+2200,G188,Y,Central America
+1032,G038,Y,Economic Partnership Agreements
