@@ -4,11 +4,17 @@
 # Preferences,,,
 142,DS,PRF,A00,(100 for FTA, 101 for GSP)
 145,DS,PRF,A00,(100 for FTA, 101 for GSP)
+# Suspensions,,,
+112,DS,200,A00,Guesswork
+115,DS,204,A00,Guesswork
+117,DS,205,A00,Guesswork
+119,DS,206,A00,Guesswork
+# Excise,is,done,by programmatic rules
 # Antidumping,,,
-551,AD,ADP,XXX
-552,AD,ADD,XXX
-553,AD,CVP,XXX
-554,AD,CVD,XXX
+551,AD,ADP,A35
+552,AD,ADD,A30
+553,AD,CVP,A45
+554,AD,CVD,A40
 305,VT,,XXX
 306,EX,,XXX
 277,PR,,XXX
@@ -19,11 +25,11 @@
 089,PR,,XXX
 092,PR,,XXX
 # Quotas,,,XXX
-122,DQ,,XXX
-123,DQ,,XXX
-143,DQ,,XXX
-145,DQ,,XXX
-147,DQ,,XXX
+122,DQ,,A00
+123,DQ,,A00
+143,DQ,,A00
+145,DQ,,A00
+147,DQ,,A00
 # Prohibitions and restrictions,,,XXX
 350,PR,AHC,XXX
 351,PR,,XXX

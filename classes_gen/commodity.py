@@ -134,12 +134,11 @@ class Commodity(object):
         self.additional_code_string = ""
         if len(self.additional_codes) > 0:
             self.additional_codes.sort()
-            self.additional_code_string = "CA"
-            self.additional_code_string += str(len(self.additional_codes)).rjust(4, "0")
+            self.additional_code_string = "CA" + CommonString.divider
+            self.additional_code_string += str(len(self.additional_codes)).rjust(4, "0") + CommonString.divider
             for additional_code in self.additional_codes:
-                self.additional_code_string += additional_code
+                self.additional_code_string += additional_code + CommonString.divider
 
-            print(self.additional_code_string)
             self.additional_code_string += CommonString.line_feed
 
     def get_spv(self, spvs):

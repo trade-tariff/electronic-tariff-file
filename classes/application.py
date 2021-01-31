@@ -46,7 +46,7 @@ class Application(object):
     def get_commodities(self):
         # for i in range(0, 10):
         # self.commodities = []
-        for i in range(0, 1):
+        for i in range(9, 10):
             self.commodities = []
             tic = time.perf_counter()
             print("\nDEALING WITH COMMODITY CODES STARTING WITH " + str(i))
@@ -57,24 +57,25 @@ class Application(object):
             self.assign_measure_excluded_geographical_areas()
             self.create_measure_duties()
             iteration = str(i) + "%"
-            date = "20210201"
+            date = "2021-02-01"
             sql = "select * from utils.goods_nomenclature_export_new('" + \
                 iteration + "', '" + date + "') order by 2, 3"
             d = Database()
             rows = d.run_query(sql)
             for row in rows:
                 commodity = Commodity()
-                commodity.goods_nomenclature_sid = row[0]
                 commodity.COMMODITY_CODE = row[1]
-                commodity.productline_suffix = row[2]
-                commodity.COMMODITY_EDATE = self.YYYYMMDD(row[3])
-                commodity.COMMODITY_LDATE = self.YYYYMMDD(row[4])
-                commodity.description = row[5]
-                commodity.number_indents = int(row[6])
-                commodity.leaf = row[9]
-                commodity.significant_digits = row[10]
-                commodity.determine_commodity_type()
-                self.commodities.append(commodity)
+                if commodity.COMMODITY_CODE[0:2] not in ('98', '99'):
+                    commodity.goods_nomenclature_sid = row[0]
+                    commodity.productline_suffix = row[2]
+                    commodity.COMMODITY_EDATE = self.YYYYMMDD(row[3])
+                    commodity.COMMODITY_LDATE = self.YYYYMMDD(row[4])
+                    commodity.description = row[5]
+                    commodity.number_indents = int(row[6])
+                    commodity.leaf = row[9]
+                    commodity.significant_digits = row[10]
+                    commodity.determine_commodity_type()
+                    self.commodities.append(commodity)
 
             self.assign_measures()
             self.assign_commodity_footnotes()
@@ -130,7 +131,7 @@ class Application(object):
     def get_measure_components(self, iteration):
         print("Getting measure components")
         self.measure_components = []
-        the_date = "20210201"
+        the_date = "2021-02-01"
         sql = """select mc.measure_sid, mc.duty_expression_id, mc.duty_amount, mc.monetary_unit_code,
         mc.measurement_unit_code, mc.measurement_unit_qualifier_code, m.goods_nomenclature_item_id
         from measure_components mc, utils.measures_real_end_dates m
@@ -155,7 +156,7 @@ class Application(object):
     def get_measure_excluded_geographical_areas(self, iteration):
         print("Getting measure excluded geographical areas")
         self.measure_excluded_geographical_areas = []
-        the_date = "20210201"
+        the_date = "2021-02-01"
         sql = """select mega.measure_sid, mega.excluded_geographical_area, mega.geographical_area_sid 
         from measure_excluded_geographical_areas mega, utils.measures_real_end_dates m
         where m.measure_sid = mega.measure_sid 
@@ -175,7 +176,7 @@ class Application(object):
     def get_measures(self, iteration):
         print("Getting measures")
         self.measures = []
-        the_date = "20210201"
+        the_date = "2021-02-01"
         sql = """select m.*, mt.measure_type_series_id,
         mt.measure_component_applicable_code, mt.trade_movement_code
         from utils.measures_real_end_dates m, measure_types mt
@@ -259,7 +260,6 @@ class Application(object):
                 self.extract_file.write(commodity.extract_line)
                 if self.WRITE_ADDITIONAL_CODES == 1:
                     if commodity.additional_code_string != "":
-                        print("here")
                         self.extract_file.write(commodity.additional_code_string)
 
                 if self.WRITE_MEASURES == 1:
@@ -284,7 +284,7 @@ class Application(object):
         self.extract_file.close()
         
     def get_commodity_footnotes(self):
-        print("Getting footnotes")
+        print("Getting commodity-level footnote associations")
         self.commodity_footnotes = []
         self.commodities_with_footnotes = []
         sql = """select gn.goods_nomenclature_item_id, gn.goods_nomenclature_sid,

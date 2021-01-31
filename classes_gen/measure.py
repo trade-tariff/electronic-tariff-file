@@ -144,17 +144,51 @@ class Measure(object):
         # This is a temp thing for testing only
         self.MEASURE_TYPE_CODE = self.measure_type_id
 
-        for measure_type in measure_types:
-            if measure_type.taric_measure_type == self.measure_type_id:
-                self.MEASURE_GROUP_CODE = measure_type.measure_group_code
-                if measure_type.measure_type_code == "PRF":
-                    if self.geographical_area_id in ('2005', '2029', '2027'):
-                        self.MEASURE_TYPE_CODE = "101"
+        if self.measure_type_id == "305":
+            # All of the following are VAT
+            self.MEASURE_GROUP_CODE = "VT"
+            self.TAX_TYPE_CODE = "B00"
+            if self.additional_code is None or self.additional_code == "":
+                self.MEASURE_TYPE_CODE = "666"
+            elif self.additional_code == "VATE":
+                self.MEASURE_TYPE_CODE = "654"
+            elif self.additional_code == "VATR":
+                self.MEASURE_TYPE_CODE = "650"
+            elif self.additional_code == "VATZ":
+                self.MEASURE_TYPE_CODE = "673"
+
+        elif self.measure_type_id == "306":
+            # All of the following are excise
+            self.MEASURE_GROUP_CODE = "EX"
+            if self.additional_code == "X99A":
+                self.MEASURE_TYPE_CODE = "EXA"
+                self.TAX_TYPE_CODE = "990"
+            elif self.additional_code == "X99B":
+                self.MEASURE_TYPE_CODE = "EXB"
+                self.TAX_TYPE_CODE = "990"
+            elif self.additional_code == "X99C":
+                self.MEASURE_TYPE_CODE = "EXC"
+                self.TAX_TYPE_CODE = "990"
+            elif self.additional_code == "X99D":
+                self.MEASURE_TYPE_CODE = "EXD"
+                self.TAX_TYPE_CODE = "990"
+            else:
+                self.MEASURE_TYPE_CODE = "600"
+                self.TAX_TYPE_CODE = self.additional_code.replace("X", "")
+                
+        else:
+            for measure_type in measure_types:
+                if measure_type.taric_measure_type == self.measure_type_id:
+                    self.MEASURE_GROUP_CODE = measure_type.measure_group_code
+                    if measure_type.measure_type_code == "PRF":
+                        if self.geographical_area_id in ('2005', '2029', '2027'):
+                            self.MEASURE_TYPE_CODE = "101"
+                        else:
+                            self.MEASURE_TYPE_CODE = "100"
                     else:
-                        self.MEASURE_TYPE_CODE = "101"
-                else:
-                    self.MEASURE_TYPE_CODE = measure_type.measure_type_code
-                break
+                        self.MEASURE_TYPE_CODE = measure_type.measure_type_code
+                    self.TAX_TYPE_CODE = measure_type.tax_type_code
+                    break
 
     def create_extract_line(self):
         self.extract_line = self.RECORD_TYPE + CommonString.divider

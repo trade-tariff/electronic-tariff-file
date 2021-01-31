@@ -1,6 +1,13 @@
+import re
+
+
 class functions(object):
     @staticmethod
     def format_string(s):
+        s = s.strip()
+        s = s.replace("<br />", "<br>")
+        s = s.strip("<br>")
+        # Replace special characters
         s = s.replace("ü", "<KA>")
         s = s.replace("É", "<KB>")
         s = s.replace("ê", "<KC>")
@@ -17,7 +24,19 @@ class functions(object):
         s = s.replace("ñ", "<KN>")
         s = s.replace("º", "<KO>")
         s = s.replace("õ", "<KP>")
+        s = s.replace("°", "<KP>")
         s = s.replace("µ", "<KU>")
+        
+        # Replace new lines
+        s = s.replace("<br> ", "<br>")
+        for i in range(0, 3):
+            s = s.replace("<br><br>", "<br>")
+        s = s.replace("<br>", "<AC>")
+        
+        # Replace superscripts & subscripts
+        s = re.sub(r"\<sup\>([^\<]+)\<\/sup\>",  "<AG>!\\1!", s)
+        s = re.sub(r"\<sub\>([^\<]+)\<\/sub\>",  "<AH>!\\1!", s)
+        #<AG>!3! / <AH>!3!
         return s
     
     @staticmethod
