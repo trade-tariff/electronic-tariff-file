@@ -10,7 +10,7 @@ class Measure(object):
         self.MEASURE_GROUP_CODE = "  "
         self.MEASURE_TYPE_CODE = "   "
         self.TAX_TYPE_CODE = "!!!"
-        self.TARIFF_MEASURE_EDATE = "20210101" # validity_start_date
+        self.TARIFF_MEASURE_EDATE = "NNNNNNNN" # validity_start_date
         self.TARIFF_MEASURE_ETIME = "000000"
         self.TARIFF_MEASURE_LDATE = "00000000" # validity_end_date
         self.TARIFF_MEASURE_LTIME = "000000"
@@ -20,8 +20,8 @@ class Measure(object):
         self.DESTINATION_COUNTRY_CODE = "  "
         self.DESTINATION_CTY_GRP_CODE = "    "
         self.DESTINATION_ADD_CH_TYPE = "X"
-        self.UNIT_OF_QUANTITY_CODE = "NNN"
-        self.QUANTITY_CODE = "NNN"
+        self.UNIT_OF_QUANTITY_CODE = "000"
+        self.QUANTITY_CODE = "000" # There are odd occasions where this is 099, but I do not know why: otherwise static
         self.UNIT_ACCOUNT = "0"
         self.SPECIFIC_RATE = "NNNNNNNNNN"
         self.AD_VALOREM_RATE = "NNNNNNNNNN"
@@ -33,8 +33,10 @@ class Measure(object):
         self.QUOTA_UNIT_OF_QUANTITY_CODE = "NNN"
         self.MEASURE_AMENDMENT_IND = "A"
         self.found_measure_type = False
+        self.found_unit_of_quantity_code = False
         self.suppressed_geography = False
         self.members = []
+        
         
         # Taric / CDS data
         self.measure_type_id = None
@@ -80,6 +82,13 @@ class Measure(object):
             self.has_advalorem = False
             
             for mc in self.measure_components:
+                # Get the unit of quantity - only check once as there can only be one
+                if self.found_unit_of_quantity_code == False:
+                    if mc.UNIT_OF_QUANTITY_CODE is not None:
+                        self.found_unit_of_quantity_code = True
+                        self.UNIT_OF_QUANTITY_CODE = mc.UNIT_OF_QUANTITY_CODE
+                        
+                # Check if ad valorem, specific or both
                 if mc.duty_expression_id in valid_duty_expressions:
                     if mc.monetary_unit_code is None:
                         self.has_advalorem = True
@@ -127,7 +136,6 @@ class Measure(object):
             c = "0305720056"
             if self.goods_nomenclature_item_id == c:
                 print(self.DUTY_TYPE + " is the duty type for comm code " + c + " on measure type " + self.measure_type_id + " on country " + self.geographical_area_id + " on measure " + str(self.measure_sid))
-                
 
     def resolve_geography(self, geographical_areas):
         if len(self.geographical_area_id) == 2:
@@ -190,8 +198,6 @@ class Measure(object):
                 self.TAX_TYPE_CODE = self.additional_code.replace("X", "")
                 
         else:
-            if self.measure_type_id == "750":
-                a = 1
             for measure_type in measure_types:
                 if measure_type.taric_measure_type == self.measure_type_id:
                     self.MEASURE_GROUP_CODE = measure_type.measure_group_code
@@ -247,6 +253,7 @@ class Measure(object):
                     self.create_extract_line(member, "    ")
 
     def create_extract_line(self, ORIGIN_COUNTRY_CODE, ORIGIN_COUNTRY_GROUP_CODE):
+        print(str(self.measure_sid), self.UNIT_OF_QUANTITY_CODE)
         self.extract_line += self.RECORD_TYPE + CommonString.divider
         self.extract_line += self.MEASURE_GROUP_CODE + CommonString.divider
         self.extract_line += self.MEASURE_TYPE_CODE + CommonString.divider

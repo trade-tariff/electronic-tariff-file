@@ -1,8 +1,11 @@
+import sys
+import classes.globals as g
 from classes_gen.database import Database
 
 
 class GeographicalArea(object):
     def __init__(self, taric_area, chief_area, suppress):
+        
         self.taric_area = taric_area
         self.chief_area = chief_area
         self.suppress = suppress
@@ -16,8 +19,8 @@ class GeographicalArea(object):
             where ga_parent.geographical_area_sid = gam.geographical_area_group_sid
             and ga_child.geographical_area_sid = gam.geographical_area_sid 
             and ga_parent.geographical_area_id = '""" + self.taric_area + """'
-            and gam.validity_start_date < '2021-01-01'
-            and (gam.validity_end_date is null or gam.validity_end_date > '2021-01-01')
+            and gam.validity_start_date < '""" + g.app.SNAPSHOT_DATE + """'
+            and (gam.validity_end_date is null or gam.validity_end_date > '""" + g.app.SNAPSHOT_DATE + """')
             order by 1;
             """
             d = Database()

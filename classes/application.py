@@ -33,6 +33,7 @@ class Application(object):
         self.WRITE_MEASURES = int(os.getenv('WRITE_MEASURES'))
         self.WRITE_ADDITIONAL_CODES = int(os.getenv('WRITE_ADDITIONAL_CODES'))
         self.WRITE_FOOTNOTES = int(os.getenv('WRITE_FOOTNOTES'))
+        self.SNAPSHOT_DATE = os.getenv('SNAPSHOT_DATE')
 
     def create_icl_vme(self):
         self.get_reference_data()
@@ -56,10 +57,11 @@ class Application(object):
             self.assign_measure_components()
             self.assign_measure_excluded_geographical_areas()
             self.create_measure_duties()
+
+
             iteration = str(i) + "%"
-            date = "2021-02-01"
             sql = "select * from utils.goods_nomenclature_export_new('" + \
-                iteration + "', '" + date + "') order by 2, 3"
+                iteration + "', '" + self.SNAPSHOT_DATE + "') order by 2, 3"
             d = Database()
             rows = d.run_query(sql)
             for row in rows:
@@ -99,7 +101,16 @@ class Application(object):
 
     def assign_measure_components(self):
         print("Assigning measure components")
+        measure_count = len(self.measures)
+        start_pos = 0
         for measure_component in self.measure_components:
+            # for i in range(start_pos, measure_count):
+            #     measure = self.measures[i]
+            #     if measure.measure_sid == measure_component.measure_sid:
+            #         measure.measure_components.append(measure_component)
+            #         start_pos = i
+            #         break
+                
             for measure in self.measures:
                 if measure.measure_sid == measure_component.measure_sid:
                     measure.measure_components.append(measure_component)
@@ -117,6 +128,7 @@ class Application(object):
         print("Creating measure duties")
         for measure in self.measures:
             measure.create_measure_duties()
+            measure.create_extract_line_per_geography()
     
     def assign_measures(self):
         print("Assigning measure excluded geographical areas")
@@ -131,14 +143,13 @@ class Application(object):
     def get_measure_components(self, iteration):
         print("Getting measure components")
         self.measure_components = []
-        the_date = "2021-02-01"
         sql = """select mc.measure_sid, mc.duty_expression_id, mc.duty_amount, mc.monetary_unit_code,
         mc.measurement_unit_code, mc.measurement_unit_qualifier_code, m.goods_nomenclature_item_id
         from measure_components mc, utils.measures_real_end_dates m
         where m.measure_sid = mc.measure_sid 
         and left(m.goods_nomenclature_item_id, """ + str(len(str(iteration))) + """) = '""" + str(iteration) + """'
-        and (m.validity_end_date is null or m.validity_end_date > '""" + the_date + """')
-        order by m.goods_nomenclature_item_id, mc.duty_expression_id;"""
+        and (m.validity_end_date is null or m.validity_end_date > '""" + self.SNAPSHOT_DATE + """')
+        order by m.goods_nomenclature_item_id, m.measure_sid, mc.duty_expression_id;"""
         d = Database()
         rows = d.run_query(sql)
         for row in rows:
@@ -150,18 +161,18 @@ class Application(object):
             measure_component.measurement_unit_code = row[4]
             measure_component.measurement_unit_qualifier_code = row[5]
             measure_component.goods_nomenclature_item_id = row[6]
+            measure_component.get_measurement_unit()
             
             self.measure_components.append(measure_component)
-    
+        
     def get_measure_excluded_geographical_areas(self, iteration):
         print("Getting measure excluded geographical areas")
         self.measure_excluded_geographical_areas = []
-        the_date = "2021-02-01"
         sql = """select mega.measure_sid, mega.excluded_geographical_area, mega.geographical_area_sid 
         from measure_excluded_geographical_areas mega, utils.measures_real_end_dates m
         where m.measure_sid = mega.measure_sid 
         and left(m.goods_nomenclature_item_id, """ + str(len(str(iteration))) + """) = '""" + str(iteration) + """'
-        and (m.validity_end_date is null or m.validity_end_date > '""" + the_date + """')
+        and (m.validity_end_date is null or m.validity_end_date > '""" + self.SNAPSHOT_DATE + """')
         order by mega.measure_sid, mega.excluded_geographical_area;"""
         d = Database()
         rows = d.run_query(sql)
@@ -176,13 +187,12 @@ class Application(object):
     def get_measures(self, iteration):
         print("Getting measures")
         self.measures = []
-        the_date = "2021-02-01"
         sql = """select m.*, mt.measure_type_series_id,
         mt.measure_component_applicable_code, mt.trade_movement_code
         from utils.measures_real_end_dates m, measure_types mt
         where m.measure_type_id = mt.measure_type_id
         and left(goods_nomenclature_item_id, """ + str(len(str(iteration))) + """) = '""" + str(iteration) + """'
-        and (m.validity_end_date is null or m.validity_end_date >= '""" + the_date + """')
+        and (m.validity_end_date is null or m.validity_end_date >= '""" + self.SNAPSHOT_DATE + """')
         order by goods_nomenclature_item_id, measure_type_id;"""
         d = Database()
         rows = d.run_query(sql)
@@ -212,13 +222,11 @@ class Application(object):
             measure.get_import_export()
             
             measure.expand_raw_data(self.measure_types, self.geographical_areas)
-            measure.create_extract_line_per_geography()
 
             self.measures.append(measure)
 
     def write_measures(self):
         print("Writing measures")
-        # self.write_commodity_header()
         barred_series = ['E', 'F', 'G', 'H', 'K', 'L', 'M', "N", "O", "R", "S", "Z"]
         for measure in self.measures:
             if measure.measure_type_series_id not in barred_series:
@@ -268,6 +276,8 @@ class Application(object):
                         if measure.measure_type_series_id not in barred_series:
                             self.extract_file.write(measure.extract_line)
 
+        self.write_commodity_footer()
+
     def get_folders(self):
         self.current_folder = os.getcwd()
         self.data_folder = os.path.join(self.current_folder, "data")
@@ -277,8 +287,11 @@ class Application(object):
         self.reference_folder = os.path.join(self.data_folder, "reference")
 
     def open_extract(self):
-        filename = os.path.join(self.icl_vme_folder,
-                                "hmce-tariff-ascii-jan2021.matt")
+        date_time_obj = datetime.strptime(self.SNAPSHOT_DATE, '%Y-%m-%d')
+        year = date_time_obj.strftime("%Y")
+        month = date_time_obj.strftime("%b").lower()
+        filename = "hmrc-tariff-ascii-" + month + "-" + year + ".txt"
+        filename = os.path.join(self.icl_vme_folder, filename)
         self.extract_file = open(filename, "w+")
 
     def close_extract(self):
@@ -392,6 +405,12 @@ class Application(object):
         self.commodity_header += "21002"
         self.commodity_header += CommonString.line_feed
         self.extract_file.write(self.commodity_header)
+        
+    def write_commodity_footer(self):
+        self.commodity_footer = "CO"
+        self.commodity_footer += " - TO BE COMPLETED"
+        self.extract_file.write(self.commodity_footer)
+        
 
     def write_footnotes(self):
         if self.WRITE_FOOTNOTES == 1:
@@ -482,12 +501,14 @@ class Application(object):
     def get_supplementary_units_reference(self):
         print("Getting supplementary units")
         self.supplementary_units = []
+        self.supplementary_unit_dict = {}
         filename = os.path.join(self.reference_folder, "supplementary_units.csv")
         with open(filename) as csv_file:
             csv_reader = csv.reader(csv_file, delimiter=',')
             for row in csv_reader:
                 supplementary_unit = SupplementaryUnit(row[0], row[1], row[2])
                 self.supplementary_units.append(supplementary_unit)
+                self.supplementary_unit_dict[row[0]+row[1]] = row[2]
 
     def get_geographical_areas(self):
         print("Getting geographical areas")
