@@ -47,17 +47,18 @@ class Application(object):
     def get_commodities(self):
         # for i in range(0, 10):
         # self.commodities = []
-        for i in range(0, 1):
+        for i in range(2, 3):
             self.commodities = []
             tic = time.perf_counter()
             print("\nDEALING WITH COMMODITY CODES STARTING WITH " + str(i))
             self.get_measure_components(i)
+            self.get_measure_conditions(i)
             self.get_measure_excluded_geographical_areas(i)
             self.get_measures(i)
+            self.categorise_and_sort_measures()
             self.assign_measure_components()
             self.assign_measure_excluded_geographical_areas()
             self.create_measure_duties()
-
 
             iteration = str(i) + "%"
             sql = "select * from utils.goods_nomenclature_export_new('" + \
@@ -99,6 +100,35 @@ class Application(object):
             self.write_commodities()
             print(f"Ran in {toc - tic:0.2f} seconds")
 
+    def categorise_and_sort_measures(self):
+        priority_lookup =  {
+            "103": 0,
+            "105": 1,
+            "306": 2,
+            "305": 3,
+            "142": 4,
+            "145": 4,
+            "122": 5,
+            "123": 5,
+            "143": 5,
+            "146": 5,
+            "112": 6,
+            "115": 6,
+            "117": 6,
+            "119": 6,
+            "551": 7,
+            "552": 7,
+            "553": 7,
+            "554": 7
+        }
+        for measure in self.measures:
+            priority = 99
+            try:
+                priority = priority_lookup[measure.measure_type_id]
+            except:
+                priority = 99
+            measure.priority = priority
+    
     def assign_measure_components(self):
         print("Assigning measure components")
         measure_count = len(self.measures)
@@ -116,6 +146,16 @@ class Application(object):
                     measure.measure_components.append(measure_component)
                     break
 
+    def assign_measure_conditions(self):
+        # This is used for working out if there is a chance that the headingg is ex head
+        # If there is a 'Y' condition, then this typically means that there are exclusions
+        print("Assigning measure conditions")
+        for measure_condition in self.measure_conditions:
+            for measure in self.measures:
+                if measure.measure_sid == measure_condition.measure_sid:
+                    measure.CMDTY_MEASURE_EX_HEAD_IND = "Y"
+                    break
+
     def assign_measure_excluded_geographical_areas(self):
         print("Assigning measure excluded geographical areas")
         for measure_excluded_geographical_area in self.measure_excluded_geographical_areas:
@@ -131,14 +171,29 @@ class Application(object):
             measure.create_extract_line_per_geography()
     
     def assign_measures(self):
-        print("Assigning measure excluded geographical areas")
+        print("Assigning measures")
         for measure in self.measures:
             for commodity in self.commodities:
                 if commodity.productline_suffix == "80":
                     if measure.goods_nomenclature_item_id == commodity.COMMODITY_CODE:
                         commodity.measures.append(measure)
-                        # print("Appending a measure")
                         break
+                    
+    def get_measure_conditions(self, iteration):
+        print("Getting measure conditions")
+        self.measure_conditions = []
+        sql = """
+        select distinct (m.measure_sid)
+        from measure_conditions mc, measures m
+        where m.measure_sid = mc.measure_sid 
+        and mc.condition_code = 'Y'
+        and left(m.goods_nomenclature_item_id, """ + str(len(str(iteration))) + """) = '""" + str(iteration) + """'
+        and (m.validity_end_date is null or m.validity_end_date > '""" + self.SNAPSHOT_DATE + """')
+        """
+        d = Database()
+        rows = d.run_query(sql)
+        for row in rows:
+            self.measure_conditions.append(row[0])
                 
     def get_measure_components(self, iteration):
         print("Getting measure components")
@@ -161,7 +216,7 @@ class Application(object):
             measure_component.measurement_unit_code = row[4]
             measure_component.measurement_unit_qualifier_code = row[5]
             measure_component.goods_nomenclature_item_id = row[6]
-            measure_component.get_measurement_unit()
+            measure_component.get_cts_component_definition()
             
             self.measure_components.append(measure_component)
         
@@ -217,7 +272,7 @@ class Application(object):
             measure.validity_start_date = row[18]
             measure.validity_end_date = row[19]
             measure.measure_type_series_id = row[20]
-            measure.measure_component_applicable_code = row[21]
+            measure.measure_component_applicable_code = int(row[21])
             measure.trade_movement_code = row[22]
             measure.get_import_export()
             

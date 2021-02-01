@@ -53,16 +53,14 @@ class Commodity(object):
             for commodity in self.hierarchy:
                 for measure in commodity.measures:
                     self.measures_inherited.append(measure)
-                    # print('%s gets measure %d from commodity %s' % (self.COMMODITY_CODE, measure.measure_sid, commodity.COMMODITY_CODE))
                 
     def sort_inherited_measures(self):
         self.measures_inherited.sort(key=lambda x: x.geographical_area_id, reverse=False)
-        self.measures_inherited.sort(key=lambda x: x.measure_type_id, reverse=False)
-        pass
+        self.measures_inherited.sort(key=lambda x: x.priority, reverse=False)
     
     def get_supplementary_units(self, supplementary_units_reference):
         self.get_supplementary_unit = None
-        supp_types = ['109', '110', 'x111']
+        supp_types = ['109', '110']
         found_quantity_code = False
         for measure in self.measures_inherited:
             if measure.measure_type_id in supp_types:
@@ -77,7 +75,6 @@ class Commodity(object):
                     if self.supplementary_unit.measurement_unit_code == item.measurement_unit_code:
                         if self.supplementary_unit.measurement_unit_qualifier_code == item.measurement_unit_qualifier_code:
                             self.supplementary_unit.quantity_code = item.quantity_code
-                            #print ("Found supp code on comm code " + self.COMMODITY_CODE + " with q code " + item.quantity_code)
                             found_quantity_code = True
                             break
                 
@@ -167,7 +164,6 @@ class Commodity(object):
                 break
         if self.is_end_use:
             self.COMMODITY_END_USE_ALLWD = "Y"
-            # print('Found an end use commodity code %s' % (self.COMMODITY_CODE))
         else:
             self.COMMODITY_END_USE_ALLWD = "N"
 
@@ -200,7 +196,6 @@ class Commodity(object):
                     else:
                         if current_depth == 2: # remember the chapter
                             token = ""
-                            # print("Blank token")
                         elif current_depth == 3:
                             token = ":"
                         else:
@@ -210,6 +205,7 @@ class Commodity(object):
         else:
             self.ALPHA_TEXT = self.description
         
+        self.ALPHA_TEXT = f.format_string(self.ALPHA_TEXT)
         self.ALPHA_SIZE = str(len(self.ALPHA_TEXT)).zfill(4) 
             
     def create_extract_line(self):

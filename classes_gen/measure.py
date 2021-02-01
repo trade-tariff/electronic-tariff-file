@@ -23,8 +23,6 @@ class Measure(object):
         self.UNIT_OF_QUANTITY_CODE = "000"
         self.QUANTITY_CODE = "000" # There are odd occasions where this is 099, but I do not know why: otherwise static
         self.UNIT_ACCOUNT = "0"
-        self.SPECIFIC_RATE = "NNNNNNNNNN"
-        self.AD_VALOREM_RATE = "NNNNNNNNNN"
         self.DUTY_TYPE = "NN"
         self.CMDTY_MEASURE_EX_HEAD_IND = "N"
         self.FREE_CIRC_DOTI_REQD_IND = "X"
@@ -37,6 +35,9 @@ class Measure(object):
         self.suppressed_geography = False
         self.members = []
         
+        self.rates = []
+        for i in range(0, 5):
+            self.rates.append("0" * 23)      
         
         # Taric / CDS data
         self.measure_type_id = None
@@ -51,8 +52,6 @@ class Measure(object):
         if self.ordernumber != "" and self.ordernumber is not None:
             self.QUOTA_NO = self.ordernumber
             
-        self.CMDTY_MEASURE_EX_HEAD_IND = ("0" * 85) + self.CMDTY_MEASURE_EX_HEAD_IND
-        
     def resolve_dates(self):
         self.TARIFF_MEASURE_EDATE = f.YYYYMMDD(self.validity_start_date)
 
@@ -68,74 +67,45 @@ class Measure(object):
             self.is_export = True
     
     def create_measure_duties(self):
-        # This is intended to resolve the following
-        # self.SPECIFIC_RATE = "0000000000"
-        # self.AD_VALOREM_RATE = "1111111111"
-        # self.DUTY_TYPE = "22"
-        if self.measure_component_applicable_code == 2 or self.measure_type_series_id in ("A", "B"):
-            # These are not duty-related measures
-            self.DUTY_TYPE = "00"
-        else:
-            valid_duty_expressions = ['01', '04', '19', '20']
-
-            self.has_specific = False
-            self.has_advalorem = False
+        index = 0
+        for mc in self.measure_components:
+            self.rates[index] = mc.cts_component_definition
+            index += 1
             
-            for mc in self.measure_components:
-                # Get the unit of quantity - only check once as there can only be one
-                if self.found_unit_of_quantity_code == False:
-                    if mc.UNIT_OF_QUANTITY_CODE is not None:
-                        self.found_unit_of_quantity_code = True
-                        self.UNIT_OF_QUANTITY_CODE = mc.UNIT_OF_QUANTITY_CODE
-                        
-                # Check if ad valorem, specific or both
-                if mc.duty_expression_id in valid_duty_expressions:
-                    if mc.monetary_unit_code is None:
-                        self.has_advalorem = True
-                    else:
-                        self.has_specific = True
-                        self.UNIT_ACCOUNT = "1"
-                        
-            if len(self.measure_components) == 1:
-                if self.measure_components[0].duty_amount == 0:
-                    # Free of all duties = type 22
-                    self.DUTY_TYPE = "60"
-                else:
-                    if self.measure_components[0].monetary_unit_code is None:
-                        # Just one component and it is specific
-                        self.DUTY_TYPE = "01"
-                    else:
-                        # Just one component and it is ad valorem (but non-zero)
-                        self.DUTY_TYPE = "10"
+        self.get_duty_type()
+        
+    def get_duty_type(self):
+        if len(self.measure_components) == 0:
+            if self.measure_component_applicable_code == 1:
+                self.DUTY_TYPE = "30" # No components, but of a type where they must be expressed in condition components
+            else:
+                self.DUTY_TYPE = "00" # No components
 
-            elif len(self.measure_components) == 2:
-                # print(str(self.measure_sid) + " on comm code " + self.goods_nomenclature_item_id + " has 2 components")
-                mc0 = self.measure_components[0]
-                mc1 = self.measure_components[1]
-                if mc0.monetary_unit_code is None:
-                    # These 2 options are for when the first of 2 components is ad valorem
-                    if mc1.monetary_unit_code is None:
-                        print("Two ad valorems - not expected")
-                    else:
-                        # Two components: ad valorem followed by a specific
-                        self.DUTY_TYPE = "18"
+        elif len(self.measure_components) == 1:
+            if self.measure_components[0].component_type == "specific":
+                self.DUTY_TYPE = "01" # One component, specific
+            else:
+                if self.measure_components[0].duty_amount == 0:
+                    self.DUTY_TYPE = "60" # One component, ad valorem and free
                 else:
-                    # These 2 options are for when the first of 2 components is specific
-                    if mc1.monetary_unit_code is None:
-                        print("Specific plus ad valorem - not expected")
-                    else:
-                        # Two components: specific followed by a specific
-                        self.DUTY_TYPE = "62"
-            elif len(self.measure_components) > 2:
-                # There are three commodity codes where there are three components on the MFN: when you open it to other measures, there are hundreds
-                # 2009697100
-                # 2009697900
-                # 2009691100
-                print(str(self.measure_sid) + " on comm code " + self.goods_nomenclature_item_id + " has > 2 components")
-                
-            c = "0305720056"
-            if self.goods_nomenclature_item_id == c:
-                print(self.DUTY_TYPE + " is the duty type for comm code " + c + " on measure type " + self.measure_type_id + " on country " + self.geographical_area_id + " on measure " + str(self.measure_sid))
+                    self.DUTY_TYPE = "10" # One component, ad valorem, but not free
+
+        elif len(self.measure_components) == 2:
+            if self.measure_components[0].component_type == "specific":
+                self.DUTY_TYPE = "62" # The only one possible with specific first
+            else:
+                if self.measure_components[1].duty_expression_class == "standard":
+                    self.DUTY_TYPE = "15" # Ad valorem plus specific
+                elif self.measure_components[1].duty_expression_class == "minimum":
+                    self.DUTY_TYPE = "95" # Ad valorem plus a minimum
+                else:
+                    self.DUTY_TYPE = "18" # Ad valorem plus a maximum
+
+        elif len(self.measure_components) == 3:
+            self.DUTY_TYPE = "21" # The only one possible with four components
+
+        elif len(self.measure_components) == 4:
+            self.DUTY_TYPE = "16" # The only one possible with four components
 
     def resolve_geography(self, geographical_areas):
         if len(self.geographical_area_id) == 2:
@@ -157,15 +127,11 @@ class Measure(object):
                     break
             if not found:
                 self.ORIGIN_COUNTRY_GROUP_CODE = self.geographical_area_id 
-                # self.ORIGIN_COUNTRY_GROUP_CODE = "***" + self.geographical_area_id + "***"
 
     def lookup_measure_types(self, measure_types):
-        # This is a temp thing for testing only
-        self.MEASURE_TYPE_CODE = self.measure_type_id
-
         if self.measure_type_id == "305":
-            self.found_measure_type = True
             # All of the following are VAT
+            self.found_measure_type = True
             self.MEASURE_GROUP_CODE = "VT"
             self.TAX_TYPE_CODE = "B00"
             if self.additional_code is None or self.additional_code == "":
@@ -178,8 +144,8 @@ class Measure(object):
                 self.MEASURE_TYPE_CODE = "673"
 
         elif self.measure_type_id == "306":
-            self.found_measure_type = True
             # All of the following are excise
+            self.found_measure_type = True
             self.MEASURE_GROUP_CODE = "EX"
             if self.additional_code == "X99A":
                 self.MEASURE_TYPE_CODE = "EXA"
@@ -242,6 +208,11 @@ class Measure(object):
             self.DESTINATION_COUNTRY_CODE = self.ORIGIN_COUNTRY_CODE
             self.DESTINATION_CTY_GRP_CODE = self.ORIGIN_COUNTRY_GROUP_CODE
             self.DESTINATION_ADD_CH_TYPE = self.ORIGIN_ADD_CHARGE_TYPE
+        else:
+            self.DESTINATION_COUNTRY_CODE = "  "
+            self.DESTINATION_CTY_GRP_CODE = "    "
+            self.DESTINATION_ADD_CH_TYPE = "0"
+            
 
     def create_extract_line_per_geography(self):
         self.extract_line = ""
@@ -253,7 +224,6 @@ class Measure(object):
                     self.create_extract_line(member, "    ")
 
     def create_extract_line(self, ORIGIN_COUNTRY_CODE, ORIGIN_COUNTRY_GROUP_CODE):
-        print(str(self.measure_sid), self.UNIT_OF_QUANTITY_CODE)
         self.extract_line += self.RECORD_TYPE + CommonString.divider
         self.extract_line += self.MEASURE_GROUP_CODE + CommonString.divider
         self.extract_line += self.MEASURE_TYPE_CODE + CommonString.divider
@@ -268,11 +238,13 @@ class Measure(object):
         self.extract_line += self.DESTINATION_COUNTRY_CODE + CommonString.divider
         self.extract_line += self.DESTINATION_CTY_GRP_CODE + CommonString.divider
         self.extract_line += self.DESTINATION_ADD_CH_TYPE + CommonString.divider
-        self.extract_line += self.UNIT_OF_QUANTITY_CODE + CommonString.divider
-        self.extract_line += self.QUANTITY_CODE + CommonString.divider
-        self.extract_line += self.UNIT_ACCOUNT + CommonString.divider
-        self.extract_line += self.SPECIFIC_RATE + CommonString.divider
-        self.extract_line += self.AD_VALOREM_RATE + CommonString.divider
+
+        self.extract_line += self.rates[0] + CommonString.divider
+        self.extract_line += self.rates[1] + CommonString.divider
+        self.extract_line += self.rates[2] + CommonString.divider
+        self.extract_line += self.rates[3] + CommonString.divider
+        self.extract_line += self.rates[4] + CommonString.divider
+
         self.extract_line += self.DUTY_TYPE + CommonString.divider
         self.extract_line += self.CMDTY_MEASURE_EX_HEAD_IND + CommonString.divider
         self.extract_line += self.FREE_CIRC_DOTI_REQD_IND + CommonString.divider
@@ -280,5 +252,5 @@ class Measure(object):
         self.extract_line += self.QUOTA_CODE_UK + CommonString.divider
         self.extract_line += self.QUOTA_UNIT_OF_QUANTITY_CODE + CommonString.divider
         self.extract_line += self.MEASURE_AMENDMENT_IND
-        self.extract_line += "   " + self.goods_nomenclature_item_id
+        # self.extract_line += "   " + self.goods_nomenclature_item_id
         self.extract_line += CommonString.line_feed

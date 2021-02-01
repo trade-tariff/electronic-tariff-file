@@ -18,11 +18,13 @@ class Measure(object):
         self.DESTINATION_COUNTRY_CODE = self.line[45:47]
         self.DESTINATION_CTY_GRP_CODE = self.line[47:51]
         self.DESTINATION_ADD_CH_TYPE = self.line[51:52]
-        self.UNIT_OF_QUANTITY_CODE = self.line[52:55]
-        self.QUANTITY_CODE = self.line[55:58]
-        self.UNIT_ACCOUNT = self.line[58:59]
-        self.SPECIFIC_RATE = self.line[59:69]
-        self.AD_VALOREM_RATE = self.line[69:75]
+        
+        self.RATE1 = self.line[52:75]
+        self.RATE2 = self.line[75:98]
+        self.RATE3 = self.line[98:121]
+        self.RATE4 = self.line[121:144]
+        self.RATE5 = self.line[144:167]
+        
         self.DUTY_TYPE = self.line[167:169]
         self.CMDTY_MEASURE_EX_HEAD_IND = self.line[169:170]
         self.FREE_CIRC_DOTI_REQD_IND = self.line[170:171]
