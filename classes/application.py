@@ -34,6 +34,8 @@ class Application(object):
         self.WRITE_ADDITIONAL_CODES = int(os.getenv('WRITE_ADDITIONAL_CODES'))
         self.WRITE_FOOTNOTES = int(os.getenv('WRITE_FOOTNOTES'))
         self.SNAPSHOT_DATE = os.getenv('SNAPSHOT_DATE')
+        self.COMPARISON_DATE = datetime.strptime(os.getenv('COMPARISON_DATE'), '%Y-%m-%d')
+        self.mfns = {}
 
     def create_icl_vme(self):
         self.get_reference_data()
@@ -45,20 +47,20 @@ class Application(object):
         self.close_extract()
 
     def get_commodities(self):
-        # for i in range(0, 10):
-        # self.commodities = []
-        for i in range(2, 3):
+        for i in range(0, 10):
+        # for i in range(0, 1):
             self.commodities = []
             tic = time.perf_counter()
             print("\nDEALING WITH COMMODITY CODES STARTING WITH " + str(i))
-            self.get_measure_components(i)
-            self.get_measure_conditions(i)
-            self.get_measure_excluded_geographical_areas(i)
-            self.get_measures(i)
-            self.categorise_and_sort_measures()
-            self.assign_measure_components()
-            self.assign_measure_excluded_geographical_areas()
-            self.create_measure_duties()
+            if self.WRITE_MEASURES == 1:
+                self.get_measure_components(i)
+                self.get_measure_conditions(i)
+                self.get_measure_excluded_geographical_areas(i)
+                self.get_measures(i)
+                self.categorise_and_sort_measures()
+                self.assign_measure_components()
+                self.assign_measure_excluded_geographical_areas()
+                self.create_measure_duties()
 
             iteration = str(i) + "%"
             sql = "select * from utils.goods_nomenclature_export_new('" + \
@@ -71,6 +73,7 @@ class Application(object):
                 if commodity.COMMODITY_CODE[0:2] not in ('98', '99'):
                     commodity.goods_nomenclature_sid = row[0]
                     commodity.productline_suffix = row[2]
+                    commodity.validity_start_date = row[3]
                     commodity.COMMODITY_EDATE = self.YYYYMMDD(row[3])
                     commodity.COMMODITY_LDATE = self.YYYYMMDD(row[4])
                     commodity.description = row[5]
@@ -78,10 +81,14 @@ class Application(object):
                     commodity.leaf = row[9]
                     commodity.significant_digits = row[10]
                     commodity.determine_commodity_type()
+                    commodity.get_amendment_status()
                     self.commodities.append(commodity)
 
-            self.assign_measures()
-            self.assign_commodity_footnotes()
+            if self.WRITE_MEASURES == 1:
+                self.assign_measures()
+
+            if self.WRITE_FOOTNOTES == 1:
+                self.assign_commodity_footnotes()
             self.build_commodity_hierarchy()
 
             for commodity in self.commodities:
@@ -128,6 +135,10 @@ class Application(object):
             except:
                 priority = 99
             measure.priority = priority
+
+        self.measures.sort(key=lambda x: x.geographical_area_id, reverse=False)
+        self.measures.sort(key=lambda x: x.priority, reverse=False)
+
     
     def assign_measure_components(self):
         print("Assigning measure components")
@@ -150,10 +161,17 @@ class Application(object):
         # This is used for working out if there is a chance that the headingg is ex head
         # If there is a 'Y' condition, then this typically means that there are exclusions
         print("Assigning measure conditions")
-        for measure_condition in self.measure_conditions:
+
+        for measure_condition in self.measure_conditions_exemption:
             for measure in self.measures:
                 if measure.measure_sid == measure_condition.measure_sid:
                     measure.CMDTY_MEASURE_EX_HEAD_IND = "Y"
+                    break
+                
+        for measure_condition in self.measure_conditions_licence:
+            for measure in self.measures:
+                if measure.measure_sid == measure_condition.measure_sid:
+                    measure.FREE_CIRC_DOTI_REQD_IND = "Y"
                     break
 
     def assign_measure_excluded_geographical_areas(self):
@@ -181,19 +199,36 @@ class Application(object):
                     
     def get_measure_conditions(self, iteration):
         print("Getting measure conditions")
-        self.measure_conditions = []
+        self.measure_conditions_exemption = []
+        self.measure_conditions_licence = []
+
+        # Get exemptions
         sql = """
         select distinct (m.measure_sid)
         from measure_conditions mc, measures m
         where m.measure_sid = mc.measure_sid 
-        and mc.condition_code = 'Y'
+        and mc.certificate_type_code = 'Y'
         and left(m.goods_nomenclature_item_id, """ + str(len(str(iteration))) + """) = '""" + str(iteration) + """'
         and (m.validity_end_date is null or m.validity_end_date > '""" + self.SNAPSHOT_DATE + """')
         """
         d = Database()
         rows = d.run_query(sql)
         for row in rows:
-            self.measure_conditions.append(row[0])
+            self.measure_conditions_exemption.append(row[0])
+        
+        # Get licence requirement
+        sql = """
+        select distinct (m.measure_sid)
+        from measure_conditions mc, measures m
+        where m.measure_sid = mc.measure_sid 
+        and mc.certificate_type_code in ('D', '9', 'A', 'C', 'D', 'H', 'I', 'L', 'N', 'U', 'Z')
+        and left(m.goods_nomenclature_item_id, """ + str(len(str(iteration))) + """) = '""" + str(iteration) + """'
+        and (m.validity_end_date is null or m.validity_end_date > '""" + self.SNAPSHOT_DATE + """')
+        """
+        d = Database()
+        rows = d.run_query(sql)
+        for row in rows:
+            self.measure_conditions_licence.append(row[0])
                 
     def get_measure_components(self, iteration):
         print("Getting measure components")
@@ -319,16 +354,23 @@ class Application(object):
         print("Writing commmodities")
         barred_series = ['E', 'F', 'G', 'H', 'K', 'L', 'M', "N", "O", "R", "S", "Z"]
         self.write_commodity_header()
+        self.commodity_count = 0
+        self.additional_code_count = 0
+        self.measure_count = 0
         for commodity in self.commodities:
-            if commodity.leaf == "1" or (commodity.significant_digits == 8 and commodity.productline_suffix == "80"):
+            if commodity.leaf == "1":
+            # if commodity.leaf == "1" or (commodity.significant_digits == 8 and commodity.productline_suffix == "80"):
+                self.commodity_count += 1
                 self.extract_file.write(commodity.extract_line)
                 if self.WRITE_ADDITIONAL_CODES == 1:
                     if commodity.additional_code_string != "":
+                        self.additional_code_count += 1
                         self.extract_file.write(commodity.additional_code_string)
 
                 if self.WRITE_MEASURES == 1:
                     for measure in commodity.measures_inherited:
                         if measure.measure_type_series_id not in barred_series:
+                            self.measure_count += measure.line_count
                             self.extract_file.write(measure.extract_line)
 
         self.write_commodity_footer()
@@ -462,8 +504,42 @@ class Application(object):
         self.extract_file.write(self.commodity_header)
         
     def write_commodity_footer(self):
+        """
+        CO0018494000128803435560000000000342100000366759
+        CO
+        0018494
+        0001288
+        0343556
+        0000000
+        0003421
+        00000366759
+
+        CM-RECORD-COUNT	7	9(7)
+        CA-RECORD-COUNT	7	9(7)
+        ME-RECORD-COUNT	7	9(7)
+        MD-RECORD-COUNT	7	9(7)
+        MX-RECORD-COUNT	7	9(7)
+        TOTAL-RECORD-COUNT	11	9(11)
+        """
+        
+        self.measure_exception_count = 0
+        total_record_count = self.commodity_count + self.additional_code_count + self.measure_count + self.measure_exception_count
+        
+        CM_RECORD_COUNT = str(self.commodity_count).rjust(7, "0")
+        CA_RECORD_COUNT = str(self.additional_code_count).rjust(7, "0")
+        ME_RECORD_COUNT = str(self.measure_count).rjust(7, "0")
+        MD_RECORD_COUNT = "0000000"
+        MX_RECORD_COUNT = "0000000"
+        TOTAL_RECORD_COUNT = str(total_record_count).rjust(11, "0")
+
         self.commodity_footer = "CO"
-        self.commodity_footer += " - TO BE COMPLETED"
+        self.commodity_footer += CM_RECORD_COUNT
+        self.commodity_footer += CA_RECORD_COUNT
+        self.commodity_footer += ME_RECORD_COUNT
+        self.commodity_footer += MD_RECORD_COUNT
+        self.commodity_footer += MX_RECORD_COUNT
+        self.commodity_footer += TOTAL_RECORD_COUNT
+        
         self.extract_file.write(self.commodity_footer)
         
 
@@ -534,6 +610,7 @@ class Application(object):
                     self.measure_types.append(measure_type)
 
     def get_seasonal_rates(self):
+        # Read the seasonal rates from the reference CSV and load to a global list
         print("Getting seasonal rates")
         self.seasonal_rates = []
         filename = os.path.join(self.reference_folder, "seasonal_rates.csv")

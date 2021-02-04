@@ -1,6 +1,8 @@
 import sys
 from classes.functions import functions as f
+import classes.globals as g
 from classes.enums import CommonString
+
 
 class Measure(object):
     def __init__(self):
@@ -25,20 +27,21 @@ class Measure(object):
         self.UNIT_ACCOUNT = "0"
         self.DUTY_TYPE = "NN"
         self.CMDTY_MEASURE_EX_HEAD_IND = "N"
-        self.FREE_CIRC_DOTI_REQD_IND = "X"
+        self.FREE_CIRC_DOTI_REQD_IND = "N"
         self.QUOTA_NO = "000000"
         self.QUOTA_CODE_UK = "0000" # Always four zeroes
-        self.QUOTA_UNIT_OF_QUANTITY_CODE = "NNN"
+        self.QUOTA_UNIT_OF_QUANTITY_CODE = "000"
         self.MEASURE_AMENDMENT_IND = "A"
         self.found_measure_type = False
         self.found_unit_of_quantity_code = False
         self.suppressed_geography = False
         self.members = []
+        self.line_count = 0
         
         self.rates = []
         for i in range(0, 5):
-            self.rates.append("0" * 23)      
-        
+            self.rates.append("0" * 23)
+            
         # Taric / CDS data
         self.measure_type_id = None
         self.measure_components = []
@@ -73,6 +76,10 @@ class Measure(object):
             index += 1
             
         self.get_duty_type()
+        if self.measure_type_id in ("103", "105"):
+            g.app.mfns[self.goods_nomenclature_item_id] = ""
+            for rate in self.rates:
+                g.app.mfns[self.goods_nomenclature_item_id] += rate + CommonString.divider
         
     def get_duty_type(self):
         if len(self.measure_components) == 0:
@@ -217,14 +224,21 @@ class Measure(object):
     def create_extract_line_per_geography(self):
         self.extract_line = ""
         if self.found_measure_type == True and self.suppressed_geography == False:
+            self.exclusion_list = []
+            for exclusion in self.measure_excluded_geographical_areas:
+                self.exclusion_list.append(exclusion.excluded_geographical_area)
             if len(self.members) == 0:
                 self.create_extract_line(self.ORIGIN_COUNTRY_CODE, self.ORIGIN_COUNTRY_GROUP_CODE)
+                if len(self.exclusion_list) > 0:
+                    for exclusion in self.exclusion_list:
+                        self.create_extract_line(exclusion, self.ORIGIN_COUNTRY_GROUP_CODE, "MX", True)
             else:
                 for member in self.members:
-                    self.create_extract_line(member, "    ")
+                    if member not in self.exclusion_list:
+                        self.create_extract_line(member, "    ")
 
-    def create_extract_line(self, ORIGIN_COUNTRY_CODE, ORIGIN_COUNTRY_GROUP_CODE):
-        self.extract_line += self.RECORD_TYPE + CommonString.divider
+    def create_extract_line(self, ORIGIN_COUNTRY_CODE, ORIGIN_COUNTRY_GROUP_CODE, RECORD_TYPE = "ME", override_rates = False):
+        self.extract_line += RECORD_TYPE + CommonString.divider
         self.extract_line += self.MEASURE_GROUP_CODE + CommonString.divider
         self.extract_line += self.MEASURE_TYPE_CODE + CommonString.divider
         self.extract_line += self.TAX_TYPE_CODE + CommonString.divider
@@ -239,11 +253,21 @@ class Measure(object):
         self.extract_line += self.DESTINATION_CTY_GRP_CODE + CommonString.divider
         self.extract_line += self.DESTINATION_ADD_CH_TYPE + CommonString.divider
 
-        self.extract_line += self.rates[0] + CommonString.divider
-        self.extract_line += self.rates[1] + CommonString.divider
-        self.extract_line += self.rates[2] + CommonString.divider
-        self.extract_line += self.rates[3] + CommonString.divider
-        self.extract_line += self.rates[4] + CommonString.divider
+        if override_rates is False:
+            self.extract_line += self.rates[0] + CommonString.divider
+            self.extract_line += self.rates[1] + CommonString.divider
+            self.extract_line += self.rates[2] + CommonString.divider
+            self.extract_line += self.rates[3] + CommonString.divider
+            self.extract_line += self.rates[4] + CommonString.divider
+        else:
+            try:
+                self.extract_line += g.app.mfns[self.goods_nomenclature_item_id]
+            except:
+                self.extract_line += self.rates[0] + CommonString.divider
+                self.extract_line += self.rates[1] + CommonString.divider
+                self.extract_line += self.rates[2] + CommonString.divider
+                self.extract_line += self.rates[3] + CommonString.divider
+                self.extract_line += self.rates[4] + CommonString.divider
 
         self.extract_line += self.DUTY_TYPE + CommonString.divider
         self.extract_line += self.CMDTY_MEASURE_EX_HEAD_IND + CommonString.divider
@@ -254,3 +278,4 @@ class Measure(object):
         self.extract_line += self.MEASURE_AMENDMENT_IND
         # self.extract_line += "   " + self.goods_nomenclature_item_id
         self.extract_line += CommonString.line_feed
+        self.line_count += 1

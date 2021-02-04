@@ -27,9 +27,3 @@ class Commodity(object):
         self.ALPHA_SIZE = self.line[77:81]
         self.ALPHA_TEXT = self.line[81:].rstrip()
         self.line = ""
-        
-        # f = open("spvs.txt", "a")
-        
-        # if self.SPV_CODE.strip() != "":
-        #     f.write(self.COMMODITY_CODE + "," + self.SPV_CODE + "\n")
-        # f.close()

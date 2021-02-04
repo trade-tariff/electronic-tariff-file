@@ -3,73 +3,73 @@ CCT,,064
 CEN,,034
 CTM,,026
 DAP,,024,This is not actually listed, but is needed - check with TMT
-DHS,,XXX,Not found
+DHS,,000,Not found
 DTN,,024
-EUR,,XXX,Not found
-FC1,,XXX,Not found
+EUR,,000,Not found
+FC1,,000,Not found
 GFI,,089
-GP1,,XXX,Not found
+GP1,,000,Not found
 GRM,,021
 GRT,,093
 HLT,,078
 HMT,,059
 KAC,,119
 KCC,,107
-KCL,,XXX,Not found
+KCL,,000,Not found
 KGM,,023
 KLT,,040
 KMA,,039
 KMT,,114
 KNI,,003
-KNS,,XXX,Not found
+KNS,,000,Not found
 KPH,,002
 KPO,,001
 KPP,,005
 KSD,,067
 KSH,,004
 KUR,,006
-KW1,,XXX,Not found
+KW1,,000,Not found
 LPA,,066
 LTR,,076
-MCG,,XXX,Not found
-MCL,,XXX,Not found
+MCG,,000,Not found
+MCL,,000,Not found
 MGM,,111
 MIL,,037
-MLT,,XXX,Not found
-MPR,,XXX,Not found
+MLT,,000,Not found
+MPR,,000,Not found
 MTK,,045
 MTQ,,087
 MTR,,057
 MWH,,097
 NAR,,030
-NCL,,XXX,Not found
+NCL,,030,Not found
 NPR,,031
-RET,,XXX,Not found
+RET,,000,Not found
 TJO,,120
 TNE,,025
 WAT,,117
 ASV,X,099
 DTN,E,049
-DTN,F,
+DTN,F,024
 DTN,G,062
-DTN,L,XXX,Not found
+DTN,L,024,Not found
 DTN,M,048
-DTN,R,XXX,Not found
-DTN,S,XXX,Not found
-DTN,Z,XXX,Not found
-KGM,A,XXX,Not found
+DTN,R,024,Not found
+DTN,S,024,Not found
+DTN,Z,023,Not found
+KGM,A,023,Not found
 KGM,E,069
 KGM,G,061
-KGM,P,XXX,Not found
+KGM,P,023,Not found
 KGM,S,118
-KGM,T,XXX,Not found
-LTR,A,XXX,Not found
+KGM,T,023,Not found
+LTR,A,076,Not found
 MTQ,C,080
-NAR,B,XXX,Not found
-TNE,E,XXX,Not found
-TNE,I,XXX,Not found
+NAR,B,030,Not found
+TNE,E,025,Not found
+TNE,I,025,Not found
 TNE,J,112
 TNE,K,115
-TNE,M,XXX,Not found
-TNE,R,XXX,Not found
-TNE,Z,XXX,Not found
+TNE,M,025,Not found
+TNE,R,025,Not found
+TNE,Z,025,Not found

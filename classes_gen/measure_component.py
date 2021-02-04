@@ -25,8 +25,6 @@ class MeasureComponent(object):
         
     def get_cts_component_definition(self):
         self.get_duty_expression_class()
-        if self.measure_sid == -267192:
-            a = 1       
         self.cts_component_definition = ""
         if self.measurement_unit_code is not None:
             # This is a SPECIFIC_RATE

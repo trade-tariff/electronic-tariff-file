@@ -19,11 +19,11 @@ class Measure(object):
         self.DESTINATION_CTY_GRP_CODE = self.line[47:51]
         self.DESTINATION_ADD_CH_TYPE = self.line[51:52]
         
-        self.RATE1 = self.line[52:75]
-        self.RATE2 = self.line[75:98]
-        self.RATE3 = self.line[98:121]
-        self.RATE4 = self.line[121:144]
-        self.RATE5 = self.line[144:167]
+        self.RATE_1 = self.line[52:75]
+        self.RATE_2 = self.line[75:98]
+        self.RATE_3 = self.line[98:121]
+        self.RATE_4 = self.line[121:144]
+        self.RATE_5 = self.line[144:167]
         
         self.DUTY_TYPE = self.line[167:169]
         self.CMDTY_MEASURE_EX_HEAD_IND = self.line[169:170]
@@ -31,5 +31,5 @@ class Measure(object):
         self.QUOTA_NO = self.line[171:177]
         self.QUOTA_CODE_UK = self.line[177:181]
         self.QUOTA_UNIT_OF_QUANTITY_CODE = self.line[181:184]
-        self.MEASURE_AMENDMENT_IND = self.line[181:185]
+        self.MEASURE_AMENDMENT_IND = self.line[184:185]
         self.line = ""

@@ -29,6 +29,9 @@
 553,AD,CVP,A45
 554,AD,CVD,A40
 
+# Retaliatory
+695,DR,105,A20,Additional duties (retaliatory)
+
 # Prohibitions and restrictions - original CHIEF list (national measures)
 AHC,PR,AHC,   ,Animal Health Certificate
 AIL,PR,AIL,   ,Health and Safety Executive Import Licensing Firearms and Ammunition

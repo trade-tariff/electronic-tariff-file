@@ -1,17 +1,18 @@
 # GSP (Generalisd system of preferences)
-2005,G022,N,GSP LDC (Annex IV)
-2020,#GS#,N,GSP General
+2005,G073,N,GSP LDC (Annex IV)
+2020,G022,N,GSP General
 2027,G087,N,GSP+ (Incentive)
 
 # Other
 1008,G012,N,All third countries
-1011,G012,N,Erga Omnes - not sure if this should be "    " or "G012"
+1011,    ,N,Erga Omnes - not sure if this should be "    " or "G012"
 1006,#CA#,Y,Canada re-imports
 2200,G188,N,Central America
 1032,G038,N,Economic Partnership Agreements
 2080,G039,N,OCTs (Overseas Countries and Territories)
 
 # Expanders: where we can't find a match between the CDS and CHIEF databases
+1013,expand,N,CARIFORUM
 1033,expand,N,CARIFORUM
 1034,expand,N,ESA (Eastern and Southern Africa)
 1035,expand,N,SADC EPA (Soth African Development Community)

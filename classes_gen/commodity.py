@@ -1,5 +1,6 @@
 import sys
 
+import classes.globals as g
 from classes.functions import functions as f
 from classes.enums import CommonString
 from classes_gen.supplementary_unit import SupplementaryUnit
@@ -149,9 +150,6 @@ class Commodity(object):
         if not found:
             self.SPV_CODE = "       "
             
-        # This is based on the fact that there are no Unit Price measures in the database
-        self.SPV_CODE = "       "
-
     def get_end_use(self):
         # There may be some other criteria that need to be considered here
         # At least temporarily, we are just checking to see if there is a 
@@ -208,6 +206,13 @@ class Commodity(object):
         self.ALPHA_TEXT = f.format_string(self.ALPHA_TEXT)
         self.ALPHA_SIZE = str(len(self.ALPHA_TEXT)).zfill(4) 
             
+    def get_amendment_status(self):
+        # This may need to change for the second round
+        if self.validity_start_date >= g.app.COMPARISON_DATE:
+            self.COMMODITY_AMEND_IND = "N"
+        else:
+            self.COMMODITY_AMEND_IND = "A"
+    
     def create_extract_line(self):
         self.extract_line = self.RECORD_TYPE + CommonString.divider
         self.extract_line += self.COMMODITY_CODE + CommonString.divider
