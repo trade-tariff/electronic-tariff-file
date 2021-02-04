@@ -2,6 +2,7 @@ import os
 import sys
 import csv
 import time
+import py7zr
 
 from dotenv import load_dotenv
 from datetime import datetime
@@ -45,6 +46,7 @@ class Application(object):
         self.get_commodities()
         self.write_footnotes()
         self.close_extract()
+        self.zip_extract()
 
     def get_commodities(self):
         for i in range(0, 10):
@@ -71,6 +73,8 @@ class Application(object):
                 commodity = Commodity()
                 commodity.COMMODITY_CODE = row[1]
                 if commodity.COMMODITY_CODE[0:2] not in ('98', '99'):
+                    if commodity.COMMODITY_CODE == '9702000090':
+                        a = 1
                     commodity.goods_nomenclature_sid = row[0]
                     commodity.productline_suffix = row[2]
                     commodity.validity_start_date = row[3]
@@ -387,12 +391,26 @@ class Application(object):
         date_time_obj = datetime.strptime(self.SNAPSHOT_DATE, '%Y-%m-%d')
         year = date_time_obj.strftime("%Y")
         month = date_time_obj.strftime("%b").lower()
-        filename = "hmrc-tariff-ascii-" + month + "-" + year + ".txt"
-        filename = os.path.join(self.icl_vme_folder, filename)
-        self.extract_file = open(filename, "w+")
+        if CommonString.divider == "|":
+            self.filename = "hmrc-tariff-ascii-" + month + "-" + year + "-piped.txt"
+        else:
+            self.filename = "hmrc-tariff-ascii-" + month + "-" + year + ".txt"
+        
+        self.filepath = os.path.join(self.icl_vme_folder, self.filename)
+        self.extract_file = open(self.filepath, "w+")
 
     def close_extract(self):
         self.extract_file.close()
+        
+    def zip_extract(self):
+        self.zipfile = self.filepath.replace(".txt", ".7z")
+        try:
+            os.remove(self.zipfile)
+        except:
+            pass
+        with py7zr.SevenZipFile(self.zipfile, 'w') as archive:
+            archive.write(self.filepath, self.filename)
+        pass
         
     def get_commodity_footnotes(self):
         print("Getting commodity-level footnote associations")

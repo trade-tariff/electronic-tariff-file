@@ -4,9 +4,14 @@ import re
 class functions(object):
     @staticmethod
     def format_string(s):
+        if 'Original engravings, prints and lithographs++++Othe' in s:
+            a = 1
+
         s = s.strip()
         s = s.replace("<br />", "<br>")
-        s = s.strip("<br>")
+        if s[-4:] == "<br>":
+            s = s[:-4]
+
         # Replace special characters
         s = s.replace("ü", "<KA>")
         s = s.replace("É", "<KB>")

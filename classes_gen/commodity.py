@@ -172,7 +172,6 @@ class Commodity(object):
                     self.description += "<" + footnote.FOOTNOTE_NUMBER + ">"
     
     def build_hierarchy_string(self):
-        # This function is not fully working - need to understand the logic for the Taric codes + n
         token = ""
         taric_token_count = 0
         self.hierarchy.append(self)
@@ -214,6 +213,9 @@ class Commodity(object):
             self.COMMODITY_AMEND_IND = "A"
     
     def create_extract_line(self):
+        if self.COMMODITY_CODE == '9702000090':
+            a = 1
+            
         self.extract_line = self.RECORD_TYPE + CommonString.divider
         self.extract_line += self.COMMODITY_CODE + CommonString.divider
         self.extract_line += self.COMMODITY_EDATE + CommonString.divider
