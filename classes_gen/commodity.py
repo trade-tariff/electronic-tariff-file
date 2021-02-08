@@ -60,7 +60,9 @@ class Commodity(object):
         self.measures_inherited.sort(key=lambda x: x.priority, reverse=False)
     
     def get_supplementary_units(self, supplementary_units_reference):
-        self.get_supplementary_unit = None
+        if self.COMMODITY_CODE == "2203000100":
+            a = 1
+        self.supplementary_unit = None
         supp_types = ['109', '110']
         found_quantity_code = False
         for measure in self.measures_inherited:
@@ -84,6 +86,20 @@ class Commodity(object):
                 else:
                     self.UNIT_OF_QUANTITY = "1023" + CommonString.unit_divider + "2" + self.supplementary_unit.quantity_code + CommonString.unit_divider + "0000"
                     break
+                
+        # If there are no units assigned then do this
+        if found_quantity_code == False:
+            for unmatched in g.app.unmatched_supplementary_units:
+                if unmatched.commodity_code == self.COMMODITY_CODE:
+                    self.UNIT_OF_QUANTITY = "1023" + CommonString.unit_divider + "2" + unmatched.chief_code + CommonString.unit_divider + "0000"
+                    break
+        else:
+            for unmatched in g.app.unmatched_supplementary_units:
+                if unmatched.commodity_code == self.COMMODITY_CODE:
+                    self.UNIT_OF_QUANTITY = "1023" + CommonString.unit_divider + "2" + self.supplementary_unit.quantity_code + CommonString.unit_divider + "3" + unmatched.chief_code
+                    break
+            
+                    
 
     def apply_seasonal_rates(self, seasonal_rates):
         for seasonal_rate in seasonal_rates:

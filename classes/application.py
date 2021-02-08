@@ -20,6 +20,7 @@ from classes_gen.measure_component import MeasureComponent
 from classes_gen.measure_type import MeasureType
 from classes_gen.seasonal_rate import SeasonalRate
 from classes_gen.supplementary_unit import SupplementaryUnit
+from classes_gen.supplementary_unit import UnmatchedSupplementaryUnit
 from classes_gen.geographical_area import GeographicalArea
 from classes_gen.commodity_footnote import CommodityFootnote
 from classes_gen.simplified_procedure_value import SimplifiedProcedureValue
@@ -49,12 +50,17 @@ class Application(object):
         self.zip_extract()
 
     def get_commodities(self):
+        # These need to be set at the start before any of the runs, and not reset by the runs
+        self.commodity_count = 0
+        self.additional_code_count = 0
+        self.measure_count = 0
+
         for i in range(0, 10):
-        # for i in range(0, 1):
+        # for i in range(3, 4):
             self.commodities = []
             tic = time.perf_counter()
             print("\nDEALING WITH COMMODITY CODES STARTING WITH " + str(i))
-            if self.WRITE_MEASURES == 1:
+            if 1 > 0:
                 self.get_measure_components(i)
                 self.get_measure_conditions(i)
                 self.get_measure_excluded_geographical_areas(i)
@@ -88,7 +94,7 @@ class Application(object):
                     commodity.get_amendment_status()
                     self.commodities.append(commodity)
 
-            if self.WRITE_MEASURES == 1:
+            if 1 > 0:
                 self.assign_measures()
 
             if self.WRITE_FOOTNOTES == 1:
@@ -358,10 +364,9 @@ class Application(object):
         print("Writing commmodities")
         barred_series = ['E', 'F', 'G', 'H', 'K', 'L', 'M', "N", "O", "R", "S", "Z"]
         self.write_commodity_header()
-        self.commodity_count = 0
-        self.additional_code_count = 0
-        self.measure_count = 0
         for commodity in self.commodities:
+            if commodity.COMMODITY_CODE == "2203000100":
+                a = 1
             if commodity.leaf == "1":
             # if commodity.leaf == "1" or (commodity.significant_digits == 8 and commodity.productline_suffix == "80"):
                 self.commodity_count += 1
@@ -612,6 +617,7 @@ class Application(object):
     def get_reference_data(self):
         self.get_measure_types()
         self.get_seasonal_rates()
+        self.get_unmatched_supplementary_units()
         self.get_spvs()
         self.get_geographical_areas()
         self.get_supplementary_units_reference()
@@ -637,6 +643,17 @@ class Application(object):
             for row in csv_reader:
                 seasonal_rate = SeasonalRate(row[0], row[1], row[2], row[3], row[4])
                 self.seasonal_rates.append(seasonal_rate)
+
+    def get_unmatched_supplementary_units(self):
+        # Read the unmatched supplementary units from the reference CSV and load to a global list, needed for excise
+        print("Getting unmatched supplementary units")
+        self.unmatched_supplementary_units = []
+        filename = os.path.join(self.reference_folder, "unmatched_supplementary_units.csv")
+        with open(filename) as csv_file:
+            csv_reader = csv.reader(csv_file, delimiter=',')
+            for row in csv_reader:
+                unmatched_supplementary_unit = UnmatchedSupplementaryUnit(row[0], row[1], row[2], row[4])
+                self.unmatched_supplementary_units.append(unmatched_supplementary_unit)
 
     def get_spvs(self):
         print("Getting SPVs")

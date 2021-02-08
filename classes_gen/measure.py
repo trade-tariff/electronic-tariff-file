@@ -190,6 +190,11 @@ class Measure(object):
                     self.TAX_TYPE_CODE = measure_type.tax_type_code
                     break
                 
+        # Look up the TAPI & pharma things
+        if self.additional_code_type_id == "2":
+            if self.additional_code_id in ("500", "600"):
+                self.MEASURE_TYPE_CODE = "X  "
+
         self.determine_origin_add_charge()
         self.determine_destination_country_groups()
         
