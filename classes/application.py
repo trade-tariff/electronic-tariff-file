@@ -628,7 +628,7 @@ class Application(object):
         self.commodity_footer += ME_RECORD_COUNT
         self.commodity_footer += MD_RECORD_COUNT
         self.commodity_footer += MX_RECORD_COUNT
-        self.commodity_footer += TOTAL_RECORD_COUNT
+        self.commodity_footer += TOTAL_RECORD_COUNT + "\n"
 
         self.extract_file.write(self.commodity_footer)
 
