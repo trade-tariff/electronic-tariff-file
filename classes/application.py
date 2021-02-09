@@ -79,8 +79,6 @@ class Application(object):
                 commodity = Commodity()
                 commodity.COMMODITY_CODE = row[1]
                 if commodity.COMMODITY_CODE[0:2] not in ('98', '99'):
-                    if commodity.COMMODITY_CODE == '9702000090':
-                        a = 1
                     commodity.goods_nomenclature_sid = row[0]
                     commodity.productline_suffix = row[2]
                     commodity.validity_start_date = row[3]
@@ -94,8 +92,7 @@ class Application(object):
                     commodity.get_amendment_status()
                     self.commodities.append(commodity)
 
-            if 1 > 0:
-                self.assign_measures()
+            self.assign_measures()
 
             if self.WRITE_FOOTNOTES == 1:
                 self.assign_commodity_footnotes()
@@ -366,8 +363,6 @@ class Application(object):
         barred_series = ['E', 'F', 'G', 'H', 'K', 'L', 'M', "N", "O", "R", "S", "Z"]
         self.write_commodity_header()
         for commodity in self.commodities:
-            if commodity.COMMODITY_CODE == "2203000100":
-                a = 1
             if commodity.leaf == "1":
             # if commodity.leaf == "1" or (commodity.significant_digits == 8 and commodity.productline_suffix == "80"):
                 self.commodity_count += 1
