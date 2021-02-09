@@ -1,5 +1,5 @@
 class CommonString(object):
     line_feed = "\n"
-    x_divider = ""
-    divider = "|"
+    divider = ""
+    x_divider = "|"
     unit_divider = ""

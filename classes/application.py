@@ -294,6 +294,7 @@ class Application(object):
         and left(goods_nomenclature_item_id, """ + str(len(str(iteration))) + """) = '""" + str(iteration) + """'
         and (m.validity_end_date is null or m.validity_end_date >= '""" + self.SNAPSHOT_DATE + """')
         order by goods_nomenclature_item_id, measure_type_id;"""
+
         d = Database()
         rows = d.run_query(sql)
         for row in rows:
@@ -317,8 +318,8 @@ class Application(object):
             measure.validity_start_date = row[18]
             measure.validity_end_date = row[19]
             measure.measure_type_series_id = row[20]
-            measure.measure_component_applicable_code = int(row[21])
-            measure.trade_movement_code = row[22]
+            measure.measure_component_applicable_code = int(row[22])
+            measure.trade_movement_code = row[23]
             measure.get_import_export()
             
             measure.expand_raw_data(self.measure_types, self.geographical_areas)

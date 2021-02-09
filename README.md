@@ -23,4 +23,4 @@
 `python3 parse.py`
 
 ### To create a new file in ICL VME format
-`python3 create_icl_vme.py`
+`python3 create.py`
