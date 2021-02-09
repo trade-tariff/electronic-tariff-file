@@ -7,6 +7,7 @@ from classes.enums import CommonString
 class Measure(object):
     def __init__(self):
         self.extract_line = None
+        self.extract_line_csv = None
 
         self.RECORD_TYPE = "ME" # or MX
         self.MEASURE_GROUP_CODE = "  "
@@ -37,8 +38,11 @@ class Measure(object):
         self.suppressed_geography = False
         self.members = []
         self.line_count = 0
+        self.footnote_association_measures = []
+        self.footnote_string = ""
         
         self.rates = []
+        self.english_duty_string = ""
         for i in range(0, 5):
             self.rates.append("0" * 23)
             
@@ -73,6 +77,7 @@ class Measure(object):
         index = 0
         for mc in self.measure_components:
             self.rates[index] = mc.cts_component_definition
+            self.english_duty_string += mc.english_component_definition
             index += 1
             
         self.get_duty_type()
@@ -215,6 +220,11 @@ class Measure(object):
         else:
             self.ORIGIN_ADD_CHARGE_TYPE = "0"
             
+    def process_null(self, s):
+        if s is None:
+            s = ""
+        return s
+    
     def determine_destination_country_groups(self):
         if self.MEASURE_GROUP_CODE == "AD":
             self.DESTINATION_COUNTRY_CODE = self.ORIGIN_COUNTRY_CODE
@@ -228,10 +238,24 @@ class Measure(object):
 
     def create_extract_line_per_geography(self):
         self.extract_line = ""
+        self.extract_line_csv = ""
         if self.found_measure_type == True and self.suppressed_geography == False:
             self.exclusion_list = []
+            self.exclusion_string = ""
+            if self.measure_sid == 20041059:
+                a = 1
             for exclusion in self.measure_excluded_geographical_areas:
-                self.exclusion_list.append(exclusion.excluded_geographical_area)
+                if exclusion.excluded_geographical_area not in self.exclusion_list:
+                    self.exclusion_list.append(exclusion.excluded_geographical_area)
+            
+            self.exclusion_list.sort()
+            
+            for exclusion in self.exclusion_list:
+                self.exclusion_string += exclusion + "|"
+            
+            self.exclusion_string = self.exclusion_string.strip("|")
+
+            self.create_extract_line_english()
             if len(self.members) == 0:
                 self.create_extract_line(self.ORIGIN_COUNTRY_CODE, self.ORIGIN_COUNTRY_GROUP_CODE)
                 if len(self.exclusion_list) > 0:
@@ -281,6 +305,36 @@ class Measure(object):
         self.extract_line += self.QUOTA_CODE_UK + CommonString.divider
         self.extract_line += self.QUOTA_UNIT_OF_QUANTITY_CODE + CommonString.divider
         self.extract_line += self.MEASURE_AMENDMENT_IND
-        # self.extract_line += "   " + self.goods_nomenclature_item_id
         self.extract_line += CommonString.line_feed
         self.line_count += 1
+
+    def create_extract_line_english(self):
+        self.additional_code_type_id = self.process_null(self.additional_code_type_id)
+        self.additional_code_id = self.process_null(self.additional_code_id)
+        self.additional_code_code = self.additional_code_type_id + self.additional_code_id
+        if self.additional_code_sid is not None:
+            self.additional_code_description = g.app.additional_codes_friendly[self.additional_code_sid]
+        else:
+            self.additional_code_description = ""
+        self.measure__reduction_indicator = ""
+        # self.conditions = "COND"
+        # self.exclusions_desc = "EXCL_DESC"
+        self.extract_line_csv = ""
+        self.extract_line_csv += str(self.measure_sid) + CommonString.comma
+        self.extract_line_csv += CommonString.quote_char + self.measure_type_id + CommonString.quote_char + CommonString.comma
+        self.extract_line_csv += CommonString.quote_char + g.app.measure_types_friendly[self.measure_type_id] + CommonString.quote_char + CommonString.comma
+        self.extract_line_csv += CommonString.quote_char + self.additional_code_code + CommonString.quote_char + CommonString.comma
+        self.extract_line_csv += CommonString.quote_char + self.additional_code_description + CommonString.quote_char + CommonString.comma
+        self.extract_line_csv += CommonString.quote_char + self.english_duty_string + CommonString.quote_char + CommonString.comma
+        self.extract_line_csv += CommonString.quote_char + self.validity_start_date + CommonString.quote_char + CommonString.comma
+        self.extract_line_csv += CommonString.quote_char + self.process_null(self.validity_end_date) + CommonString.quote_char + CommonString.comma
+        self.extract_line_csv += self.measure__reduction_indicator + CommonString.comma
+        self.extract_line_csv += CommonString.quote_char + self.footnote_string + CommonString.quote_char + CommonString.comma
+        # self.extract_line_csv += CommonString.quote_char + self.conditions + CommonString.quote_char + CommonString.comma
+        self.extract_line_csv += CommonString.quote_char + str(self.geographical_area_sid) + CommonString.quote_char + CommonString.comma
+        self.extract_line_csv += CommonString.quote_char + self.geographical_area_id + CommonString.quote_char + CommonString.comma
+        self.extract_line_csv += CommonString.quote_char + g.app.geographical_areas_friendly[self.geographical_area_sid] + CommonString.quote_char + CommonString.comma
+        self.extract_line_csv += CommonString.quote_char + self.exclusion_string + CommonString.quote_char + CommonString.comma
+        # self.extract_line_csv += CommonString.quote_char + self.exclusions_desc + CommonString.quote_char + CommonString.comma
+        self.extract_line_csv += CommonString.quote_char + self.process_null(self.ordernumber) + CommonString.quote_char + CommonString.comma
+        self.extract_line_csv += CommonString.line_feed
