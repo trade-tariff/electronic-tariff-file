@@ -313,7 +313,10 @@ class Measure(object):
         self.additional_code_id = self.process_null(self.additional_code_id)
         self.additional_code_code = self.additional_code_type_id + self.additional_code_id
         if self.additional_code_sid is not None:
-            self.additional_code_description = g.app.additional_codes_friendly[self.additional_code_sid]
+            try:
+                self.additional_code_description = g.app.additional_codes_friendly[self.additional_code_sid]
+            except:
+                self.additional_code_description = ""
         else:
             self.additional_code_description = ""
         self.measure__reduction_indicator = ""

@@ -59,8 +59,7 @@ class Application(object):
         self.additional_code_count = 0
         self.measure_count = 0
 
-        for i in range(0, 3):
-            # for i in range(3, 4):
+        for i in range(0, 10):
             self.commodities = []
             tic = time.perf_counter()
             print("\nDEALING WITH COMMODITY CODES STARTING WITH " + str(i))
