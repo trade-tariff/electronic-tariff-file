@@ -59,7 +59,17 @@ class Application(object):
         self.additional_code_count = 0
         self.measure_count = 0
 
-        for i in range(0, 10):
+        if len(sys.argv) > 1:
+            start = int(sys.argv[1])
+            if len(sys.argv) > 2:
+                end = int(sys.argv[2])
+            else:
+                end = 10
+        else:
+            start = 0
+            end = 10
+        
+        for i in range(start, end):
             self.commodities = []
             tic = time.perf_counter()
             print("\nDEALING WITH COMMODITY CODES STARTING WITH " + str(i))
@@ -371,6 +381,9 @@ class Application(object):
             measure.measure_component_applicable_code = int(row[22])
             measure.trade_movement_code = row[23]
             measure.get_import_export()
+            
+            if measure.measure_sid == 20100524:
+                a = 1
 
             measure.expand_raw_data(
                 self.measure_types, self.geographical_areas)

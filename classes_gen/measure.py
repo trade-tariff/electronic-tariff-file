@@ -239,7 +239,7 @@ class Measure(object):
     def create_extract_line_per_geography(self):
         self.extract_line = ""
         self.extract_line_csv = ""
-        if self.found_measure_type == True and self.suppressed_geography == False:
+        if self.suppressed_geography == False:
             self.exclusion_list = []
             self.exclusion_string = ""
             if self.measure_sid == 20041059:
@@ -256,15 +256,17 @@ class Measure(object):
             self.exclusion_string = self.exclusion_string.strip("|")
 
             self.create_extract_line_english()
-            if len(self.members) == 0:
-                self.create_extract_line(self.ORIGIN_COUNTRY_CODE, self.ORIGIN_COUNTRY_GROUP_CODE)
-                if len(self.exclusion_list) > 0:
-                    for exclusion in self.exclusion_list:
-                        self.create_extract_line(exclusion, self.ORIGIN_COUNTRY_GROUP_CODE, "MX", True)
-            else:
-                for member in self.members:
-                    if member not in self.exclusion_list:
-                        self.create_extract_line(member, "    ")
+        
+            if self.found_measure_type == True:
+                if len(self.members) == 0:
+                    self.create_extract_line(self.ORIGIN_COUNTRY_CODE, self.ORIGIN_COUNTRY_GROUP_CODE)
+                    if len(self.exclusion_list) > 0:
+                        for exclusion in self.exclusion_list:
+                            self.create_extract_line(exclusion, self.ORIGIN_COUNTRY_GROUP_CODE, "MX", True)
+                else:
+                    for member in self.members:
+                        if member not in self.exclusion_list:
+                            self.create_extract_line(member, "    ")
 
     def create_extract_line(self, ORIGIN_COUNTRY_CODE, ORIGIN_COUNTRY_GROUP_CODE, RECORD_TYPE = "ME", override_rates = False):
         self.extract_line += RECORD_TYPE + CommonString.divider
