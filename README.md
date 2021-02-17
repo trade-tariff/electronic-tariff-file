@@ -24,3 +24,16 @@
 
 ### To create a new file in ICL VME format
 `python3 create.py`
+
+### Rough numbers of commodities
+
+0 = 3233
+1 = 1506
+2 = 5550
+3 = 2126
+4 = 1205
+5 = 1461
+6 = 1494
+7 = 2486
+8 = 4398
+9 = 1149
