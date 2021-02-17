@@ -1,5 +1,6 @@
 import csv
 import os
+import json
 import sys
 import classes.globals as g
 from classes.commodity import Commodity
@@ -11,7 +12,8 @@ class CommodityParser(object):
 
     def parse(self):
         self.commodities = []
-        self.filename = os.path.join(g.app.data_in_folder, "commodities_only.txt")
+        self.filename = os.path.join(
+            g.app.data_in_folder, "commodities_only.txt")
         file = open(self.filename, "r")
         for line in file:
             commodity = Commodity(line)
@@ -38,3 +40,30 @@ class CommodityParser(object):
             for commodity in self.commodities:
                 writer.writerow(commodity)
 
+        self.write_supp_code_json()
+
+    def write_supp_code_json(self):
+        json_file = os.path.join(g.app.reference_folder, "supp_units.json")
+        my_dict = {}
+        for commodity in self.commodities:
+            unit1 = commodity["UNIT1"]
+            unit2 = commodity["UNIT2"]
+            unit3 = commodity["UNIT3"]
+            obj = SuppCodeList(unit1, unit2, unit3)
+            my_dict[commodity["COMMODITY_CODE"]] = obj.__dict__
+
+        my_json = json.dumps(my_dict, indent=4, sort_keys=False)
+        f = open(json_file, "w+")
+        f.write(my_json)
+        f.close()
+
+
+class SuppCodeList(object):
+    def __init__(self, unit1, unit2, unit3):
+        self.unit1 = unit1
+        self.unit2 = unit2
+        self.unit3 = unit3
+        
+        if self.unit1 == "1030":
+            self.unit1 = "1023"
+            self.unit2 = "1030"
