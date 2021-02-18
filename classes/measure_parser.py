@@ -13,7 +13,6 @@ class MeasureParser(object):
         else:
             self.filename = os.path.join(g.app.data_in_folder, "measure_exceptions_only.txt")
             self.csv_file = os.path.join(g.app.data_out_folder, "measure_exceptions.csv")
-        pass
 
     def parse(self):
         self.measures = []

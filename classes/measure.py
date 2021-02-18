@@ -1,6 +1,7 @@
 class Measure(object):
-    def __init__(self, line):
+    def __init__(self, line, commodity = ""):
         self.line = line
+        self.commodity = commodity
         self.parse()
 
     def parse(self):
@@ -32,4 +33,6 @@ class Measure(object):
         self.QUOTA_CODE_UK = self.line[177:181]
         self.QUOTA_UNIT_OF_QUANTITY_CODE = self.line[181:184]
         self.MEASURE_AMENDMENT_IND = self.line[184:185]
-        self.line = ""
+        
+        if self.commodity == "":
+            self.line = ""

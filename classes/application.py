@@ -10,6 +10,7 @@ from classes.additional_code_parser import AdditionalCodeParser
 from classes.commodity_parser import CommodityParser
 from classes.footnote_parser import FootnoteParser
 from classes.measure_parser import MeasureParser
+from classes.appender import Appender
 from classes.enums import CommonString
 
 from classes_gen.database import Database
@@ -26,6 +27,7 @@ from classes_gen.commodity_footnote import CommodityFootnote
 from classes_gen.simplified_procedure_value import SimplifiedProcedureValue
 from classes_gen.measure_excluded_geographical_area import MeasureExcludedGeographicalArea
 from classes_gen.footnote_association_measure import FootnoteAssociationMeasure
+from classes_gen.pr_measure import PrMeasure
 
 
 class Application(object):
@@ -442,7 +444,21 @@ class Application(object):
                                 self.extract_file_csv.write(
                                     CommonString.quote_char + commodity.COMMODITY_CODE + CommonString.quote_char + ",")
                         self.extract_file_csv.write(measure.extract_line_csv)
+                        
+                    self.pipe_pr_measures(commodity.COMMODITY_CODE)
 
+    def pipe_pr_measures(self, commodity):
+        print("Piping PR measures")
+        has_found = False
+        for pr_measure in self.pr_measures:
+            if pr_measure.commodity == commodity:
+                self.extract_file_csv.write("BEFORE")
+                self.extract_file_csv.write(pr_measure.line)
+                self.extract_file_csv.write("AFTER")
+                has_found = True
+            else:
+                if has_found == True:
+                    break
 
     def get_folders(self):
         self.current_folder = os.getcwd()
@@ -457,6 +473,7 @@ class Application(object):
         date_time_obj = datetime.strptime(self.SNAPSHOT_DATE, '%Y-%m-%d')
         year = date_time_obj.strftime("%Y")
         month = date_time_obj.strftime("%b").lower()
+        
         if CommonString.divider == "|":
             self.filename = "hmrc-tariff-ascii-" + month + "-" + year + "-piped.txt"
         else:
@@ -468,7 +485,6 @@ class Application(object):
         self.extract_file = open(self.filepath, "w+")
         self.extract_file_csv = open(self.filepath_csv, "w+")
         self.extract_file_csv.write('"commodity__code","measure__sid","measure__type__id","measure__type__description","measure__additional_code__code",measure__additional_code__description,"measure__duty_expression","measure__effective_start_date","measure__effective_end_date","measure__reduction_indicator","measure__footnotes","measure__geographical_area__sid","measure__geographical_area__id","measure__geographical_area__description","measure__excluded_geographical_areas__ids","measure__quota__order_number"' + CommonString.line_feed)
-        # self.extract_file_csv.write('"commodity__code","measure__sid","measure__type__id","measure__type__description","measure__additional_code__code",measure__additional_code__description,"measure__duty_expression","measure__effective_start_date","measure__effective_end_date","measure__reduction_indicator","measure__footnotes","measure__conditions","measure__geographical_area__sid","measure__geographical_area__id","measure__geographical_area__description","measure__excluded_geographical_areas__ids","measure__quota__order_number"' + CommonString.line_feed)
 
     def close_extract(self):
         self.extract_file.close()
@@ -667,6 +683,12 @@ class Application(object):
             return ret
 
     def parse(self):
+        # Commodity code -> measure appender
+        parser = Appender()
+        parser.parse()
+        parser.create_csv()
+        sys.exit()
+
         # Do the additional codes
         parser = AdditionalCodeParser()
         parser.parse()
@@ -702,6 +724,18 @@ class Application(object):
         self.get_spvs()
         self.get_geographical_areas()
         self.get_supplementary_units_reference()
+        self.load_pr_measures()
+        
+    def load_pr_measures(self):
+        print("Getting PR measures")
+        self.pr_measures = []
+        filename = os.path.join(self.reference_folder, "pr.measures.txt")
+        with open(filename) as csv_file:
+            csv_reader = csv.reader(csv_file, delimiter=',')
+            for row in csv_reader:
+                pr_measure = PrMeasure(row[0], row[1])
+                self.pr_measures.append(pr_measure)
+        pass
 
     def get_measure_types(self):
         print("Getting measure types")
