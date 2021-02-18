@@ -448,13 +448,13 @@ class Application(object):
                     self.pipe_pr_measures(commodity.COMMODITY_CODE)
 
     def pipe_pr_measures(self, commodity):
-        print("Piping PR measures")
+        # print("Piping PR measures")
         has_found = False
         for pr_measure in self.pr_measures:
             if pr_measure.commodity == commodity:
-                self.extract_file_csv.write("BEFORE")
-                self.extract_file_csv.write(pr_measure.line)
-                self.extract_file_csv.write("AFTER")
+                # self.extract_file.write("BEFORE")
+                self.extract_file.write(pr_measure.line)
+                # self.extract_file.write("AFTER")
                 has_found = True
             else:
                 if has_found == True:
