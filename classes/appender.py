@@ -3,6 +3,7 @@ import os
 import sys
 import classes.globals as g
 from classes.measure import Measure
+from classes.enums import CommonString
 
 
 class Appender(object):
@@ -25,5 +26,5 @@ class Appender(object):
         with open(self.csv_file, 'w') as csvfile:
             for measure in self.measures:
                 measure.line = measure.line.strip()
-                line = '"' + measure.commodity + '","' + measure.line + '"\n'
+                line = '"' + measure.commodity + '","' + measure.line + '"' +  + CommonString.line_feed
                 csvfile.write(line)

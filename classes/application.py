@@ -448,13 +448,10 @@ class Application(object):
                     self.pipe_pr_measures(commodity.COMMODITY_CODE)
 
     def pipe_pr_measures(self, commodity):
-        # print("Piping PR measures")
         has_found = False
         for pr_measure in self.pr_measures:
             if pr_measure.commodity == commodity:
-                # self.extract_file.write("BEFORE")
-                self.extract_file.write(pr_measure.line)
-                # self.extract_file.write("AFTER")
+                self.extract_file.write(pr_measure.line + CommonString.line_feed)
                 has_found = True
             else:
                 if has_found == True:
@@ -656,7 +653,7 @@ class Application(object):
         self.commodity_footer += ME_RECORD_COUNT
         self.commodity_footer += MD_RECORD_COUNT
         self.commodity_footer += MX_RECORD_COUNT
-        self.commodity_footer += TOTAL_RECORD_COUNT + "\n"
+        self.commodity_footer += TOTAL_RECORD_COUNT + CommonString.line_feed
 
         self.extract_file.write(self.commodity_footer)
 
