@@ -238,6 +238,8 @@ class Commodity(object):
             self.ALPHA_TEXT = self.description
         
         self.ALPHA_TEXT = f.format_string(self.ALPHA_TEXT)
+        if len(self.ALPHA_TEXT) > 2200:
+            self.ALPHA_TEXT = self.ALPHA_TEXT[0:2195] + "..."
         self.ALPHA_SIZE = str(len(self.ALPHA_TEXT)).zfill(4) 
             
     def get_amendment_status(self):
