@@ -23,7 +23,10 @@
 `python3 parse.py`
 
 ### To create a new file in ICL VME format
-`python3 create.py`
+`
+python3 create.py
+python3 create.py 1 2
+`
 
 ### Rough numbers of commodities
 

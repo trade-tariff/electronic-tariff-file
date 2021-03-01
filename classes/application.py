@@ -379,7 +379,8 @@ class Application(object):
             measure.additional_code_sid = row[16]
             measure.validity_start_date = row[18]
             measure.validity_end_date = row[19]
-            measure.measure_type_series_id = row[20]
+            measure.operation_date = row[20]
+            measure.measure_type_series_id = row[21]
             measure.measure_component_applicable_code = int(row[22])
             measure.trade_movement_code = row[23]
             measure.get_import_export()

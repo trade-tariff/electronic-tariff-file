@@ -1,4 +1,5 @@
 import sys
+import datetime
 from classes.functions import functions as f
 import classes.globals as g
 from classes.enums import CommonString
@@ -269,6 +270,7 @@ class Measure(object):
                             self.create_extract_line(member, "    ")
 
     def create_extract_line(self, ORIGIN_COUNTRY_CODE, ORIGIN_COUNTRY_GROUP_CODE, RECORD_TYPE = "ME", override_rates = False):
+        self.get_amendment_indicator()
         self.extract_line += RECORD_TYPE + CommonString.divider
         self.extract_line += self.MEASURE_GROUP_CODE + CommonString.divider
         self.extract_line += self.MEASURE_TYPE_CODE + CommonString.divider
@@ -310,6 +312,18 @@ class Measure(object):
         self.extract_line += CommonString.line_feed
         self.line_count += 1
 
+    def get_amendment_indicator(self):
+        if self.operation_date is None:
+            self.MEASURE_AMENDMENT_IND = " "
+        else:
+            if self.operation_date > g.app.COMPARISON_DATE.date():
+                if self.validity_start_date > g.app.COMPARISON_DATE.date():
+                    self.MEASURE_AMENDMENT_IND = "N"
+                else:
+                    self.MEASURE_AMENDMENT_IND = "A"
+            else:
+                self.MEASURE_AMENDMENT_IND = " "
+    
     def create_extract_line_english(self):
         self.additional_code_type_id = self.process_null(self.additional_code_type_id)
         self.additional_code_id = self.process_null(self.additional_code_id)

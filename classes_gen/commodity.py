@@ -250,9 +250,6 @@ class Commodity(object):
             self.COMMODITY_AMEND_IND = "A"
     
     def create_extract_line(self):
-        if self.COMMODITY_CODE == '9702000090':
-            a = 1
-            
         self.extract_line = self.RECORD_TYPE + CommonString.divider
         self.extract_line += self.COMMODITY_CODE + CommonString.divider
         self.extract_line += self.COMMODITY_EDATE + CommonString.divider
