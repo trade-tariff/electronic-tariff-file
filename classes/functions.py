@@ -28,10 +28,10 @@ class functions(object):
         s = s.replace("ã", "<KM>")
         s = s.replace("ñ", "<KN>")
         s = s.replace("º", "<KO>")
-        s = s.replace("õ", "<KP>")
+        s = s.replace("ô", "<KP>")
         s = s.replace("°", "<KP>")
         s = s.replace("µ", "<KU>")
-        
+
         # Replace new lines
         s = s.replace("<br> ", "<br>")
         for i in range(0, 3):
@@ -41,7 +41,72 @@ class functions(object):
         # Replace superscripts & subscripts
         s = re.sub(r"\<sup\>([^\<]+)\<\/sup\>",  "<AG>!\\1!", s)
         s = re.sub(r"\<sub\>([^\<]+)\<\/sub\>",  "<AH>!\\1!", s)
-        #<AG>!3! / <AH>!3!
+
+        # New, post conversations with Descartes
+        s = s.replace("±", "+/-")
+        
+        # Superscripts
+        s = s.replace("⁰", "<AG>!0!") # Becomes and Angstrom character
+        s = s.replace("¹", "<AG>!1!") # Becomes and Angstrom character
+        s = s.replace("²", "<AG>!2!") # Becomes and Angstrom character
+        s = s.replace("³", "<AG>!3!") # Becomes and Angstrom character
+        s = s.replace("⁴", "<AG>!4!") # Becomes and Angstrom character
+        s = s.replace("⁵", "<AG>!5!") # Becomes and Angstrom character
+        s = s.replace("⁶", "<AG>!6!") # Becomes and Angstrom character
+        s = s.replace("⁷", "<AG>!7!") # Becomes and Angstrom character
+        s = s.replace("⁸", "<AG>!8!") # Becomes and Angstrom character
+        s = s.replace("⁹", "<AG>!9!") # Becomes and Angstrom character
+        
+        # Subscripts
+        s = s.replace("₀", "<AH>!0!")
+        s = s.replace("₁", "<AH>!1!")
+        s = s.replace("₂", "<AH>!2!")
+        s = s.replace("₃", "<AH>!3!")
+        s = s.replace("₄", "<AH>!4!")
+        s = s.replace("₅", "<AH>!5!")
+        s = s.replace("₆", "<AH>!6!")
+        s = s.replace("₇", "<AH>!7!")
+        s = s.replace("₈", "<AH>!8!")
+        s = s.replace("₉", "<AH>!9!")
+        
+        s = s.replace("α", "alpha")
+        s = s.replace("μm", "micrometres")
+        s = s.replace("μΩ", "micro-ohm")
+        s = s.replace("Ω", "Ohm")
+        s = s.replace("μ", "u")
+        s = s.replace("β", "beta")
+        s = s.replace("ß", "beta")
+        s = s.replace("ω", "w")
+        s = s.replace("′", "'")
+        s = s.replace("γ", "y")
+        s = s.replace("•", "-")
+        s = s.replace("—", "-")
+        s = s.replace("–", "-")
+        s = s.replace("‘", "'")
+        s = s.replace("’", "'")
+        s = s.replace("´", "'")
+        s = s.replace("λ", " lambda")
+        s = s.replace("≥", ">=")
+        s = s.replace("×", "x")
+        s = s.replace("ø", "o")
+        s = s.replace("Ο", "O")
+        s = s.replace("€", "EUR")
+        s = s.replace("œ", "oe")
+        s = s.replace('″', '"')
+        s = s.replace('“', '"')
+        s = s.replace('”', '"')
+        s = s.replace("−", "-")
+        s = s.replace("Δ", "")
+        s = s.replace("ο", "o")
+        s = s.replace("≈", "")
+        s = s.replace("than1", "than 1")
+        # s = s.replace("", "")
+        # s = s.replace("", "")
+        # s = s.replace("", "")
+
+        s = re.sub(r'\s+', ' ', s) # Standardises the whitespace chars
+        s = re.sub(r'[^\x00-\x7F]+',' ', s) # generically removes everything over 255 in ASCII char set
+
         return s
     
     @staticmethod

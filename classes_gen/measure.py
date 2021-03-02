@@ -317,10 +317,13 @@ class Measure(object):
             self.MEASURE_AMENDMENT_IND = " "
         else:
             if self.operation_date > g.app.COMPARISON_DATE.date():
-                if self.validity_start_date > g.app.COMPARISON_DATE.date():
-                    self.MEASURE_AMENDMENT_IND = "N"
-                else:
-                    self.MEASURE_AMENDMENT_IND = "A"
+                try:
+                    if self.validity_start_date > g.app.COMPARISON_DATE.date():
+                        self.MEASURE_AMENDMENT_IND = "N"
+                    else:
+                        self.MEASURE_AMENDMENT_IND = "A"
+                except:
+                    self.MEASURE_AMENDMENT_IND = " "
             else:
                 self.MEASURE_AMENDMENT_IND = " "
     
