@@ -201,10 +201,10 @@ class Commodity(object):
             self.COMMODITY_END_USE_ALLWD = "N"
 
     def append_footnotes_to_description(self):
-        if 1 > 0:
-            if len(self.footnotes) > 0:
-                for footnote in self.footnotes:
-                    self.description += "<" + footnote.FOOTNOTE_NUMBER + ">"
+        self.description_csv = f.format_string(self.description, full = False)
+        if len(self.footnotes) > 0:
+            for footnote in self.footnotes:
+                self.description += "<" + footnote.FOOTNOTE_NUMBER + ">"
     
     def build_hierarchy_string(self):
         token = ""
@@ -272,3 +272,14 @@ class Commodity(object):
 
         self.extract_line += CommonString.line_feed
         
+    def get_entity_type(self):
+        # Get the entity type - Chapter, Heading, Heading / commodity, Commodity
+        if self.significant_digits == 2:
+            self.entity_type = "Chapter"
+        elif self.significant_digits == 4:
+            if self.leaf == "1":
+                self.entity_type = "Heading / commodity"
+            else:
+                self.entity_type = "Heading"
+        else:
+            self.entity_type = "Commodity"

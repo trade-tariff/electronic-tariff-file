@@ -12,6 +12,7 @@ from classes.footnote_parser import FootnoteParser
 from classes.measure_parser import MeasureParser
 from classes.appender import Appender
 from classes.enums import CommonString
+from classes.functions import functions as f
 
 from classes_gen.database import Database
 from classes_gen.footnote import Footnote
@@ -32,16 +33,20 @@ from classes_gen.pr_measure import PrMeasure
 
 class Application(object):
     def __init__(self):
-        self.get_folders()
         load_dotenv('.env')
         self.DATABASE_UK = os.getenv('DATABASE_UK')
         self.WRITE_MEASURES = int(os.getenv('WRITE_MEASURES'))
         self.WRITE_ADDITIONAL_CODES = int(os.getenv('WRITE_ADDITIONAL_CODES'))
         self.WRITE_FOOTNOTES = int(os.getenv('WRITE_FOOTNOTES'))
-        self.SNAPSHOT_DATE = os.getenv('SNAPSHOT_DATE')
+        # self.SNAPSHOT_DATE = os.getenv('SNAPSHOT_DATE')
+        
+        d = datetime.now()
+        self.SNAPSHOT_DATE = d.strftime('%Y-%m-%d')
+
         self.COMPARISON_DATE = datetime.strptime(
             os.getenv('COMPARISON_DATE'), '%Y-%m-%d')
         self.mfns = {}
+        self.get_folders()
 
     def create_icl_vme(self):
         self.get_reference_data()
@@ -98,12 +103,13 @@ class Application(object):
                     commodity.goods_nomenclature_sid = row[0]
                     commodity.productline_suffix = row[2]
                     commodity.validity_start_date = row[3]
+                    commodity.validity_end_date = row[4]
                     commodity.COMMODITY_EDATE = self.YYYYMMDD(row[3])
                     commodity.COMMODITY_LDATE = self.YYYYMMDD(row[4])
-                    commodity.description = row[5]
+                    commodity.description = row[5].replace('"', "'")
                     commodity.number_indents = int(row[6])
-                    commodity.leaf = row[9]
-                    commodity.significant_digits = row[10]
+                    commodity.leaf = str(row[9])
+                    commodity.significant_digits = int(row[10])
                     commodity.determine_commodity_type()
                     commodity.get_amendment_status()
                     self.commodities.append(commodity)
@@ -398,6 +404,12 @@ class Application(object):
         # omitted from the hierarchy string
         print("Rebasing chapters")
         for commodity in self.commodities:
+            commodity.get_entity_type()
+            
+            # Do not rebase data for the CSV file
+            commodity.number_indents_csv = commodity.number_indents
+            
+            # Rebase data for working out hierarchical inheritance
             if commodity.significant_digits == 2:
                 commodity.number_indents = -1
 
@@ -423,9 +435,22 @@ class Application(object):
     def write_commodities(self):
         # Write all commodities
         print("Writing commmodities")
-        barred_series = ['E', 'F', 'G', 'H', 'K',
-                         'L', 'M', "N", "O", "R", "S", "Z"]
+        barred_series = ['E', 'F', 'G', 'H', 'K', 'L', 'M', "N", "O", "R", "S", "Z"]
         for commodity in self.commodities:
+            commodity_string = ""
+            commodity_string += CommonString.quote_char + commodity.COMMODITY_CODE + CommonString.quote_char + ","
+            commodity_string += CommonString.quote_char + commodity.productline_suffix + CommonString.quote_char + ","
+            commodity_string += commodity.validity_start_date.strftime('%Y-%m-%d') + ","
+            if commodity.validity_end_date is None:
+                commodity_string += ","
+            else:
+                commodity_string += commodity.validity_end_date.strftime('%Y-%m-%d') + ","
+            commodity_string += CommonString.quote_char + commodity.description_csv + CommonString.quote_char + ","
+            commodity_string += str(commodity.number_indents_csv) + ","
+            commodity_string += CommonString.quote_char + commodity.entity_type + CommonString.quote_char + ","
+            commodity_string += CommonString.quote_char + f.YN(commodity.leaf) + CommonString.quote_char
+            
+            self.commodity_file_csv.write(commodity_string + CommonString.line_feed)
             if commodity.leaf == "1":
                 # if commodity.leaf == "1" or (commodity.significant_digits == 8 and commodity.productline_suffix == "80"):
                 self.commodity_count += 1
@@ -447,7 +472,7 @@ class Application(object):
                         self.extract_file_csv.write(measure.extract_line_csv)
                         
                     self.pipe_pr_measures(commodity.COMMODITY_CODE)
-
+   
     def pipe_pr_measures(self, commodity):
         has_found = False
         for pr_measure in self.pr_measures:
@@ -461,28 +486,48 @@ class Application(object):
     def get_folders(self):
         self.current_folder = os.getcwd()
         self.data_folder = os.path.join(self.current_folder, "data")
+        self.reference_folder = os.path.join(self.data_folder, "reference")
         self.data_in_folder = os.path.join(self.data_folder, "in")
         self.data_out_folder = os.path.join(self.data_folder, "out")
-        self.icl_vme_folder = os.path.join(self.data_folder, "icl_vme")
-        self.csv_folder = os.path.join(self.data_folder, "csv")
-        self.reference_folder = os.path.join(self.data_folder, "reference")
+
+        date_time_obj = datetime.strptime(self.SNAPSHOT_DATE, '%Y-%m-%d')
+        self.year = date_time_obj.strftime("%Y")
+        self.month = date_time_obj.strftime("%b").lower()
+        self.month2 = date_time_obj.strftime("%m").lower()
+        self.day = date_time_obj.strftime("%d")
+        
+        self.export_folder = os.path.join(self.current_folder, "_export")
+        date_folder = self.year + "-" + self.month2 + "-" + self.day
+        self.dated_folder = os.path.join(self.export_folder, date_folder)
+        os.makedirs(self.dated_folder, exist_ok = True)
+
+        self.icl_vme_folder = os.path.join(self.dated_folder, "icl_vme")
+        self.csv_folder = os.path.join(self.dated_folder, "csv")
+        os.makedirs(self.icl_vme_folder, exist_ok = True)
+        os.makedirs(self.csv_folder, exist_ok = True)
 
     def open_extract(self):
-        date_time_obj = datetime.strptime(self.SNAPSHOT_DATE, '%Y-%m-%d')
-        year = date_time_obj.strftime("%Y")
-        month = date_time_obj.strftime("%b").lower()
-        
         if CommonString.divider == "|":
-            self.filename = "hmrc-tariff-ascii-" + month + "-" + year + "-piped.txt"
+            self.filename = "hmrc-tariff-ascii-" + self.day + "-" + self.month + "-" + self.year + "-piped.txt"
         else:
-            self.filename = "hmrc-tariff-ascii-" + month + "-" + year + ".txt"
+            self.filename = "hmrc-tariff-ascii-" + self.day + "-" + self.month + "-" + self.year + ".txt"
 
-        self.filename_csv = self.filename.replace(".txt", ".csv")
+        # Work out the path to the ICL VME extract
         self.filepath = os.path.join(self.icl_vme_folder, self.filename)
-        self.filepath_csv = os.path.join(self.csv_folder, self.filename_csv)
         self.extract_file = open(self.filepath, "w+")
+
+        # Work out the path to the measures CSV extract
+        self.filename_csv = self.filename.replace(".txt", ".csv")
+        self.filename_csv = self.filename_csv.replace("ascii", "measures")
+        self.filepath_csv = os.path.join(self.csv_folder, self.filename_csv)
         self.extract_file_csv = open(self.filepath_csv, "w+")
         self.extract_file_csv.write('"commodity__code","measure__sid","measure__type__id","measure__type__description","measure__additional_code__code",measure__additional_code__description,"measure__duty_expression","measure__effective_start_date","measure__effective_end_date","measure__reduction_indicator","measure__footnotes","measure__geographical_area__sid","measure__geographical_area__id","measure__geographical_area__description","measure__excluded_geographical_areas__ids","measure__quota__order_number"' + CommonString.line_feed)
+        
+        # Commodities CSV
+        self.commodity_filename_csv = self.filename_csv.replace("measures", "commodities")
+        self.commodity_filepath_csv = os.path.join(self.csv_folder, self.commodity_filename_csv)
+        self.commodity_file_csv = open(self.commodity_filepath_csv, "w+")
+        self.commodity_file_csv.write('"commodity__code","productline__suffix","start__date","end__date","description","indents","entity__type","end_line"' + CommonString.line_feed)
 
     def close_extract(self):
         self.extract_file.close()
