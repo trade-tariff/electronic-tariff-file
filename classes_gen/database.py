@@ -5,13 +5,15 @@ import psycopg2
 import psycopg2.extras
 from dotenv import load_dotenv
 
+import classes.globals as g
 
 class Database:
     """PostgreSQL Database class."""
 
     def __init__(self):
         load_dotenv('.env')
-        self.database_url = os.getenv('DATABASE_UK')
+        # self.database_url = os.getenv('DATABASE_UK')
+        self.database_url = g.app.DATABASE
         self.conn = None
 
     def open_connection(self):

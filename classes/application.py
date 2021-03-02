@@ -34,12 +34,10 @@ from classes_gen.pr_measure import PrMeasure
 class Application(object):
     def __init__(self):
         load_dotenv('.env')
-        self.DATABASE_UK = os.getenv('DATABASE_UK')
         self.WRITE_MEASURES = int(os.getenv('WRITE_MEASURES'))
         self.WRITE_ADDITIONAL_CODES = int(os.getenv('WRITE_ADDITIONAL_CODES'))
         self.WRITE_FOOTNOTES = int(os.getenv('WRITE_FOOTNOTES'))
-        # self.SNAPSHOT_DATE = os.getenv('SNAPSHOT_DATE')
-        
+
         d = datetime.now()
         self.SNAPSHOT_DATE = d.strftime('%Y-%m-%d')
 
@@ -47,6 +45,8 @@ class Application(object):
             os.getenv('COMPARISON_DATE'), '%Y-%m-%d')
         self.mfns = {}
         self.get_folders()
+        self.get_scope()
+        self.get_process_scope()
 
     def create_icl_vme(self):
         self.get_reference_data()
@@ -60,23 +60,45 @@ class Application(object):
         self.zip_extract()
         self.zip_extract_csv()
 
+    def get_scope(self):
+        # Takes arguments from the command line to identify
+        # whether to process UK or EU data
+        if len(sys.argv) > 1:
+            self.scope = sys.argv[1].lower()
+        else:
+            print("Please specify the country scope (uk or xi)")
+            sys.exit()
+
+        if self.scope not in ("uk", "xi"):
+            print("Please specify the country scope (uk or xi)")
+            sys.exit()
+            
+        load_dotenv('.env')
+        if self.scope == "uk":
+            self.DATABASE = os.getenv('DATABASE_UK')
+        else:
+            self.DATABASE = os.getenv('DATABASE_EU')
+
+    def get_process_scope(self):
+        # Takes arguments from the command line to identify
+        # which commodities to process
+        if len(sys.argv) > 2:
+            self.start = int(sys.argv[2])
+            if len(sys.argv) > 3:
+                self.end = int(sys.argv[3])
+            else:
+                self.end = 10
+        else:
+            self.start = 0
+            self.end = 10
+
     def get_commodities(self):
         # These need to be set at the start before any of the runs, and not reset by the runs
         self.commodity_count = 0
         self.additional_code_count = 0
         self.measure_count = 0
-
-        if len(sys.argv) > 1:
-            start = int(sys.argv[1])
-            if len(sys.argv) > 2:
-                end = int(sys.argv[2])
-            else:
-                end = 10
-        else:
-            start = 0
-            end = 10
         
-        for i in range(start, end):
+        for i in range(self.start, self.end):
             self.commodities = []
             tic = time.perf_counter()
             print("\nDEALING WITH COMMODITY CODES STARTING WITH " + str(i))

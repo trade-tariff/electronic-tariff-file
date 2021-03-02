@@ -24,6 +24,7 @@ class functions(object):
         for i in range(0, 3):
             s = s.replace("<br><br>", "<br>")
 
+        s = s.replace("|", " ")
         s = s.replace("α", "alpha")
         s = s.replace("μm", "micrometres")
         s = s.replace("μΩ", "micro-ohm")
