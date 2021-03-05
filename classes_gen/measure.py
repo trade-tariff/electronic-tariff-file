@@ -51,6 +51,7 @@ class Measure(object):
         self.measure_type_id = None
         self.measure_components = []
         self.measure_excluded_geographical_areas = []
+        self.measure_conditions = []
         
     def expand_raw_data(self, measure_types, geographical_areas):
         self.resolve_geography(geographical_areas)
@@ -256,6 +257,7 @@ class Measure(object):
             
             self.exclusion_string = self.exclusion_string.strip("|")
 
+            self.create_condition_string()
             self.create_extract_line_english()
         
             if self.found_measure_type == True:
@@ -327,6 +329,34 @@ class Measure(object):
             else:
                 self.MEASURE_AMENDMENT_IND = " "
     
+    def create_condition_string(self):
+        # condition:Y,certificate:Y945,action:29|condition:Y,certificate:Y946,action:29|condition:Y,action:09
+        # condition:B,certificate:N853,action:29|condition:B,certificate:Y058,action:29|
+        # condition:B,certificate:Y072,action:29|condition:B,certificate:Y073,action:29|
+        # condition:B,certificate:Y076,action:29|condition:B,certificate:Y077,action:29|
+        # condition:B,certificate:Y078,action:29|condition:B,certificate:Y079,action:29|
+        # condition:B,certificate:C084,action:29|condition:B,action:09|condition:E,certificate:N853,action:29|condition:E,action:29|condition:E,certificate:Y072,action:29|condition:E,certificate:Y073,action:29|condition:E,certificate:Y076,action:29|condition:E,certificate:Y077,action:29|condition:E,certificate:Y078,action:29|condition:E,certificate:Y079,action:29|condition:E,certificate:C084,action:29|condition:E,action:09
+        self.conditions_string = ""
+        measure_condition_count = len(self.measure_conditions)
+        index = 0
+        for mc in self.measure_conditions:
+            index += 1
+            s = "condition:" + mc.condition_code
+            if mc.certificate_type_code is not None:
+                s += ",certificate:" + mc.certificate_type_code + mc.certificate_code
+            elif mc.condition_duty_amount is not None:
+                s += ",threshold:" + str(mc.condition_duty_amount) + " " + str(mc.condition_measurement_unit_code)
+                if mc.condition_measurement_unit_qualifier_code is not None:
+                    s += " " + mc.condition_measurement_unit_qualifier_code
+                    print(self.goods_nomenclature_item_id)
+                    
+            if mc.action_code is not None:
+                s += ",action:" + mc.action_code
+            if index < measure_condition_count:
+                s += "|"
+            self.conditions_string += s
+        pass
+    
     def create_extract_line_english(self):
         self.additional_code_type_id = self.process_null(self.additional_code_type_id)
         self.additional_code_id = self.process_null(self.additional_code_id)
@@ -339,8 +369,8 @@ class Measure(object):
         else:
             self.additional_code_description = ""
         self.measure__reduction_indicator = ""
-        # self.conditions = "COND"
-        # self.exclusions_desc = "EXCL_DESC"
+        # self.conditions_string = "COND"
+        self.exclusions_desc = "EXCL_DESC"
         self.extract_line_csv = ""
         self.extract_line_csv += str(self.measure_sid) + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + self.measure_type_id + CommonString.quote_char + CommonString.comma
@@ -352,11 +382,11 @@ class Measure(object):
         self.extract_line_csv += CommonString.quote_char + self.process_null(self.validity_end_date) + CommonString.quote_char + CommonString.comma
         self.extract_line_csv += self.measure__reduction_indicator + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + self.footnote_string + CommonString.quote_char + CommonString.comma
-        # self.extract_line_csv += CommonString.quote_char + self.conditions + CommonString.quote_char + CommonString.comma
+        self.extract_line_csv += CommonString.quote_char + self.conditions_string + CommonString.quote_char + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + str(self.geographical_area_sid) + CommonString.quote_char + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + self.geographical_area_id + CommonString.quote_char + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + g.app.geographical_areas_friendly[self.geographical_area_sid] + CommonString.quote_char + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + self.exclusion_string + CommonString.quote_char + CommonString.comma
-        # self.extract_line_csv += CommonString.quote_char + self.exclusions_desc + CommonString.quote_char + CommonString.comma
+        self.extract_line_csv += CommonString.quote_char + self.exclusions_desc + CommonString.quote_char + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + self.process_null(self.ordernumber) + CommonString.quote_char + CommonString.comma
         self.extract_line_csv += CommonString.line_feed

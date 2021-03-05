@@ -19,6 +19,7 @@ from classes_gen.footnote import Footnote
 from classes_gen.commodity import Commodity
 from classes_gen.measure import Measure
 from classes_gen.measure_component import MeasureComponent
+from classes_gen.measure_condition import MeasureCondition
 from classes_gen.measure_type import MeasureType
 from classes_gen.seasonal_rate import SeasonalRate
 from classes_gen.supplementary_unit import SupplementaryUnit
@@ -44,8 +45,8 @@ class Application(object):
         self.COMPARISON_DATE = datetime.strptime(
             os.getenv('COMPARISON_DATE'), '%Y-%m-%d')
         self.mfns = {}
-        self.get_folders()
         self.get_scope()
+        self.get_folders()
         self.get_process_scope()
 
     def create_icl_vme(self):
@@ -59,6 +60,7 @@ class Application(object):
         self.close_extract()
         self.zip_extract()
         self.zip_extract_csv()
+        self.zip_extract_commodity_csv()
 
     def get_scope(self):
         # Takes arguments from the command line to identify
@@ -109,6 +111,7 @@ class Application(object):
             self.get_measures(i)
             self.categorise_and_sort_measures()
             self.assign_measure_components()
+            self.assign_measure_conditions()
             self.assign_measure_excluded_geographical_areas()
             self.assign_footnote_association_measures()
             self.create_measure_duties()
@@ -211,15 +214,22 @@ class Application(object):
         # If there is a 'Y' condition, then this typically means that there are exclusions
         print("Assigning measure conditions")
 
-        for measure_condition in self.measure_conditions_exemption:
+        for measure_condition in self.measure_conditions:
             for measure in self.measures:
                 if measure.measure_sid == measure_condition.measure_sid:
+                    measure.measure_conditions.append(measure_condition)
+                    break
+
+
+        for measure_condition in self.measure_conditions_exemption:
+            for measure in self.measures:
+                if measure.measure_sid == measure_condition:
                     measure.CMDTY_MEASURE_EX_HEAD_IND = "Y"
                     break
 
         for measure_condition in self.measure_conditions_licence:
             for measure in self.measures:
-                if measure.measure_sid == measure_condition.measure_sid:
+                if measure.measure_sid == measure_condition:
                     measure.FREE_CIRC_DOTI_REQD_IND = "Y"
                     break
 
@@ -272,35 +282,47 @@ class Application(object):
     def get_measure_conditions(self, iteration):
         # Get relevant measures conditions
         print("Getting measure conditions")
+        self.measure_conditions = []
         self.measure_conditions_exemption = []
         self.measure_conditions_licence = []
-
+        
+        # First, get all measure conditions - these are needed to add to the CSV version of the file
         sql = """
-        select distinct (m.measure_sid)
-        from measure_conditions mc, measures m
+        select mc.measure_condition_sid, mc.measure_sid, mc.condition_code, mc.component_sequence_number,
+        mc.condition_duty_amount, mc.condition_monetary_unit_code, mc.condition_measurement_unit_code,
+        mc.condition_measurement_unit_qualifier_code, mc.action_code, mc.certificate_type_code, mc.certificate_code 
+        from measure_conditions mc, utils.materialized_measures_real_end_dates m
         where m.measure_sid = mc.measure_sid 
-        and mc.certificate_type_code = 'Y'
         and left(m.goods_nomenclature_item_id, """ + str(len(str(iteration))) + """) = '""" + str(iteration) + """'
         and (m.validity_end_date is null or m.validity_end_date > '""" + self.SNAPSHOT_DATE + """')
+        order by mc.measure_sid, mc.condition_code, mc.component_sequence_number 
         """
         d = Database()
         rows = d.run_query(sql)
         for row in rows:
-            self.measure_conditions_exemption.append(row[0])
+            mc = MeasureCondition()
+            mc.measure_condition_sid = row[0]
+            mc.measure_sid = row[1]
+            mc.condition_code = row[2]
+            mc.component_sequence_number = row[3]
+            mc.condition_duty_amount = row[4]
+            mc.condition_monetary_unit_code = row[5]
+            mc.condition_measurement_unit_code = row[6]
+            mc.condition_measurement_unit_qualifier_code = row[7]
+            mc.action_code = row[8]
+            mc.certificate_type_code = row[9]
+            mc.certificate_code = row[10]
+            self.measure_conditions.append(mc)
+            
+            if mc.certificate_type_code == "Y":
+                # Second, get the exemption type records - these are needed to do ...
+                self.measure_conditions_exemption.append(mc.measure_sid)
+            elif mc.certificate_type_code in ('D', '9', 'A', 'C', 'D', 'H', 'I', 'L', 'N', 'U', 'Z'):
+                # Get licence requirement
+                self.measure_conditions_licence.append(mc.measure_sid)
 
-        # Get licence requirement
-        sql = """
-        select distinct (m.measure_sid)
-        from measure_conditions mc, measures m
-        where m.measure_sid = mc.measure_sid 
-        and mc.certificate_type_code in ('D', '9', 'A', 'C', 'D', 'H', 'I', 'L', 'N', 'U', 'Z')
-        and left(m.goods_nomenclature_item_id, """ + str(len(str(iteration))) + """) = '""" + str(iteration) + """'
-        and (m.validity_end_date is null or m.validity_end_date > '""" + self.SNAPSHOT_DATE + """')
-        """
-        d = Database()
-        rows = d.run_query(sql)
-        for row in rows:
-            self.measure_conditions_licence.append(row[0])
+        self.measure_conditions_exemption = list(set(self.measure_conditions_exemption))
+        self.measure_conditions_licence = list(set(self.measure_conditions_licence))
 
     def get_measure_components(self, iteration):
         # Get measure components
@@ -511,20 +533,26 @@ class Application(object):
         self.reference_folder = os.path.join(self.data_folder, "reference")
         self.data_in_folder = os.path.join(self.data_folder, "in")
         self.data_out_folder = os.path.join(self.data_folder, "out")
+        self.export_folder = os.path.join(self.current_folder, "_export")
 
+        # Make the date-specific folder
         date_time_obj = datetime.strptime(self.SNAPSHOT_DATE, '%Y-%m-%d')
         self.year = date_time_obj.strftime("%Y")
         self.month = date_time_obj.strftime("%b").lower()
         self.month2 = date_time_obj.strftime("%m").lower()
         self.day = date_time_obj.strftime("%d")
         
-        self.export_folder = os.path.join(self.current_folder, "_export")
         date_folder = self.year + "-" + self.month2 + "-" + self.day
         self.dated_folder = os.path.join(self.export_folder, date_folder)
         os.makedirs(self.dated_folder, exist_ok = True)
+        
+        # Under the date-specific folder, also make a scope (UK/XI) folder
+        self.scope_folder = os.path.join(self.dated_folder, self.scope)
+        os.makedirs(self.scope_folder, exist_ok = True)
 
-        self.icl_vme_folder = os.path.join(self.dated_folder, "icl_vme")
-        self.csv_folder = os.path.join(self.dated_folder, "csv")
+        # Finally, make the destination folders
+        self.icl_vme_folder = os.path.join(self.scope_folder, "icl_vme")
+        self.csv_folder = os.path.join(self.scope_folder, "csv")
         os.makedirs(self.icl_vme_folder, exist_ok = True)
         os.makedirs(self.csv_folder, exist_ok = True)
 
@@ -554,6 +582,7 @@ class Application(object):
     def close_extract(self):
         self.extract_file.close()
         self.extract_file_csv.close()
+        self.commodity_file_csv.close()
 
     def zip_extract(self):
         self.zipfile = self.filepath.replace(".txt", ".7z")
@@ -563,7 +592,6 @@ class Application(object):
             pass
         with py7zr.SevenZipFile(self.zipfile, 'w') as archive:
             archive.write(self.filepath, self.filename)
-        pass
 
     def zip_extract_csv(self):
         self.zipfile = self.filepath_csv.replace(".csv", ".7z")
@@ -573,7 +601,15 @@ class Application(object):
             pass
         with py7zr.SevenZipFile(self.zipfile, 'w') as archive:
             archive.write(self.filepath_csv, self.filename_csv)
-        pass
+
+    def zip_extract_commodity_csv(self):
+        self.zipfile = self.commodity_filepath_csv.replace(".csv", ".7z")
+        try:
+            os.remove(self.zipfile)
+        except:
+            pass
+        with py7zr.SevenZipFile(self.zipfile, 'w') as archive:
+            archive.write(self.commodity_filepath_csv, self.commodity_filename_csv)
 
     def get_commodity_footnotes(self):
         print("Getting commodity-level footnote associations")
