@@ -11,6 +11,9 @@ class GeographicalArea(object):
         self.suppress = suppress
         self.members = []
         
+        if self.taric_area == "2020":
+            a = 1
+        
         if self.chief_area == "expand":
             self.has_members = True
             # Expand into members

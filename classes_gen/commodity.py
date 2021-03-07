@@ -43,7 +43,7 @@ class Commodity(object):
         self.additional_code_string = ""
         
     def determine_commodity_type(self):
-        if int(self.leaf) == 1:
+        if self.leaf == 1:
             if self.significant_digits == 10:
                 self.COMMODITY_TYPE = "2"
             else:
@@ -52,73 +52,78 @@ class Commodity(object):
             self.COMMODITY_TYPE = "1"
         
     def apply_commodity_inheritance(self):
-        if self.leaf == "1":
+        if self.leaf == 1:
             for commodity in self.hierarchy:
                 for measure in commodity.measures:
                     self.measures_inherited.append(measure)
+        else:
+            inheritable_measure_types = ["103", "105", "305", "306"]
+            if self.significant_digits == 8:
+                if self.productline_suffix == "80":
+                    for commodity in self.hierarchy:
+                        for measure in commodity.measures:
+                            if measure.measure_type_id in inheritable_measure_types:
+                                self.measures_inherited.append(measure)
+                
                 
     def sort_inherited_measures(self):
         self.measures_inherited.sort(key=lambda x: x.geographical_area_id, reverse=False)
         self.measures_inherited.sort(key=lambda x: x.priority, reverse=False)
     
     def get_supplementary_units(self, supplementary_units_reference):
-        if self.leaf == "0":
-            return
-        
-        # First we need to look up the supplementary unit in the last CHIEF file, and only
-        # if we can't ifnd it, do we look in CDS
-        found_in_chief = False
-        json_file = os.path.join(g.app.reference_folder, "supp_units.json")
-        with open(json_file) as f:
-            data = json.load(f)
-            try:
-                item = data[self.COMMODITY_CODE]
-                self.UNIT_OF_QUANTITY = item["unit1"] + CommonString.unit_divider + item["unit2"] + CommonString.unit_divider + item["unit3"]
-                found_in_chief = True
-                pass
-            except:
-                pass
+        if self.leaf == 1 or (self.significant_digits == 8 and self.productline_suffix == "80"):
+            # First we need to look up the supplementary unit in the last CHIEF file, and only
+            # if we can't ifnd it, do we look in CDS
+            found_in_chief = False
+            json_file = os.path.join(g.app.reference_folder, "supp_units.json")
+            with open(json_file) as f:
+                data = json.load(f)
+                try:
+                    item = data[self.COMMODITY_CODE]
+                    self.UNIT_OF_QUANTITY = item["unit1"] + CommonString.unit_divider + item["unit2"] + CommonString.unit_divider + item["unit3"]
+                    found_in_chief = True
+                    pass
+                except:
+                    pass
+                
             
-        
-        if found_in_chief == False:
-            self.supplementary_unit = None
-            supp_types = ['109', '110']
-            found_quantity_code = False
-            for measure in self.measures_inherited:
-                if measure.measure_type_id in supp_types:
-                    measure_component = measure.measure_components[0]
-                    self.supplementary_unit = SupplementaryUnit()
-                    self.supplementary_unit.measurement_unit_code = measure_component.measurement_unit_code
-                    self.supplementary_unit.measurement_unit_qualifier_code = measure_component.measurement_unit_qualifier_code
-                    if self.supplementary_unit.measurement_unit_qualifier_code is None:
-                        self.supplementary_unit.measurement_unit_qualifier_code = ""
-                    
-                    for item in supplementary_units_reference:
-                        if self.supplementary_unit.measurement_unit_code == item.measurement_unit_code:
-                            if self.supplementary_unit.measurement_unit_qualifier_code == item.measurement_unit_qualifier_code:
-                                self.supplementary_unit.quantity_code = item.quantity_code
-                                found_quantity_code = True
-                                break
-                    
-                    if found_quantity_code == False:
-                        print ("Missing supp code on comm code " + self.COMMODITY_CODE)
-                    else:
-                        self.UNIT_OF_QUANTITY = "1023" + CommonString.unit_divider + "2" + self.supplementary_unit.quantity_code + CommonString.unit_divider + "0000"
-                        break
-                    
-            # If there are no units assigned then do this
-            if found_quantity_code == False:
-                for unmatched in g.app.unmatched_supplementary_units:
-                    if unmatched.commodity_code == self.COMMODITY_CODE:
-                        self.UNIT_OF_QUANTITY = "1023" + CommonString.unit_divider + "2" + unmatched.chief_code + CommonString.unit_divider + "0000"
-                        break
-            else:
-                for unmatched in g.app.unmatched_supplementary_units:
-                    if unmatched.commodity_code == self.COMMODITY_CODE:
-                        self.UNIT_OF_QUANTITY = "1023" + CommonString.unit_divider + "2" + self.supplementary_unit.quantity_code + CommonString.unit_divider + "3" + unmatched.chief_code
-                        break
-            
-                    
+            if found_in_chief == False:
+                self.supplementary_unit = None
+                supp_types = ['109', '110']
+                found_quantity_code = False
+                for measure in self.measures_inherited:
+                    if measure.measure_type_id in supp_types:
+                        measure_component = measure.measure_components[0]
+                        self.supplementary_unit = SupplementaryUnit()
+                        self.supplementary_unit.measurement_unit_code = measure_component.measurement_unit_code
+                        self.supplementary_unit.measurement_unit_qualifier_code = measure_component.measurement_unit_qualifier_code
+                        if self.supplementary_unit.measurement_unit_qualifier_code is None:
+                            self.supplementary_unit.measurement_unit_qualifier_code = ""
+                        
+                        for item in supplementary_units_reference:
+                            if self.supplementary_unit.measurement_unit_code == item.measurement_unit_code:
+                                if self.supplementary_unit.measurement_unit_qualifier_code == item.measurement_unit_qualifier_code:
+                                    self.supplementary_unit.quantity_code = item.quantity_code
+                                    found_quantity_code = True
+                                    break
+                        
+                        if found_quantity_code == False:
+                            print ("Missing supp code on comm code " + self.COMMODITY_CODE)
+                        else:
+                            self.UNIT_OF_QUANTITY = "1023" + CommonString.unit_divider + "2" + self.supplementary_unit.quantity_code + CommonString.unit_divider + "0000"
+                            break
+                        
+                # If there are no units assigned then do this
+                if found_quantity_code == False:
+                    for unmatched in g.app.unmatched_supplementary_units:
+                        if unmatched.commodity_code == self.COMMODITY_CODE:
+                            self.UNIT_OF_QUANTITY = "1023" + CommonString.unit_divider + "2" + unmatched.chief_code + CommonString.unit_divider + "0000"
+                            break
+                else:
+                    for unmatched in g.app.unmatched_supplementary_units:
+                        if unmatched.commodity_code == self.COMMODITY_CODE:
+                            self.UNIT_OF_QUANTITY = "1023" + CommonString.unit_divider + "2" + self.supplementary_unit.quantity_code + CommonString.unit_divider + "3" + unmatched.chief_code
+                            break
 
     def apply_seasonal_rates(self, seasonal_rates):
         for seasonal_rate in seasonal_rates:
@@ -277,7 +282,7 @@ class Commodity(object):
         if self.significant_digits == 2:
             self.entity_type = "Chapter"
         elif self.significant_digits == 4:
-            if self.leaf == "1":
+            if self.leaf == 1:
                 self.entity_type = "Heading / commodity"
             else:
                 self.entity_type = "Heading"

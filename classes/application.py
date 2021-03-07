@@ -1,8 +1,10 @@
 import os
+import re
 import sys
 import csv
 import time
 import py7zr
+from pathlib2 import Path
 
 from dotenv import load_dotenv
 from datetime import datetime
@@ -58,9 +60,46 @@ class Application(object):
         self.get_commodities()
         self.write_footnotes()
         self.close_extract()
+        self.run_grep()
         self.zip_extract()
         self.zip_extract_csv()
         self.zip_extract_commodity_csv()
+
+    def run_grep(self):
+        print("Starting measure count")
+        self.measure_count = 0
+        self.measure_exception_count = 0
+        with open(self.filepath) as fp:
+            line = fp.readline()
+            while line:
+                if line[0:2] == "ME":
+                    self.measure_count += 1
+                elif line[0:2] == "MX":
+                    self.measure_exception_count += 1
+
+                line = fp.readline()
+        fp.close()
+        
+        self.TOTAL_RECORD_COUNT = 0
+        self.TOTAL_RECORD_COUNT += self.commodity_count
+        self.TOTAL_RECORD_COUNT += self.additional_code_count
+        self.TOTAL_RECORD_COUNT += self.measure_count
+        self.TOTAL_RECORD_COUNT += self.measure_exception_count
+
+        path = Path(self.filepath)
+        text = path.read_text()
+        text = text.replace("ME_RECORD_COUNT", str(
+            self.measure_count).rjust(7, "0"))
+        text = text.replace("MX_RECORD_COUNT", str(
+            self.measure_exception_count).rjust(7, "0"))
+        text = text.replace("TOTAL_RECORD_COUNT", str(
+            self.TOTAL_RECORD_COUNT).rjust(11, "0"))
+        path.write_text(text)
+        print("Ending measure count")
+
+        pass
+        # grep -c "^ME" hmrc-tariff-ascii-05-mar-2021.txt
+        # grep -c "^MX" hmrc-tariff-ascii-05-mar-2021.txt
 
     def get_scope(self):
         # Takes arguments from the command line to identify
@@ -74,7 +113,7 @@ class Application(object):
         if self.scope not in ("uk", "xi"):
             print("Please specify the country scope (uk or xi)")
             sys.exit()
-            
+
         load_dotenv('.env')
         if self.scope == "uk":
             self.DATABASE = os.getenv('DATABASE_UK')
@@ -99,7 +138,8 @@ class Application(object):
         self.commodity_count = 0
         self.additional_code_count = 0
         self.measure_count = 0
-        
+        self.measure_exception_count = 0
+
         for i in range(self.start, self.end):
             self.commodities = []
             tic = time.perf_counter()
@@ -133,7 +173,7 @@ class Application(object):
                     commodity.COMMODITY_LDATE = self.YYYYMMDD(row[4])
                     commodity.description = row[5].replace('"', "'")
                     commodity.number_indents = int(row[6])
-                    commodity.leaf = str(row[9])
+                    commodity.leaf = int(str(row[9]))
                     commodity.significant_digits = int(row[10])
                     commodity.determine_commodity_type()
                     commodity.get_amendment_status()
@@ -220,7 +260,6 @@ class Application(object):
                     measure.measure_conditions.append(measure_condition)
                     break
 
-
         for measure_condition in self.measure_conditions_exemption:
             for measure in self.measures:
                 if measure.measure_sid == measure_condition:
@@ -249,19 +288,22 @@ class Application(object):
         for footnote_association_measure in self.footnote_association_measures:
             for measure in self.measures:
                 if measure.measure_sid == footnote_association_measure.measure_sid:
-                    measure.footnote_association_measures.append(footnote_association_measure)
+                    measure.footnote_association_measures.append(
+                        footnote_association_measure)
                     break
-                
-        # Now create a string from the associations per measure. 
+
+        # Now create a string from the associations per measure.
         # Start by sorting the footnotes alphabetically
         for measure in self.measures:
-            measure.footnote_association_measures.sort(key=lambda x: x.footnote_id, reverse=False)
-            measure.footnote_association_measures.sort(key=lambda x: x.footnote_type_id, reverse=False)
+            measure.footnote_association_measures.sort(
+                key=lambda x: x.footnote_id, reverse=False)
+            measure.footnote_association_measures.sort(
+                key=lambda x: x.footnote_type_id, reverse=False)
             measure.footnote_string = ""
             for footnote_association_measure in measure.footnote_association_measures:
-                measure.footnote_string += footnote_association_measure.footnote_type_id + footnote_association_measure.footnote_id + "|"
+                measure.footnote_string += footnote_association_measure.footnote_type_id + \
+                    footnote_association_measure.footnote_id + "|"
             measure.footnote_string = measure.footnote_string.strip("|")
-
 
     def create_measure_duties(self):
         print("Creating measure duties")
@@ -285,7 +327,7 @@ class Application(object):
         self.measure_conditions = []
         self.measure_conditions_exemption = []
         self.measure_conditions_licence = []
-        
+
         # First, get all measure conditions - these are needed to add to the CSV version of the file
         sql = """
         select mc.measure_condition_sid, mc.measure_sid, mc.condition_code, mc.component_sequence_number,
@@ -313,7 +355,7 @@ class Application(object):
             mc.certificate_type_code = row[9]
             mc.certificate_code = row[10]
             self.measure_conditions.append(mc)
-            
+
             if mc.certificate_type_code == "Y":
                 # Second, get the exemption type records - these are needed to do ...
                 self.measure_conditions_exemption.append(mc.measure_sid)
@@ -321,8 +363,10 @@ class Application(object):
                 # Get licence requirement
                 self.measure_conditions_licence.append(mc.measure_sid)
 
-        self.measure_conditions_exemption = list(set(self.measure_conditions_exemption))
-        self.measure_conditions_licence = list(set(self.measure_conditions_licence))
+        self.measure_conditions_exemption = list(
+            set(self.measure_conditions_exemption))
+        self.measure_conditions_licence = list(
+            set(self.measure_conditions_licence))
 
     def get_measure_components(self, iteration):
         # Get measure components
@@ -434,7 +478,7 @@ class Application(object):
             measure.measure_component_applicable_code = int(row[22])
             measure.trade_movement_code = row[23]
             measure.get_import_export()
-            
+
             if measure.measure_sid == 20100524:
                 a = 1
 
@@ -449,10 +493,10 @@ class Application(object):
         print("Rebasing chapters")
         for commodity in self.commodities:
             commodity.get_entity_type()
-            
+
             # Do not rebase data for the CSV file
             commodity.number_indents_csv = commodity.number_indents
-            
+
             # Rebase data for working out hierarchical inheritance
             if commodity.significant_digits == 2:
                 commodity.number_indents = -1
@@ -464,7 +508,8 @@ class Application(object):
         commodity_count = len(self.commodities)
         for loop in range(0, commodity_count):
             commodity = self.commodities[loop]
-            if commodity.leaf == "1":
+            # if commodity.leaf == "1":
+            if commodity.leaf == 1 or commodity.leaf == 0:
                 current_indent = commodity.number_indents
                 for loop2 in range(loop - 1, -1, -1):
                     commodity2 = self.commodities[loop2]
@@ -479,24 +524,33 @@ class Application(object):
     def write_commodities(self):
         # Write all commodities
         print("Writing commmodities")
-        barred_series = ['E', 'F', 'G', 'H', 'K', 'L', 'M', "N", "O", "R", "S", "Z"]
+        barred_series = ['E', 'F', 'G', 'H', 'K',
+                         'L', 'M', "N", "O", "R", "S", "Z"]
         for commodity in self.commodities:
             commodity_string = ""
-            commodity_string += CommonString.quote_char + commodity.COMMODITY_CODE + CommonString.quote_char + ","
-            commodity_string += CommonString.quote_char + commodity.productline_suffix + CommonString.quote_char + ","
-            commodity_string += commodity.validity_start_date.strftime('%Y-%m-%d') + ","
+            commodity_string += CommonString.quote_char + \
+                commodity.COMMODITY_CODE + CommonString.quote_char + ","
+            commodity_string += CommonString.quote_char + \
+                commodity.productline_suffix + CommonString.quote_char + ","
+            commodity_string += commodity.validity_start_date.strftime(
+                '%Y-%m-%d') + ","
             if commodity.validity_end_date is None:
                 commodity_string += ","
             else:
-                commodity_string += commodity.validity_end_date.strftime('%Y-%m-%d') + ","
-            commodity_string += CommonString.quote_char + commodity.description_csv + CommonString.quote_char + ","
+                commodity_string += commodity.validity_end_date.strftime(
+                    '%Y-%m-%d') + ","
+            commodity_string += CommonString.quote_char + \
+                commodity.description_csv + CommonString.quote_char + ","
             commodity_string += str(commodity.number_indents_csv) + ","
-            commodity_string += CommonString.quote_char + commodity.entity_type + CommonString.quote_char + ","
-            commodity_string += CommonString.quote_char + f.YN(commodity.leaf) + CommonString.quote_char
-            
-            self.commodity_file_csv.write(commodity_string + CommonString.line_feed)
-            if commodity.leaf == "1":
-                # if commodity.leaf == "1" or (commodity.significant_digits == 8 and commodity.productline_suffix == "80"):
+            commodity_string += CommonString.quote_char + \
+                commodity.entity_type + CommonString.quote_char + ","
+            commodity_string += CommonString.quote_char + \
+                f.YN(commodity.leaf) + CommonString.quote_char
+
+            self.commodity_file_csv.write(
+                commodity_string + CommonString.line_feed)
+
+            if commodity.leaf == 1 or (commodity.significant_digits == 8 and commodity.productline_suffix == "80"):
                 self.commodity_count += 1
                 self.extract_file.write(commodity.extract_line)
                 if self.WRITE_ADDITIONAL_CODES == 1:
@@ -508,20 +562,25 @@ class Application(object):
                 if self.WRITE_MEASURES == 1:
                     for measure in commodity.measures_inherited:
                         if measure.measure_type_series_id not in barred_series:
-                            self.measure_count += measure.line_count
+                            if measure.RECORD_TYPE == "MX":
+                                self.measure_exception_count += 1  # measure.line_count
+                            else:
+                                self.measure_count += measure.line_count
                             self.extract_file.write(measure.extract_line)
                             if measure.extract_line_csv != "":
                                 self.extract_file_csv.write(
                                     CommonString.quote_char + commodity.COMMODITY_CODE + CommonString.quote_char + ",")
                         self.extract_file_csv.write(measure.extract_line_csv)
-                        
+
                     self.pipe_pr_measures(commodity.COMMODITY_CODE)
-   
+
     def pipe_pr_measures(self, commodity):
         has_found = False
         for pr_measure in self.pr_measures:
             if pr_measure.commodity == commodity:
-                self.extract_file.write(pr_measure.line + CommonString.line_feed)
+                self.measure_count += 1
+                self.extract_file.write(
+                    pr_measure.line + CommonString.line_feed)
                 has_found = True
             else:
                 if has_found == True:
@@ -541,26 +600,28 @@ class Application(object):
         self.month = date_time_obj.strftime("%b").lower()
         self.month2 = date_time_obj.strftime("%m").lower()
         self.day = date_time_obj.strftime("%d")
-        
+
         date_folder = self.year + "-" + self.month2 + "-" + self.day
         self.dated_folder = os.path.join(self.export_folder, date_folder)
-        os.makedirs(self.dated_folder, exist_ok = True)
-        
+        os.makedirs(self.dated_folder, exist_ok=True)
+
         # Under the date-specific folder, also make a scope (UK/XI) folder
         self.scope_folder = os.path.join(self.dated_folder, self.scope)
-        os.makedirs(self.scope_folder, exist_ok = True)
+        os.makedirs(self.scope_folder, exist_ok=True)
 
         # Finally, make the destination folders
         self.icl_vme_folder = os.path.join(self.scope_folder, "icl_vme")
         self.csv_folder = os.path.join(self.scope_folder, "csv")
-        os.makedirs(self.icl_vme_folder, exist_ok = True)
-        os.makedirs(self.csv_folder, exist_ok = True)
+        os.makedirs(self.icl_vme_folder, exist_ok=True)
+        os.makedirs(self.csv_folder, exist_ok=True)
 
     def open_extract(self):
         if CommonString.divider == "|":
-            self.filename = "hmrc-tariff-ascii-" + self.day + "-" + self.month + "-" + self.year + "-piped.txt"
+            self.filename = "hmrc-tariff-ascii-" + self.day + \
+                "-" + self.month + "-" + self.year + "-piped.txt"
         else:
-            self.filename = "hmrc-tariff-ascii-" + self.day + "-" + self.month + "-" + self.year + ".txt"
+            self.filename = "hmrc-tariff-ascii-" + self.day + \
+                "-" + self.month + "-" + self.year + ".txt"
 
         # Work out the path to the ICL VME extract
         self.filepath = os.path.join(self.icl_vme_folder, self.filename)
@@ -572,12 +633,15 @@ class Application(object):
         self.filepath_csv = os.path.join(self.csv_folder, self.filename_csv)
         self.extract_file_csv = open(self.filepath_csv, "w+")
         self.extract_file_csv.write('"commodity__code","measure__sid","measure__type__id","measure__type__description","measure__additional_code__code",measure__additional_code__description,"measure__duty_expression","measure__effective_start_date","measure__effective_end_date","measure__reduction_indicator","measure__footnotes","measure__geographical_area__sid","measure__geographical_area__id","measure__geographical_area__description","measure__excluded_geographical_areas__ids","measure__quota__order_number"' + CommonString.line_feed)
-        
+
         # Commodities CSV
-        self.commodity_filename_csv = self.filename_csv.replace("measures", "commodities")
-        self.commodity_filepath_csv = os.path.join(self.csv_folder, self.commodity_filename_csv)
+        self.commodity_filename_csv = self.filename_csv.replace(
+            "measures", "commodities")
+        self.commodity_filepath_csv = os.path.join(
+            self.csv_folder, self.commodity_filename_csv)
         self.commodity_file_csv = open(self.commodity_filepath_csv, "w+")
-        self.commodity_file_csv.write('"commodity__code","productline__suffix","start__date","end__date","description","indents","entity__type","end_line"' + CommonString.line_feed)
+        self.commodity_file_csv.write(
+            '"commodity__code","productline__suffix","start__date","end__date","description","indents","entity__type","end_line"' + CommonString.line_feed)
 
     def close_extract(self):
         self.extract_file.close()
@@ -609,7 +673,8 @@ class Application(object):
         except:
             pass
         with py7zr.SevenZipFile(self.zipfile, 'w') as archive:
-            archive.write(self.commodity_filepath_csv, self.commodity_filename_csv)
+            archive.write(self.commodity_filepath_csv,
+                          self.commodity_filename_csv)
 
     def get_commodity_footnotes(self):
         print("Getting commodity-level footnote associations")
@@ -740,24 +805,24 @@ class Application(object):
         TOTAL-RECORD-COUNT	11	9(11)
         """
 
-        self.measure_exception_count = 0
+        # self.measure_exception_count = 0
         total_record_count = self.commodity_count + self.additional_code_count + \
             self.measure_count + self.measure_exception_count
 
-        CM_RECORD_COUNT = str(self.commodity_count).rjust(7, "0")
-        CA_RECORD_COUNT = str(self.additional_code_count).rjust(7, "0")
+        self.CM_RECORD_COUNT = str(self.commodity_count).rjust(7, "0")
+        self.CA_RECORD_COUNT = str(self.additional_code_count).rjust(7, "0")
         ME_RECORD_COUNT = str(self.measure_count).rjust(7, "0")
-        MD_RECORD_COUNT = "0000000"
-        MX_RECORD_COUNT = "0000000"
-        TOTAL_RECORD_COUNT = str(total_record_count).rjust(11, "0")
+        self.MD_RECORD_COUNT = "0000000"
+        self.MX_RECORD_COUNT = str(self.measure_exception_count).rjust(7, "0")
+        self.TOTAL_RECORD_COUNT = str(total_record_count).rjust(11, "0")
 
         self.commodity_footer = "CO"
-        self.commodity_footer += CM_RECORD_COUNT
-        self.commodity_footer += CA_RECORD_COUNT
-        self.commodity_footer += ME_RECORD_COUNT
-        self.commodity_footer += MD_RECORD_COUNT
-        self.commodity_footer += MX_RECORD_COUNT
-        self.commodity_footer += TOTAL_RECORD_COUNT + CommonString.line_feed
+        self.commodity_footer += self.CM_RECORD_COUNT
+        self.commodity_footer += self.CA_RECORD_COUNT
+        self.commodity_footer += "ME_RECORD_COUNT"
+        self.commodity_footer += self.MD_RECORD_COUNT
+        self.commodity_footer += "MX_RECORD_COUNT"
+        self.commodity_footer += "TOTAL_RECORD_COUNT" + CommonString.line_feed
 
         self.extract_file.write(self.commodity_footer)
 
@@ -826,7 +891,7 @@ class Application(object):
         self.get_geographical_areas()
         self.get_supplementary_units_reference()
         self.load_pr_measures()
-        
+
     def load_pr_measures(self):
         print("Getting PR measures")
         self.pr_measures = []

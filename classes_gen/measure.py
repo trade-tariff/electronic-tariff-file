@@ -244,8 +244,6 @@ class Measure(object):
         if self.suppressed_geography == False:
             self.exclusion_list = []
             self.exclusion_string = ""
-            if self.measure_sid == 20041059:
-                a = 1
             for exclusion in self.measure_excluded_geographical_areas:
                 if exclusion.excluded_geographical_area not in self.exclusion_list:
                     self.exclusion_list.append(exclusion.excluded_geographical_area)
@@ -262,9 +260,12 @@ class Measure(object):
         
             if self.found_measure_type == True:
                 if len(self.members) == 0:
+                    # A country group, such as 2020 (GSP) will not have members unless it has had
+                    # its CHIEF area group set to "expand" 
                     self.create_extract_line(self.ORIGIN_COUNTRY_CODE, self.ORIGIN_COUNTRY_GROUP_CODE)
                     if len(self.exclusion_list) > 0:
                         for exclusion in self.exclusion_list:
+                            # pass
                             self.create_extract_line(exclusion, self.ORIGIN_COUNTRY_GROUP_CODE, "MX", True)
                 else:
                     for member in self.members:
@@ -272,8 +273,9 @@ class Measure(object):
                             self.create_extract_line(member, "    ")
 
     def create_extract_line(self, ORIGIN_COUNTRY_CODE, ORIGIN_COUNTRY_GROUP_CODE, RECORD_TYPE = "ME", override_rates = False):
+        self.RECORD_TYPE = RECORD_TYPE
         self.get_amendment_indicator()
-        self.extract_line += RECORD_TYPE + CommonString.divider
+        self.extract_line += self.RECORD_TYPE + CommonString.divider
         self.extract_line += self.MEASURE_GROUP_CODE + CommonString.divider
         self.extract_line += self.MEASURE_TYPE_CODE + CommonString.divider
         self.extract_line += self.TAX_TYPE_CODE + CommonString.divider
@@ -312,7 +314,8 @@ class Measure(object):
         self.extract_line += self.QUOTA_UNIT_OF_QUANTITY_CODE + CommonString.divider
         self.extract_line += self.MEASURE_AMENDMENT_IND
         self.extract_line += CommonString.line_feed
-        self.line_count += 1
+        if self.RECORD_TYPE != "MX":
+            self.line_count += 1
 
     def get_amendment_indicator(self):
         if self.operation_date is None:
