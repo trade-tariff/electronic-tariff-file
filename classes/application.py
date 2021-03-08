@@ -19,6 +19,7 @@ from classes.functions import functions as f
 from classes_gen.database import Database
 from classes_gen.footnote import Footnote
 from classes_gen.certificate import Certificate
+from classes_gen.quota_definition import QuotaDefinition, QuotaExclusion, QuotaCommodity
 from classes_gen.commodity import Commodity
 from classes_gen.measure import Measure
 from classes_gen.measure_component import MeasureComponent
@@ -27,7 +28,7 @@ from classes_gen.measure_type import MeasureType
 from classes_gen.seasonal_rate import SeasonalRate
 from classes_gen.supplementary_unit import SupplementaryUnit
 from classes_gen.supplementary_unit import UnmatchedSupplementaryUnit
-from classes_gen.geographical_area import GeographicalArea
+from classes_gen.geographical_area import GeographicalArea, GeographicalArea2
 from classes_gen.commodity_footnote import CommodityFootnote
 from classes_gen.simplified_procedure_value import SimplifiedProcedureValue
 from classes_gen.measure_excluded_geographical_area import MeasureExcludedGeographicalArea
@@ -62,6 +63,8 @@ class Application(object):
         self.write_footnotes()
         self.get_all_footnotes()
         self.get_all_certificates()
+        self.get_all_quotas()
+        self.get_all_geographies()
         self.close_extract()
         self.run_grep()
         self.zip_extract()
@@ -69,6 +72,7 @@ class Application(object):
         self.zip_extract_commodity_csv()
         self.zip_extract_footnote_csv()
         self.zip_extract_certificate_csv()
+        self.zip_extract_quota_csv()
 
     def run_grep(self):
         print("Starting measure count")
@@ -593,15 +597,11 @@ class Application(object):
         print("Writing footnotes for CSV export")
         self.footnote_file_csv.close()
 
-
-
     def get_all_certificates(self):
         # Get footnotes
         print("Getting all certificates for CSV export")
         self.measures = []
         sql = """
-        
-        
         with certificate_cte as (
         SELECT cd1.certificate_type_code,
         cd1.certificate_code,
@@ -624,7 +624,6 @@ class Application(object):
         and (m.validity_end_date is null or m.validity_end_date > '""" + self.SNAPSHOT_DATE + """')
         order by 1
         """
-
         d = Database()
         rows = d.run_query(sql)
         self.all_certificates = []
@@ -634,13 +633,191 @@ class Application(object):
             certificate.description = row[1]
             certificate.validity_start_date = row[2]
             certificate.validity_end_date = row[3]
-            certificate.get_certificate_csv_string()
+            certificate.get_csv_string()
 
             self.all_certificates.append(certificate)
             self.certificate_file_csv.write(certificate.certificate_csv_string)
             
         print("Writing certificates for CSV export")
         self.certificate_file_csv.close()
+
+
+    def get_all_geographies(self):
+        # Get footnotes
+        print("Getting all geographical areas for CSV export")
+        self.measures = []
+        sql = """
+        with cte_geography as (
+            SELECT g.geographical_area_sid,
+            geo1.geographical_area_id,
+            geo1.description,
+            case 
+            when geographical_code = '0' then 'Country'
+            when geographical_code = '1' then 'Country group'
+            when geographical_code = '2' then 'Region'
+            end as area_type
+            FROM geographical_area_descriptions geo1,
+            geographical_areas g
+            WHERE g.geographical_area_id::text = geo1.geographical_area_id::text AND (geo1.geographical_area_description_period_sid IN ( SELECT max(geo2.geographical_area_description_period_sid) AS max
+            FROM geographical_area_descriptions geo2
+            WHERE geo1.geographical_area_id::text = geo2.geographical_area_id::text))
+            and g.validity_end_date is null
+        ), cte_members as (
+            SELECT ga1.geographical_area_sid AS parent_sid,
+            ga1.geographical_area_id AS parent_id,
+            ga2.geographical_area_sid AS child_sid,
+            ga2.geographical_area_id AS child_id
+            FROM geographical_area_memberships gam,
+            geographical_areas ga1,
+            geographical_areas ga2
+            WHERE ga1.geographical_area_sid = gam.geographical_area_group_sid
+            AND ga2.geographical_area_sid = gam.geographical_area_sid
+            and gam.validity_start_date <= '""" + self.SNAPSHOT_DATE + """'
+            and (gam.validity_end_date is null or gam.validity_end_date > '""" + self.SNAPSHOT_DATE + """')
+        )
+        select g.geographical_area_id, g.description, g.area_type,
+        string_agg(distinct g2.child_id, '|' order by g2.child_id) as members
+        from cte_geography g
+        left outer join cte_members g2 on g.geographical_area_sid = g2.parent_sid
+        group by g.geographical_area_id, g.description, g.area_type
+        order by 1;
+        """
+        d = Database()
+        rows = d.run_query(sql)
+        self.all_geographies = []
+        for row in rows:
+            geographical_area = GeographicalArea2()
+            geographical_area.geographical_area_id = row[0]
+            geographical_area.description = row[1]
+            geographical_area.area_type = row[2]
+            geographical_area.members = row[3]
+            geographical_area.get_csv_string()
+
+            self.all_geographies.append(geographical_area)
+            self.geography_file_csv.write(geographical_area.csv_string)
+            
+        print("Writing geographical areas for CSV export")
+        self.geography_file_csv.close()
+
+    def get_all_quotas(self):
+        print("Getting all quota definitions for CSV export")
+        
+        # Get quota commodities
+        self.quota_commodities = []
+        sql = """
+        select ordernumber, string_agg(distinct goods_nomenclature_item_id, '|' order by m.goods_nomenclature_item_id)
+        from utils.materialized_measures_real_end_dates m
+        where ordernumber like '05%'
+        and m.validity_start_date <= '""" + self.SNAPSHOT_DATE + """'
+        and (m.validity_end_date is null or m.validity_end_date > '""" + self.SNAPSHOT_DATE + """')
+        group by ordernumber
+        order by ordernumber
+        """
+        d = Database()
+        rows = d.run_query(sql)
+        for row in rows:
+            quota_commodity = QuotaCommodity()
+            quota_commodity.quota_order_number_id = row[0]
+            quota_commodity.commodities = row[1]
+
+            self.quota_commodities.append(quota_commodity)
+
+        # Get quota exclusions
+        self.quota_exclusions = []
+        sql = """
+        select qon.quota_order_number_id, qon.quota_order_number_sid,
+        string_agg(ga.geographical_area_id, '|' order by ga.geographical_area_id) as exclusions
+        from quota_order_number_origin_exclusions qonoe, quota_order_number_origins qono,
+        quota_order_numbers qon, geographical_areas ga 
+        where qono.quota_order_number_origin_sid = qonoe.quota_order_number_origin_sid 
+        and qon.quota_order_number_sid = qono.quota_order_number_sid 
+        and ga.geographical_area_sid = qonoe.excluded_geographical_area_sid 
+        and qon.quota_order_number_id like '05%'
+        group by qon.quota_order_number_id, qon.quota_order_number_sid
+        order by 1;"""
+        d = Database()
+        rows = d.run_query(sql)
+        for row in rows:
+            quota_exclusion = QuotaExclusion()
+            quota_exclusion.quota_order_number_id = row[0]
+            quota_exclusion.quota_order_number_sid = row[1]
+            quota_exclusion.exclusions = row[2]
+
+            self.quota_exclusions.append(quota_exclusion)
+
+        # Get quota definitions
+        self.all_quota_definitions = []
+
+        sql = """
+        select qon.quota_order_number_sid, qon.quota_order_number_id, qd.validity_start_date::text, qd.validity_end_date::text,
+        qd.initial_volume,
+        qd.measurement_unit_code || ' ' || coalesce(qd.measurement_unit_qualifier_code, '') as unit,
+        qd.critical_state, qd.critical_threshold, 'First Come First Served' as quota_type,
+        string_agg(distinct qono.geographical_area_id, '|' order by qono.geographical_area_id) as origins
+        from quota_order_numbers qon, quota_definitions qd, quota_order_number_origins qono 
+        where qd.quota_order_number_sid = qon.quota_order_number_sid 
+        and qon.quota_order_number_sid = qono.quota_order_number_sid 
+        and qon.validity_start_date <= '""" + self.SNAPSHOT_DATE + """'
+        and (qon.validity_end_date is null or qon.validity_end_date > '""" + self.SNAPSHOT_DATE + """')
+        and qd.validity_start_date <= '""" + self.SNAPSHOT_DATE + """'
+        and (qd.validity_end_date is null or qd.validity_end_date > '""" + self.SNAPSHOT_DATE + """')
+        and qon.quota_order_number_id like '05%'
+        group by qon.quota_order_number_sid, qon.quota_order_number_id, qd.validity_start_date, qd.validity_end_date,
+        qd.initial_volume, qd.measurement_unit_code, qd.measurement_unit_qualifier_code,
+        qd.critical_state, qd.critical_threshold
+
+        union 
+
+        select Null as quota_order_number_sid, m.ordernumber as quota_order_number_id,
+        m.validity_start_date::text, m.validity_end_date, Null as initial_volume,
+        Null as unit, Null as critical_state, Null as critical_threshold, 'Licensed' as quota_type,
+        string_agg(distinct m.geographical_area_id, '|' order by m.geographical_area_id) as origins
+        from utils.materialized_measures_real_end_dates m
+        where ordernumber like '054%'
+        and m.validity_start_date <= '""" + self.SNAPSHOT_DATE + """'
+        and (m.validity_end_date is null or m.validity_end_date > '""" + self.SNAPSHOT_DATE + """')
+        group by m.ordernumber, m.validity_start_date, m.validity_end_date
+
+        order by 2
+        """
+
+        d = Database()
+        rows = d.run_query(sql)
+        self.all_quota_definitions = []
+        for row in rows:
+            quota_definition = QuotaDefinition()
+            quota_definition.quota_order_number_sid = row[0]
+            quota_definition.quota_order_number_id = row[1]
+            quota_definition.validity_start_date = row[2]
+            quota_definition.validity_end_date = row[3]
+            quota_definition.initial_volume = row[4]
+            quota_definition.unit = row[5]
+            quota_definition.critical_state = row[6]
+            quota_definition.critical_threshold = row[7]
+            quota_definition.quota_type = row[8]
+            quota_definition.origins = row[9]
+            # Assign the exclusions to the definitions
+            for exclusion in self.quota_exclusions:
+                if exclusion.quota_order_number_sid == quota_definition.quota_order_number_sid:
+                    quota_definition.exclusions = exclusion.exclusions
+                    break
+            
+            # Assign the commodities to the definitions
+            for quota_commodity in self.quota_commodities:
+                if quota_commodity.quota_order_number_id == quota_definition.quota_order_number_id:
+                    quota_definition.commodities = quota_commodity.commodities
+                    break
+
+            quota_definition.get_csv_string()
+                    
+            self.all_quota_definitions.append(quota_definition)
+
+        for quota_definition in self.all_quota_definitions:
+            if quota_definition.commodities != "":
+                self.quota_file_csv.write(quota_definition.csv_string)
+            
+        print("Writing quota_definitions for CSV export")
+        self.quota_file_csv.close()
 
     def rebase_chapters(self):
         # Reset the indent of chapters to -1, so that they are
@@ -810,12 +987,25 @@ class Application(object):
         self.certificate_file_csv = open(self.certificate_filepath_csv, "w+")
         self.certificate_file_csv.write('"certificate__id","certificate__description","start__date","end__date"' + CommonString.line_feed)
 
+        # Quotas CSV
+        self.quota_filename_csv = self.filename_csv.replace("measures", "quotas")
+        self.quota_filepath_csv = os.path.join(self.csv_folder, self.quota_filename_csv)
+        self.quota_file_csv = open(self.quota_filepath_csv, "w+")
+        self.quota_file_csv.write('"quota__order__number__id","definition__start__date","definition__end__date","initial__volume","unit","critical__state","critical__threshold","quota__type","origins","origin__exclusions","commodities"' + CommonString.line_feed)
+
+        # Geography CSV
+        self.geography_filename_csv = self.filename_csv.replace("measures", "geography")
+        self.geography_filepath_csv = os.path.join(self.csv_folder, self.geography_filename_csv)
+        self.geography_file_csv = open(self.geography_filepath_csv, "w+")
+        self.geography_file_csv.write('"geographical_area_id","description","area_type","members"' + CommonString.line_feed)
+
     def close_extract(self):
         self.extract_file.close()
         self.extract_file_csv.close()
         self.commodity_file_csv.close()
         self.footnote_file_csv.close()
         self.certificate_file_csv.close()
+        self.quota_file_csv.close()
 
     def zip_extract(self):
         self.zipfile = self.filepath.replace(".txt", ".7z")
@@ -864,6 +1054,16 @@ class Application(object):
         with py7zr.SevenZipFile(self.zipfile, 'w') as archive:
             archive.write(self.certificate_filepath_csv,
                           self.certificate_filepath_csv)
+            
+    def zip_extract_quota_csv(self):
+        self.zipfile = self.quota_filepath_csv.replace(".csv", ".7z")
+        try:
+            os.remove(self.zipfile)
+        except:
+            pass
+        with py7zr.SevenZipFile(self.zipfile, 'w') as archive:
+            archive.write(self.quota_filepath_csv,
+                          self.quota_filepath_csv)
            
     def get_commodity_footnotes(self):
         print("Getting commodity-level footnote associations")

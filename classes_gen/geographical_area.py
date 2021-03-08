@@ -1,6 +1,8 @@
 import sys
 import classes.globals as g
 from classes_gen.database import Database
+from classes.functions import functions as f
+from classes.enums import CommonString
 
 
 class GeographicalArea(object):
@@ -32,3 +34,20 @@ class GeographicalArea(object):
                 self.members.append(row[0])
         else:
             self.has_members = False
+
+class GeographicalArea2(object):
+    def get_csv_string(self):
+        self.format_description_for_csv()
+        s = ""
+        s += CommonString.quote_char + f.null_to_string(self.geographical_area_id) + CommonString.quote_char + CommonString.comma
+        s += CommonString.quote_char + f.null_to_string(self.description) + CommonString.quote_char + CommonString.comma
+        s += CommonString.quote_char + f.null_to_string(self.area_type) + CommonString.quote_char + CommonString.comma
+        s += CommonString.quote_char + f.null_to_string(self.members) + CommonString.quote_char
+        s += CommonString.line_feed
+        self.csv_string = s
+
+    def format_description_for_csv(self):
+        self.description = self.description.replace('"', "'")
+        self.description = self.description.replace('\n', " ")
+        self.description = self.description.replace('\r', " ")
+        self.description = self.description.replace('  ', " ")

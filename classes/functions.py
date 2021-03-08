@@ -132,7 +132,27 @@ class functions(object):
         else:
             ret = d.strftime("%Y%m%d")
             return ret
-
+    
+    @staticmethod
+    def YYYY_MM_DD(d):
+        if d is None:
+            return ""
+        elif isinstance(d, str):
+            parts = d.split(" ")
+            ret = parts[0]
+            return ret
+        else:
+            ret = d.strftime("%Y%m%d")
+            return ret
+    
+    @staticmethod
+    def null_to_string(d):
+        if d is None:
+            return ""
+        else:
+            d = str(d)
+            return d.strip()
+        
     @staticmethod
     def HHMMSS(d):
         if d is None:

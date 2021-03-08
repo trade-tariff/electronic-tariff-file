@@ -5,7 +5,7 @@ class Certificate(object):
     def __init__(self):
         pass
     
-    def get_certificate_csv_string(self):
+    def get_csv_string(self):
         self.format_description_for_csv()
         s = ""
         s += CommonString.quote_char + self.code + CommonString.quote_char + CommonString.comma
