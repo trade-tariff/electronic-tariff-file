@@ -241,23 +241,24 @@ class Measure(object):
     def create_extract_line_per_geography(self):
         self.extract_line = ""
         self.extract_line_csv = ""
-        if self.suppressed_geography == False:
-            self.exclusion_list = []
-            self.exclusion_string = ""
-            for exclusion in self.measure_excluded_geographical_areas:
-                if exclusion.excluded_geographical_area not in self.exclusion_list:
-                    self.exclusion_list.append(exclusion.excluded_geographical_area)
-            
-            self.exclusion_list.sort()
-            
-            for exclusion in self.exclusion_list:
-                self.exclusion_string += exclusion + "|"
-            
-            self.exclusion_string = self.exclusion_string.strip("|")
-
-            self.create_condition_string()
-            self.create_extract_line_english()
+        self.exclusion_list = []
+        self.exclusion_string = ""
+        for exclusion in self.measure_excluded_geographical_areas:
+            if exclusion.excluded_geographical_area not in self.exclusion_list:
+                self.exclusion_list.append(exclusion.excluded_geographical_area)
         
+        self.exclusion_list.sort()
+        
+        for exclusion in self.exclusion_list:
+            self.exclusion_string += exclusion + "|"
+        
+        self.exclusion_string = self.exclusion_string.strip("|")
+        self.get_exclusion_description_string()
+
+        self.create_condition_string()
+        self.create_extract_line_english()
+    
+        if self.suppressed_geography == False:
             if self.found_measure_type == True:
                 if len(self.members) == 0:
                     # A country group, such as 2020 (GSP) will not have members unless it has had
@@ -271,6 +272,15 @@ class Measure(object):
                     for member in self.members:
                         if member not in self.exclusion_list:
                             self.create_extract_line(member, "    ")
+
+    def get_exclusion_description_string(self):
+        self.exclusions_desc = ""
+        if len(self.exclusion_list) > 0:
+            for e in self.exclusion_list:
+                self.exclusions_desc += g.app.geographical_areas_friendly[e] + "|"
+
+        self.exclusions_desc = self.exclusions_desc.strip("|")
+            
 
     def create_extract_line(self, ORIGIN_COUNTRY_CODE, ORIGIN_COUNTRY_GROUP_CODE, RECORD_TYPE = "ME", override_rates = False):
         self.RECORD_TYPE = RECORD_TYPE
@@ -372,8 +382,6 @@ class Measure(object):
         else:
             self.additional_code_description = ""
         self.measure__reduction_indicator = ""
-        # self.conditions_string = "COND"
-        self.exclusions_desc = "EXCL_DESC"
         self.extract_line_csv = ""
         self.extract_line_csv += str(self.measure_sid) + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + self.measure_type_id + CommonString.quote_char + CommonString.comma
@@ -388,7 +396,8 @@ class Measure(object):
         self.extract_line_csv += CommonString.quote_char + self.conditions_string + CommonString.quote_char + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + str(self.geographical_area_sid) + CommonString.quote_char + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + self.geographical_area_id + CommonString.quote_char + CommonString.comma
-        self.extract_line_csv += CommonString.quote_char + g.app.geographical_areas_friendly[self.geographical_area_sid] + CommonString.quote_char + CommonString.comma
+        # self.extract_line_csv += CommonString.quote_char + g.app.geographical_areas_friendly[self.geographical_area_sid] + CommonString.quote_char + CommonString.comma
+        self.extract_line_csv += CommonString.quote_char + g.app.geographical_areas_friendly[self.geographical_area_id] + CommonString.quote_char + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + self.exclusion_string + CommonString.quote_char + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + self.exclusions_desc + CommonString.quote_char + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + self.process_null(self.ordernumber) + CommonString.quote_char + CommonString.comma

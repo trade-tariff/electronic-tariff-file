@@ -18,6 +18,7 @@ from classes.functions import functions as f
 
 from classes_gen.database import Database
 from classes_gen.footnote import Footnote
+from classes_gen.certificate import Certificate
 from classes_gen.commodity import Commodity
 from classes_gen.measure import Measure
 from classes_gen.measure_component import MeasureComponent
@@ -59,11 +60,15 @@ class Application(object):
         self.write_commodity_header()
         self.get_commodities()
         self.write_footnotes()
+        self.get_all_footnotes()
+        self.get_all_certificates()
         self.close_extract()
         self.run_grep()
         self.zip_extract()
         self.zip_extract_csv()
         self.zip_extract_commodity_csv()
+        self.zip_extract_footnote_csv()
+        self.zip_extract_certificate_csv()
 
     def run_grep(self):
         print("Starting measure count")
@@ -188,12 +193,47 @@ class Application(object):
             for commodity in self.commodities:
                 commodity.apply_commodity_inheritance()
                 commodity.sort_inherited_measures()
+                
                 commodity.get_additional_code_indicator()
                 commodity.apply_seasonal_rates(self.seasonal_rates)
                 commodity.get_end_use()
                 commodity.get_supplementary_units(self.supplementary_units)
                 commodity.get_spv(self.spvs)
 
+            
+            # Bubble up the VAT and excixe measures from down below
+            commodity_count = len(self.commodities)
+            for loop in range(0, commodity_count - 1):
+                commodity = self.commodities[loop]
+                if commodity.pseudo_line == True:
+                    if commodity.COMMODITY_CODE == "9702000000":
+                        a = 1
+                    for loop2 in range(loop + 1, commodity_count - 1):
+                        commodity2 = self.commodities[loop2]
+                        if commodity.COMMODITY_CODE[0:4] != commodity2.COMMODITY_CODE[0:4]:
+                            # Break out if we have moved on to a different heading
+                            break
+
+                        for item in commodity2.hierarchy:
+                            if item.COMMODITY_CODE == commodity.COMMODITY_CODE:
+                                for m in commodity2.measures:
+                                    if m.measure_sid == -440410:
+                                        a = 1
+                                    inheritable_measure_types = ["103", "105", "305", "306"]
+                                    if m.measure_type_id in inheritable_measure_types:
+                                        found = False
+                                        if m.measure_type_id == "305":
+                                            a = 1
+                                        for m2 in commodity.measures_inherited:
+                                            if m2.measure_type_id == m.measure_type_id:
+                                                if m2.additional_code_id == m.additional_code_id:
+                                                    found = True
+                                                    break
+                                        if found is False:
+                                            commodity.measures_inherited.append(m)
+                                            
+                                a = 1
+                
             for commodity in self.commodities:
                 commodity.create_extract_line()
 
@@ -335,6 +375,7 @@ class Application(object):
         mc.condition_measurement_unit_qualifier_code, mc.action_code, mc.certificate_type_code, mc.certificate_code 
         from measure_conditions mc, utils.materialized_measures_real_end_dates m
         where m.measure_sid = mc.measure_sid 
+        and m.validity_start_date <= '""" + self.SNAPSHOT_DATE + """'
         and left(m.goods_nomenclature_item_id, """ + str(len(str(iteration))) + """) = '""" + str(iteration) + """'
         and (m.validity_end_date is null or m.validity_end_date > '""" + self.SNAPSHOT_DATE + """')
         order by mc.measure_sid, mc.condition_code, mc.component_sequence_number 
@@ -377,6 +418,7 @@ class Application(object):
         from measure_components mc, utils.materialized_measures_real_end_dates m
         where m.measure_sid = mc.measure_sid 
         and left(m.goods_nomenclature_item_id, """ + str(len(str(iteration))) + """) = '""" + str(iteration) + """'
+        and m.validity_start_date <= '""" + self.SNAPSHOT_DATE + """'
         and (m.validity_end_date is null or m.validity_end_date > '""" + self.SNAPSHOT_DATE + """')
         order by m.goods_nomenclature_item_id, m.measure_sid, mc.duty_expression_id;"""
         d = Database()
@@ -402,6 +444,7 @@ class Application(object):
         from measure_excluded_geographical_areas mega, utils.materialized_measures_real_end_dates m
         where m.measure_sid = mega.measure_sid 
         and left(m.goods_nomenclature_item_id, """ + str(len(str(iteration))) + """) = '""" + str(iteration) + """'
+        and m.validity_start_date <= '""" + self.SNAPSHOT_DATE + """'
         and (m.validity_end_date is null or m.validity_end_date > '""" + self.SNAPSHOT_DATE + """')
         order by mega.measure_sid, mega.excluded_geographical_area;"""
         d = Database()
@@ -424,6 +467,7 @@ class Application(object):
         from footnote_association_measures fam, utils.materialized_measures_real_end_dates m
         where m.measure_sid = fam.measure_sid 
         and left(m.goods_nomenclature_item_id, """ + str(len(str(iteration))) + """) = '""" + str(iteration) + """'
+        and m.validity_start_date <= '""" + self.SNAPSHOT_DATE + """'        
         and (m.validity_end_date is null or m.validity_end_date > '""" + self.SNAPSHOT_DATE + """')
         order by m.goods_nomenclature_item_id, m.measure_sid, fam.footnote_id, fam.footnote_id ;
         """
@@ -448,6 +492,7 @@ class Application(object):
         where m.measure_type_id = mt.measure_type_id
         and left(goods_nomenclature_item_id, """ + str(len(str(iteration))) + """) = '""" + str(iteration) + """'
         and (m.validity_end_date is null or m.validity_end_date >= '""" + self.SNAPSHOT_DATE + """')
+        and m.validity_start_date <= '""" + self.SNAPSHOT_DATE + """'
         order by goods_nomenclature_item_id, measure_type_id;"""
 
         d = Database()
@@ -487,6 +532,116 @@ class Application(object):
 
             self.measures.append(measure)
 
+    def get_all_footnotes(self):
+        # Get footnotes
+        print("Getting all footnotes for CSV export")
+        self.measures = []
+        sql = """
+        with footnotes_cte as (
+        SELECT fd1.footnote_type_id,
+        fd1.footnote_id,
+        fd1.footnote_type_id || fd1.footnote_id as code,
+        fd1.description,
+        f1.validity_start_date,
+        f1.validity_end_date
+        FROM footnote_descriptions fd1,
+        footnotes f1
+        WHERE fd1.footnote_id = f1.footnote_id
+        AND fd1.footnote_type_id = f1.footnote_type_id
+        AND (fd1.footnote_description_period_sid IN ( SELECT max(ft2.footnote_description_period_sid) AS max
+        FROM footnote_descriptions ft2
+        WHERE fd1.footnote_type_id = ft2.footnote_type_id AND fd1.footnote_id = ft2.footnote_id))
+        )
+        select distinct f.code, f.description, f.validity_start_date, f.validity_end_date, 'measure' as footnote_class
+        from footnotes_cte f, footnote_association_measures fam, utils.materialized_measures_real_end_dates m
+        where f.footnote_id = fam.footnote_id 
+        and f.footnote_type_id = fam.footnote_type_id 
+        and fam.measure_sid = m.measure_sid 
+        and (m.validity_end_date is null or m.validity_end_date >= '""" + self.SNAPSHOT_DATE + """')
+        and m.validity_start_date <= '""" + self.SNAPSHOT_DATE + """'
+        and f.validity_end_date is null
+
+        union 
+
+        select distinct f.code, f.description, f.validity_start_date, f.validity_end_date, 'commodity' as footnote_class
+        from footnotes_cte f, footnote_association_goods_nomenclatures fagn, goods_nomenclatures gn
+        where f.footnote_id = fagn.footnote_id 
+        and f.footnote_type_id = fagn.footnote_type
+        and fagn.goods_nomenclature_sid = gn.goods_nomenclature_sid
+        and (gn.validity_end_date is null or gn.validity_end_date >= '""" + self.SNAPSHOT_DATE + """')
+        and gn.validity_start_date <= '""" + self.SNAPSHOT_DATE + """'
+        and f.validity_end_date is null
+
+        order by 1;
+        """
+
+        d = Database()
+        rows = d.run_query(sql)
+        self.all_footnotes = []
+        for row in rows:
+            footnote = Footnote()
+            footnote.code = row[0]
+            footnote.description = row[1]
+            footnote.validity_start_date = row[2]
+            footnote.validity_end_date = row[3]
+            footnote.footnote_class = row[4]
+            footnote.get_footnote_csv_string()
+
+            self.all_footnotes.append(footnote)
+            self.footnote_file_csv.write(footnote.footnote_csv_string)
+            
+        print("Writing footnotes for CSV export")
+        self.footnote_file_csv.close()
+
+
+
+    def get_all_certificates(self):
+        # Get footnotes
+        print("Getting all certificates for CSV export")
+        self.measures = []
+        sql = """
+        
+        
+        with certificate_cte as (
+        SELECT cd1.certificate_type_code,
+        cd1.certificate_code,
+        cd1.certificate_type_code || cd1.certificate_code AS code,
+        cd1.description,
+        c.validity_start_date,
+        c.validity_end_date
+        FROM certificate_descriptions cd1,
+        certificates c
+        WHERE c.certificate_code = cd1.certificate_code AND c.certificate_type_code = cd1.certificate_type_code AND (cd1.oid IN ( SELECT max(cd2.oid) AS max
+        FROM certificate_descriptions cd2
+        WHERE cd1.certificate_type_code = cd2.certificate_type_code AND cd1.certificate_code = cd2.certificate_code))
+        )
+        select distinct c.code, c.description, c.validity_start_date, c.validity_end_date 
+        from measure_conditions mc, utils.materialized_measures_real_end_dates m, certificate_cte c
+        where m.measure_sid = mc.measure_sid
+        and m.validity_start_date <= '""" + self.SNAPSHOT_DATE + """'
+        and mc.certificate_type_code = c.certificate_type_code
+        and mc.certificate_code = c.certificate_code
+        and (m.validity_end_date is null or m.validity_end_date > '""" + self.SNAPSHOT_DATE + """')
+        order by 1
+        """
+
+        d = Database()
+        rows = d.run_query(sql)
+        self.all_certificates = []
+        for row in rows:
+            certificate = Certificate()
+            certificate.code = row[0]
+            certificate.description = row[1]
+            certificate.validity_start_date = row[2]
+            certificate.validity_end_date = row[3]
+            certificate.get_certificate_csv_string()
+
+            self.all_certificates.append(certificate)
+            self.certificate_file_csv.write(certificate.certificate_csv_string)
+            
+        print("Writing certificates for CSV export")
+        self.certificate_file_csv.close()
+
     def rebase_chapters(self):
         # Reset the indent of chapters to -1, so that they are
         # omitted from the hierarchy string
@@ -508,24 +663,27 @@ class Application(object):
         commodity_count = len(self.commodities)
         for loop in range(0, commodity_count):
             commodity = self.commodities[loop]
-            # if commodity.leaf == "1":
-            if commodity.leaf == 1 or commodity.leaf == 0:
-                current_indent = commodity.number_indents
-                for loop2 in range(loop - 1, -1, -1):
-                    commodity2 = self.commodities[loop2]
-                    if commodity2.number_indents < current_indent:
-                        commodity.hierarchy.append(commodity2)
-                        current_indent = commodity2.number_indents
-                    if commodity2.number_indents == -1:
-                        break
-                commodity.hierarchy.reverse()
-                commodity.build_hierarchy_string()
+            current_indent = commodity.number_indents
+            for loop2 in range(loop - 1, -1, -1):
+                commodity2 = self.commodities[loop2]
+                if commodity2.number_indents < current_indent:
+                    if commodity.leaf == 1:
+                        if commodity.significant_digits == 10:
+                            if commodity2.number_indents == commodity.number_indents - 1:
+                                if commodity2.significant_digits in (4, 6):
+                                    commodity2.pseudo_line = True
+
+                    commodity.hierarchy.append(commodity2)
+                    current_indent = commodity2.number_indents
+                if commodity2.number_indents == -1:
+                    break
+            commodity.hierarchy.reverse()
+            commodity.build_hierarchy_string()
 
     def write_commodities(self):
         # Write all commodities
         print("Writing commmodities")
-        barred_series = ['E', 'F', 'G', 'H', 'K',
-                         'L', 'M', "N", "O", "R", "S", "Z"]
+        barred_series = ['E', 'F', 'G', 'H', 'K', 'L', 'M', "N", "O", "R", "S", "Z"]
         for commodity in self.commodities:
             commodity_string = ""
             commodity_string += CommonString.quote_char + \
@@ -550,7 +708,7 @@ class Application(object):
             self.commodity_file_csv.write(
                 commodity_string + CommonString.line_feed)
 
-            if commodity.leaf == 1 or (commodity.significant_digits == 8 and commodity.productline_suffix == "80"):
+            if commodity.leaf == 1 or (commodity.significant_digits >= 8 and commodity.productline_suffix == "80") or commodity.pseudo_line == True:
                 self.commodity_count += 1
                 self.extract_file.write(commodity.extract_line)
                 if self.WRITE_ADDITIONAL_CODES == 1:
@@ -632,21 +790,32 @@ class Application(object):
         self.filename_csv = self.filename_csv.replace("ascii", "measures")
         self.filepath_csv = os.path.join(self.csv_folder, self.filename_csv)
         self.extract_file_csv = open(self.filepath_csv, "w+")
-        self.extract_file_csv.write('"commodity__code","measure__sid","measure__type__id","measure__type__description","measure__additional_code__code",measure__additional_code__description,"measure__duty_expression","measure__effective_start_date","measure__effective_end_date","measure__reduction_indicator","measure__footnotes","measure__geographical_area__sid","measure__geographical_area__id","measure__geographical_area__description","measure__excluded_geographical_areas__ids","measure__quota__order_number"' + CommonString.line_feed)
+        self.extract_file_csv.write('"commodity__code","measure__sid","measure__type__id","measure__type__description","measure__additional_code__code","measure__additional_code__description","measure__duty_expression","measure__effective_start_date","measure__effective_end_date","measure__reduction_indicator","measure__footnotes","measure__conditions","measure__geographical_area__sid","measure__geographical_area__id","measure__geographical_area__description","measure__excluded_geographical_areas__ids","measure__excluded_geographical_areas__descriptions","measure__quota__order_number"' + CommonString.line_feed)
 
         # Commodities CSV
-        self.commodity_filename_csv = self.filename_csv.replace(
-            "measures", "commodities")
-        self.commodity_filepath_csv = os.path.join(
-            self.csv_folder, self.commodity_filename_csv)
+        self.commodity_filename_csv = self.filename_csv.replace("measures", "commodities")
+        self.commodity_filepath_csv = os.path.join(self.csv_folder, self.commodity_filename_csv)
         self.commodity_file_csv = open(self.commodity_filepath_csv, "w+")
-        self.commodity_file_csv.write(
-            '"commodity__code","productline__suffix","start__date","end__date","description","indents","entity__type","end_line"' + CommonString.line_feed)
+        self.commodity_file_csv.write('"commodity__code","productline__suffix","start__date","end__date","description","indents","entity__type","end__line"' + CommonString.line_feed)
+
+        # Footnotes CSV
+        self.footnote_filename_csv = self.filename_csv.replace("measures", "footnotes")
+        self.footnote_filepath_csv = os.path.join(self.csv_folder, self.footnote_filename_csv)
+        self.footnote_file_csv = open(self.footnote_filepath_csv, "w+")
+        self.footnote_file_csv.write('"footnote__id","footnote__description","start__date","end__date","footnote__type"' + CommonString.line_feed)
+
+        # Certificates CSV
+        self.certificate_filename_csv = self.filename_csv.replace("measures", "certificates")
+        self.certificate_filepath_csv = os.path.join(self.csv_folder, self.certificate_filename_csv)
+        self.certificate_file_csv = open(self.certificate_filepath_csv, "w+")
+        self.certificate_file_csv.write('"certificate__id","certificate__description","start__date","end__date"' + CommonString.line_feed)
 
     def close_extract(self):
         self.extract_file.close()
         self.extract_file_csv.close()
         self.commodity_file_csv.close()
+        self.footnote_file_csv.close()
+        self.certificate_file_csv.close()
 
     def zip_extract(self):
         self.zipfile = self.filepath.replace(".txt", ".7z")
@@ -676,6 +845,26 @@ class Application(object):
             archive.write(self.commodity_filepath_csv,
                           self.commodity_filename_csv)
 
+    def zip_extract_footnote_csv(self):
+        self.zipfile = self.footnote_filepath_csv.replace(".csv", ".7z")
+        try:
+            os.remove(self.zipfile)
+        except:
+            pass
+        with py7zr.SevenZipFile(self.zipfile, 'w') as archive:
+            archive.write(self.footnote_filepath_csv,
+                          self.footnote_filepath_csv)
+            
+    def zip_extract_certificate_csv(self):
+        self.zipfile = self.certificate_filepath_csv.replace(".csv", ".7z")
+        try:
+            os.remove(self.zipfile)
+        except:
+            pass
+        with py7zr.SevenZipFile(self.zipfile, 'w') as archive:
+            archive.write(self.certificate_filepath_csv,
+                          self.certificate_filepath_csv)
+           
     def get_commodity_footnotes(self):
         print("Getting commodity-level footnote associations")
         self.commodity_footnotes = []
@@ -961,7 +1150,7 @@ class Application(object):
         d = Database()
         rows = d.run_query(sql)
         for row in rows:
-            self.geographical_areas_friendly[row[0]] = row[2]
+            self.geographical_areas_friendly[row[1]] = row[2].replace(",", "")
 
     def get_seasonal_rates(self):
         # Read the seasonal rates from the reference CSV and load to a global list

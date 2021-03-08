@@ -38,3 +38,22 @@ class Footnote(object):
         self.extract_line += self.FOOTNOTE_LENGTH + CommonString.divider
         self.extract_line += self.FOOTNOTE_TEXT
         self.extract_line += CommonString.line_feed
+
+    def get_footnote_csv_string(self):
+        self.format_description_for_csv()
+        s = ""
+        s += CommonString.quote_char + self.code + CommonString.quote_char + CommonString.comma
+        s += CommonString.quote_char + self.description + CommonString.quote_char + CommonString.comma
+        s += CommonString.quote_char + self.validity_start_date.strftime("%Y-%m-%d") + CommonString.quote_char + CommonString.comma
+        if self.validity_end_date is None:
+            s +=  CommonString.comma
+        else:
+            s += CommonString.quote_char + self.validity_end_date.strftime("%Y-%m-%d") + CommonString.quote_char + CommonString.comma
+        s += CommonString.quote_char + self.footnote_class + CommonString.quote_char + CommonString.line_feed
+        self.footnote_csv_string = s
+
+    def format_description_for_csv(self):
+        self.description = self.description.replace('"', "'")
+        self.description = self.description.replace('\n', " ")
+        self.description = self.description.replace('\r', " ")
+        self.description = self.description.replace('  ', " ")

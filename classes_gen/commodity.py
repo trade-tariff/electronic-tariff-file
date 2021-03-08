@@ -41,6 +41,7 @@ class Commodity(object):
         self.additional_codes = []
         self.seasonal = False
         self.additional_code_string = ""
+        self.pseudo_line = False
         
     def determine_commodity_type(self):
         if self.leaf == 1:
@@ -58,7 +59,8 @@ class Commodity(object):
                     self.measures_inherited.append(measure)
         else:
             inheritable_measure_types = ["103", "105", "305", "306"]
-            if self.significant_digits == 8:
+            if self.significant_digits > 2:
+            # if self.significant_digits == 8:
                 if self.productline_suffix == "80":
                     for commodity in self.hierarchy:
                         for measure in commodity.measures:
@@ -71,7 +73,7 @@ class Commodity(object):
         self.measures_inherited.sort(key=lambda x: x.priority, reverse=False)
     
     def get_supplementary_units(self, supplementary_units_reference):
-        if self.leaf == 1 or (self.significant_digits == 8 and self.productline_suffix == "80"):
+        if self.leaf == 1 or (self.significant_digits >= 6 and self.productline_suffix == "80"):
             # First we need to look up the supplementary unit in the last CHIEF file, and only
             # if we can't ifnd it, do we look in CDS
             found_in_chief = False
@@ -270,7 +272,6 @@ class Commodity(object):
         self.extract_line += self.COMMODITY_END_USE_ALLWD + CommonString.divider
         self.extract_line += self.COMMODITY_IMP_EXP_USE + CommonString.divider
         self.extract_line += self.COMMODITY_AMEND_IND + CommonString.divider
-        # self.extract_line += self.COMM_DECLARATION_UNIT_NO + CommonString.divider
         self.extract_line += self.UNIT_OF_QUANTITY + CommonString.divider
         self.extract_line += self.ALPHA_SIZE + CommonString.divider
         self.extract_line += self.ALPHA_TEXT

@@ -1,7 +1,8 @@
 class Footnote(object):
-    def __init__(self, line):
-        self.line = line
-        self.parse()
+    def __init__(self, line = ""):
+        if line != "":
+            self.line = line
+            self.parse()
 
     def parse(self):
         self.RECORD_TYPE = self.line[0:2]
