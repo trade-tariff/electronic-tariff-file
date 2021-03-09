@@ -1350,7 +1350,8 @@ class Application(object):
         d = Database()
         rows = d.run_query(sql)
         for row in rows:
-            self.geographical_areas_friendly[row[1]] = row[2].replace(",", "")
+            description = f.null_to_string(row[2]).replace(",", "")
+            self.geographical_areas_friendly[row[1]] = description
 
     def get_seasonal_rates(self):
         # Read the seasonal rates from the reference CSV and load to a global list
