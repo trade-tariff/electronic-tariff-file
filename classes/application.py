@@ -42,6 +42,7 @@ class Application(object):
         self.WRITE_MEASURES = int(os.getenv('WRITE_MEASURES'))
         self.WRITE_ADDITIONAL_CODES = int(os.getenv('WRITE_ADDITIONAL_CODES'))
         self.WRITE_FOOTNOTES = int(os.getenv('WRITE_FOOTNOTES'))
+        self.password = os.getenv('PASSWORD')
 
         d = datetime.now()
         self.SNAPSHOT_DATE = d.strftime('%Y-%m-%d')
@@ -863,6 +864,7 @@ class Application(object):
         barred_series = ['E', 'F', 'G', 'H', 'K', 'L', 'M', "N", "O", "R", "S", "Z"]
         for commodity in self.commodities:
             commodity_string = ""
+            commodity_string += str(commodity.goods_nomenclature_sid) + ","
             commodity_string += CommonString.quote_char + \
                 commodity.COMMODITY_CODE + CommonString.quote_char + ","
             commodity_string += CommonString.quote_char + \
@@ -903,9 +905,8 @@ class Application(object):
                                 self.measure_count += measure.line_count
                             self.extract_file.write(measure.extract_line)
                             if measure.extract_line_csv != "":
-                                self.extract_file_csv.write(
-                                    CommonString.quote_char + commodity.COMMODITY_CODE + CommonString.quote_char + ",")
-                        self.extract_file_csv.write(measure.extract_line_csv)
+                                # self.extract_file_csv.write(CommonString.quote_char + commodity.COMMODITY_CODE + CommonString.quote_char + ",")
+                                self.extract_file_csv.write(measure.extract_line_csv)
 
                     self.pipe_pr_measures(commodity.COMMODITY_CODE)
 
@@ -967,13 +968,13 @@ class Application(object):
         self.filename_csv = self.filename_csv.replace("ascii", "measures")
         self.filepath_csv = os.path.join(self.csv_folder, self.filename_csv)
         self.extract_file_csv = open(self.filepath_csv, "w+")
-        self.extract_file_csv.write('"commodity__code","measure__sid","measure__type__id","measure__type__description","measure__additional_code__code","measure__additional_code__description","measure__duty_expression","measure__effective_start_date","measure__effective_end_date","measure__reduction_indicator","measure__footnotes","measure__conditions","measure__geographical_area__sid","measure__geographical_area__id","measure__geographical_area__description","measure__excluded_geographical_areas__ids","measure__excluded_geographical_areas__descriptions","measure__quota__order_number"' + CommonString.line_feed)
+        self.extract_file_csv.write('"commodity__sid","commodity__code","measure__sid","measure__type__id","measure__type__description","measure__additional_code__code","measure__additional_code__description","measure__duty_expression","measure__effective_start_date","measure__effective_end_date","measure__reduction_indicator","measure__footnotes","measure__conditions","measure__geographical_area__sid","measure__geographical_area__id","measure__geographical_area__description","measure__excluded_geographical_areas__ids","measure__excluded_geographical_areas__descriptions","measure__quota__order_number"' + CommonString.line_feed)
 
         # Commodities CSV
         self.commodity_filename_csv = self.filename_csv.replace("measures", "commodities")
         self.commodity_filepath_csv = os.path.join(self.csv_folder, self.commodity_filename_csv)
         self.commodity_file_csv = open(self.commodity_filepath_csv, "w+")
-        self.commodity_file_csv.write('"commodity__code","productline__suffix","start__date","end__date","description","indents","entity__type","end__line"' + CommonString.line_feed)
+        self.commodity_file_csv.write('"commodity__sid","commodity__code","productline__suffix","start__date","end__date","description","indents","entity__type","end__line"' + CommonString.line_feed)
 
         # Footnotes CSV
         self.footnote_filename_csv = self.filename_csv.replace("measures", "footnotes")
@@ -1013,7 +1014,7 @@ class Application(object):
             os.remove(self.zipfile)
         except:
             pass
-        with py7zr.SevenZipFile(self.zipfile, 'w') as archive:
+        with py7zr.SevenZipFile(self.zipfile, 'w', password=self.password) as archive:
             archive.write(self.filepath, self.filename)
 
     def zip_extract_csv(self):

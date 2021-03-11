@@ -383,6 +383,8 @@ class Measure(object):
             self.additional_code_description = ""
         self.measure__reduction_indicator = ""
         self.extract_line_csv = ""
+        self.extract_line_csv += str(self.goods_nomenclature_sid) + CommonString.comma
+        self.extract_line_csv += CommonString.quote_char + self.goods_nomenclature_item_id + CommonString.quote_char + CommonString.comma
         self.extract_line_csv += str(self.measure_sid) + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + self.measure_type_id + CommonString.quote_char + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + g.app.measure_types_friendly[self.measure_type_id] + CommonString.quote_char + CommonString.comma
