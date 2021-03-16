@@ -47,6 +47,8 @@ class GeographicalArea2(object):
         self.csv_string = s
 
     def format_description_for_csv(self):
+        if self.description is None:
+            self.description = ""
         self.description = self.description.replace('"', "'")
         self.description = self.description.replace('\n', " ")
         self.description = self.description.replace('\r', " ")

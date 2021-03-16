@@ -1,5 +1,8 @@
 autopep8==1.5.4
+boto3==1.17.29
+botocore==1.20.29
 cffi==1.14.4
+jmespath==0.10.0
 multivolumefile==0.1.2
 pathlib2==2.3.5
 ppmd-cffi==0.3.2
@@ -8,8 +11,14 @@ py7zr==0.12.0
 pycodestyle==2.6.0
 pycparser==2.20
 pycryptodome==3.9.9
+python-dateutil==2.8.1
 python-dotenv==0.15.0
+python-http-client==3.3.2
+s3transfer==0.3.4
+sendgrid==6.6.0
 six==1.15.0
+starkbank-ecdsa==1.1.0
 texttable==1.6.3
 toml==0.10.2
+urllib3==1.26.4
 zstandard==0.15.1

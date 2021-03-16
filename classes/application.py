@@ -15,6 +15,9 @@ from classes.measure_parser import MeasureParser
 from classes.appender import Appender
 from classes.enums import CommonString
 from classes.functions import functions as f
+from classes.aws_bucket import AwsBucket
+from classes.sendgrid_mailer import SendgridMailer
+
 
 from classes_gen.database import Database
 from classes_gen.footnote import Footnote
@@ -39,10 +42,14 @@ from classes_gen.pr_measure import PrMeasure
 class Application(object):
     def __init__(self):
         load_dotenv('.env')
+
+        self.BUCKET_NAME = os.getenv('BUCKET_NAME')
+        self.bucket_url = "https://" + self.BUCKET_NAME + ".s3.amazonaws.com/"
         self.WRITE_MEASURES = int(os.getenv('WRITE_MEASURES'))
         self.WRITE_ADDITIONAL_CODES = int(os.getenv('WRITE_ADDITIONAL_CODES'))
         self.WRITE_FOOTNOTES = int(os.getenv('WRITE_FOOTNOTES'))
         self.password = os.getenv('PASSWORD')
+        self.use_password = int(os.getenv('USE_PASSWORD'))
 
         d = datetime.now()
         self.SNAPSHOT_DATE = d.strftime('%Y-%m-%d')
@@ -68,12 +75,15 @@ class Application(object):
         self.get_all_geographies()
         self.close_extract()
         self.run_grep()
+
         self.zip_extract()
         self.zip_extract_csv()
         self.zip_extract_commodity_csv()
         self.zip_extract_footnote_csv()
         self.zip_extract_certificate_csv()
         self.zip_extract_quota_csv()
+        self.create_email_message()
+        self.send_email_message()
 
     def run_grep(self):
         print("Starting measure count")
@@ -89,7 +99,7 @@ class Application(object):
 
                 line = fp.readline()
         fp.close()
-        
+
         self.TOTAL_RECORD_COUNT = 0
         self.TOTAL_RECORD_COUNT += self.commodity_count
         self.TOTAL_RECORD_COUNT += self.additional_code_count
@@ -198,14 +208,13 @@ class Application(object):
             for commodity in self.commodities:
                 commodity.apply_commodity_inheritance()
                 commodity.sort_inherited_measures()
-                
+
                 commodity.get_additional_code_indicator()
                 commodity.apply_seasonal_rates(self.seasonal_rates)
                 commodity.get_end_use()
                 commodity.get_supplementary_units(self.supplementary_units)
                 commodity.get_spv(self.spvs)
 
-            
             # Bubble up the VAT and excixe measures from down below
             commodity_count = len(self.commodities)
             for loop in range(0, commodity_count - 1):
@@ -224,7 +233,8 @@ class Application(object):
                                 for m in commodity2.measures:
                                     if m.measure_sid == -440410:
                                         a = 1
-                                    inheritable_measure_types = ["103", "105", "305", "306"]
+                                    inheritable_measure_types = [
+                                        "103", "105", "305", "306"]
                                     if m.measure_type_id in inheritable_measure_types:
                                         found = False
                                         if m.measure_type_id == "305":
@@ -235,10 +245,11 @@ class Application(object):
                                                     found = True
                                                     break
                                         if found is False:
-                                            commodity.measures_inherited.append(m)
-                                            
+                                            commodity.measures_inherited.append(
+                                                m)
+
                                 a = 1
-                
+
             for commodity in self.commodities:
                 commodity.create_extract_line()
 
@@ -499,6 +510,8 @@ class Application(object):
         and (m.validity_end_date is null or m.validity_end_date >= '""" + self.SNAPSHOT_DATE + """')
         and m.validity_start_date <= '""" + self.SNAPSHOT_DATE + """'
         order by goods_nomenclature_item_id, measure_type_id;"""
+        # print(sql)
+        # sys.exit()
 
         d = Database()
         rows = d.run_query(sql)
@@ -594,7 +607,7 @@ class Application(object):
 
             self.all_footnotes.append(footnote)
             self.footnote_file_csv.write(footnote.footnote_csv_string)
-            
+
         print("Writing footnotes for CSV export")
         self.footnote_file_csv.close()
 
@@ -638,10 +651,9 @@ class Application(object):
 
             self.all_certificates.append(certificate)
             self.certificate_file_csv.write(certificate.certificate_csv_string)
-            
+
         print("Writing certificates for CSV export")
         self.certificate_file_csv.close()
-
 
     def get_all_geographies(self):
         # Get footnotes
@@ -696,13 +708,13 @@ class Application(object):
 
             self.all_geographies.append(geographical_area)
             self.geography_file_csv.write(geographical_area.csv_string)
-            
+
         print("Writing geographical areas for CSV export")
         self.geography_file_csv.close()
 
     def get_all_quotas(self):
         print("Getting all quota definitions for CSV export")
-        
+
         # Get quota commodities
         self.quota_commodities = []
         sql = """
@@ -802,7 +814,7 @@ class Application(object):
                 if exclusion.quota_order_number_sid == quota_definition.quota_order_number_sid:
                     quota_definition.exclusions = exclusion.exclusions
                     break
-            
+
             # Assign the commodities to the definitions
             for quota_commodity in self.quota_commodities:
                 if quota_commodity.quota_order_number_id == quota_definition.quota_order_number_id:
@@ -810,13 +822,13 @@ class Application(object):
                     break
 
             quota_definition.get_csv_string()
-                    
+
             self.all_quota_definitions.append(quota_definition)
 
         for quota_definition in self.all_quota_definitions:
             if quota_definition.commodities != "":
                 self.quota_file_csv.write(quota_definition.csv_string)
-            
+
         print("Writing quota_definitions for CSV export")
         self.quota_file_csv.close()
 
@@ -861,7 +873,8 @@ class Application(object):
     def write_commodities(self):
         # Write all commodities
         print("Writing commmodities")
-        barred_series = ['E', 'F', 'G', 'H', 'K', 'L', 'M', "N", "O", "R", "S", "Z"]
+        barred_series = ['E', 'F', 'G', 'H', 'K',
+                         'L', 'M', "N", "O", "R", "S", "Z"]
         for commodity in self.commodities:
             commodity_string = ""
             commodity_string += str(commodity.goods_nomenclature_sid) + ","
@@ -906,7 +919,8 @@ class Application(object):
                             self.extract_file.write(measure.extract_line)
                             if measure.extract_line_csv != "":
                                 # self.extract_file_csv.write(CommonString.quote_char + commodity.COMMODITY_CODE + CommonString.quote_char + ",")
-                                self.extract_file_csv.write(measure.extract_line_csv)
+                                self.extract_file_csv.write(
+                                    measure.extract_line_csv)
 
                     self.pipe_pr_measures(commodity.COMMODITY_CODE)
 
@@ -971,34 +985,45 @@ class Application(object):
         self.extract_file_csv.write('"commodity__sid","commodity__code","measure__sid","measure__type__id","measure__type__description","measure__additional_code__code","measure__additional_code__description","measure__duty_expression","measure__effective_start_date","measure__effective_end_date","measure__reduction_indicator","measure__footnotes","measure__conditions","measure__geographical_area__sid","measure__geographical_area__id","measure__geographical_area__description","measure__excluded_geographical_areas__ids","measure__excluded_geographical_areas__descriptions","measure__quota__order_number"' + CommonString.line_feed)
 
         # Commodities CSV
-        self.commodity_filename_csv = self.filename_csv.replace("measures", "commodities")
-        self.commodity_filepath_csv = os.path.join(self.csv_folder, self.commodity_filename_csv)
+        self.commodity_filename_csv = self.filename_csv.replace(
+            "measures", "commodities")
+        self.commodity_filepath_csv = os.path.join(
+            self.csv_folder, self.commodity_filename_csv)
         self.commodity_file_csv = open(self.commodity_filepath_csv, "w+")
-        self.commodity_file_csv.write('"commodity__sid","commodity__code","productline__suffix","start__date","end__date","description","indents","entity__type","end__line"' + CommonString.line_feed)
+        self.commodity_file_csv.write(
+            '"commodity__sid","commodity__code","productline__suffix","start__date","end__date","description","indents","entity__type","end__line"' + CommonString.line_feed)
 
         # Footnotes CSV
         self.footnote_filename_csv = self.filename_csv.replace("measures", "footnotes")
-        self.footnote_filepath_csv = os.path.join(self.csv_folder, self.footnote_filename_csv)
+        self.footnote_filepath_csv = os.path.join(
+            self.csv_folder, self.footnote_filename_csv)
         self.footnote_file_csv = open(self.footnote_filepath_csv, "w+")
-        self.footnote_file_csv.write('"footnote__id","footnote__description","start__date","end__date","footnote__type"' + CommonString.line_feed)
+        self.footnote_file_csv.write(
+            '"footnote__id","footnote__description","start__date","end__date","footnote__type"' + CommonString.line_feed)
 
         # Certificates CSV
         self.certificate_filename_csv = self.filename_csv.replace("measures", "certificates")
         self.certificate_filepath_csv = os.path.join(self.csv_folder, self.certificate_filename_csv)
         self.certificate_file_csv = open(self.certificate_filepath_csv, "w+")
-        self.certificate_file_csv.write('"certificate__id","certificate__description","start__date","end__date"' + CommonString.line_feed)
+        self.certificate_file_csv.write(
+            '"certificate__id","certificate__description","start__date","end__date"' + CommonString.line_feed)
 
         # Quotas CSV
         self.quota_filename_csv = self.filename_csv.replace("measures", "quotas")
-        self.quota_filepath_csv = os.path.join(self.csv_folder, self.quota_filename_csv)
+        self.quota_filepath_csv = os.path.join(
+            self.csv_folder, self.quota_filename_csv)
         self.quota_file_csv = open(self.quota_filepath_csv, "w+")
-        self.quota_file_csv.write('"quota__order__number__id","definition__start__date","definition__end__date","initial__volume","unit","critical__state","critical__threshold","quota__type","origins","origin__exclusions","commodities"' + CommonString.line_feed)
+        self.quota_file_csv.write(
+            '"quota__order__number__id","definition__start__date","definition__end__date","initial__volume","unit","critical__state","critical__threshold","quota__type","origins","origin__exclusions","commodities"' + CommonString.line_feed)
 
         # Geography CSV
-        self.geography_filename_csv = self.filename_csv.replace("measures", "geography")
-        self.geography_filepath_csv = os.path.join(self.csv_folder, self.geography_filename_csv)
+        self.geography_filename_csv = self.filename_csv.replace(
+            "measures", "geography")
+        self.geography_filepath_csv = os.path.join(
+            self.csv_folder, self.geography_filename_csv)
         self.geography_file_csv = open(self.geography_filepath_csv, "w+")
-        self.geography_file_csv.write('"geographical_area_id","description","area_type","members"' + CommonString.line_feed)
+        self.geography_file_csv.write(
+            '"geographical_area_id","description","area_type","members"' + CommonString.line_feed)
 
     def close_extract(self):
         self.extract_file.close()
@@ -1008,14 +1033,74 @@ class Application(object):
         self.certificate_file_csv.close()
         self.quota_file_csv.close()
 
+    def create_email_message(self):
+        self.html_content = """
+        <p>Dear all,</p>
+        <p>The following data files have been loaded to AWS:</p>
+        <table>
+            <tr>
+                <th style="text-align:left">Description</th>
+                <th style="text-align:left">File</th>
+            </tr>
+            <tr>
+                <td>Electronic Tariff file (ICL VME format)</td>
+                <td>{0}</td>
+            </tr>
+            <tr>
+                <td>Measures, as applied to commodity codes (CSV)</td>
+                <td>{1}</td>
+            </tr>
+            <tr>
+                <td>Commodities</td>
+                <td>{2}</td>
+            </tr>
+            <tr>
+                <td>Footnotes</td>
+                <td>{3}</td>
+            </tr>
+            <tr>
+                <td>Certificates</td>
+                <td>{4}</td>
+            </tr>
+            <tr>
+                <td>Quotas</td>
+                <td>{5}</td>
+            </tr>
+        </table>
+        
+        <p>Thanks,</p>
+        <p>The Online Tariff Team.</p>""".format(
+            self.bucket_url + self.aws_path_icl_vme,
+            self.bucket_url + self.aws_path_measures_csv,
+            self.bucket_url + self.aws_path_commodities_csv,
+            self.bucket_url + self.aws_path_footnotes_csv,
+            self.bucket_url + self.aws_path_certificates_csv,
+            self.bucket_url + self.aws_path_quotas_csv
+        )
+
+    def send_email_message(self):
+        subject = "Electronic tariff file data uploaded to AWS"
+        s = SendgridMailer(subject, self.html_content)
+        s.send()
+
     def zip_extract(self):
         self.zipfile = self.filepath.replace(".txt", ".7z")
         try:
             os.remove(self.zipfile)
         except:
             pass
-        with py7zr.SevenZipFile(self.zipfile, 'w', password=self.password) as archive:
-            archive.write(self.filepath, self.filename)
+        if self.use_password == 1:
+            with py7zr.SevenZipFile(self.zipfile, 'w', password=self.password) as archive:
+                archive.write(self.filepath, self.filename)
+        else:
+            with py7zr.SevenZipFile(self.zipfile, 'w') as archive:
+                archive.write(self.filepath, self.filename)
+
+        # Load ICL VME file to AWS
+        print("Loading ICL VME file to AWS bucket")
+        self.aws_path_icl_vme = os.path.join(self.scope, "icl_vme", self.filename.replace(".txt", ".7z"))
+        bucket = AwsBucket()
+        bucket.upload_file(self.zipfile, self.aws_path_icl_vme)
 
     def zip_extract_csv(self):
         self.zipfile = self.filepath_csv.replace(".csv", ".7z")
@@ -1026,6 +1111,12 @@ class Application(object):
         with py7zr.SevenZipFile(self.zipfile, 'w') as archive:
             archive.write(self.filepath_csv, self.filename_csv)
 
+        # Load measures CSV to AWS
+        print("Loading measures CSV to AWS bucket")
+        self.aws_path_measures_csv = os.path.join(self.scope, "csv", self.filename_csv.replace(".csv", ".7z"))
+        bucket = AwsBucket()
+        bucket.upload_file(self.zipfile, self.aws_path_measures_csv)
+
     def zip_extract_commodity_csv(self):
         self.zipfile = self.commodity_filepath_csv.replace(".csv", ".7z")
         try:
@@ -1033,8 +1124,13 @@ class Application(object):
         except:
             pass
         with py7zr.SevenZipFile(self.zipfile, 'w') as archive:
-            archive.write(self.commodity_filepath_csv,
-                          self.commodity_filename_csv)
+            archive.write(self.commodity_filepath_csv, self.commodity_filename_csv)
+
+        # Load commodity CSV to AWS
+        print("Loading commodity CSV to AWS bucket")
+        self.aws_path_commodities_csv = os.path.join(self.scope, "csv", self.commodity_filename_csv.replace(".csv", ".7z"))
+        bucket = AwsBucket()
+        bucket.upload_file(self.zipfile, self.aws_path_commodities_csv)
 
     def zip_extract_footnote_csv(self):
         self.zipfile = self.footnote_filepath_csv.replace(".csv", ".7z")
@@ -1044,8 +1140,14 @@ class Application(object):
             pass
         with py7zr.SevenZipFile(self.zipfile, 'w') as archive:
             archive.write(self.footnote_filepath_csv,
-                          self.footnote_filepath_csv)
-            
+                          self.footnote_filename_csv)
+
+        # Load footnote CSV to AWS
+        print("Loading footnote CSV to AWS bucket")
+        self.aws_path_footnotes_csv = os.path.join(self.scope, "csv", self.footnote_filename_csv.replace(".csv", ".7z"))
+        bucket = AwsBucket()
+        bucket.upload_file(self.zipfile, self.aws_path_footnotes_csv)
+
     def zip_extract_certificate_csv(self):
         self.zipfile = self.certificate_filepath_csv.replace(".csv", ".7z")
         try:
@@ -1053,9 +1155,14 @@ class Application(object):
         except:
             pass
         with py7zr.SevenZipFile(self.zipfile, 'w') as archive:
-            archive.write(self.certificate_filepath_csv,
-                          self.certificate_filepath_csv)
-            
+            archive.write(self.certificate_filepath_csv, self.certificate_filename_csv)
+
+        # Load certificate CSV to AWS
+        print("Loading certificate CSV to AWS bucket")
+        self.aws_path_certificates_csv = os.path.join(self.scope, "csv", self.certificate_filename_csv.replace(".csv", ".7z"))
+        bucket = AwsBucket()
+        bucket.upload_file(self.zipfile, self.aws_path_certificates_csv)
+
     def zip_extract_quota_csv(self):
         self.zipfile = self.quota_filepath_csv.replace(".csv", ".7z")
         try:
@@ -1063,9 +1170,14 @@ class Application(object):
         except:
             pass
         with py7zr.SevenZipFile(self.zipfile, 'w') as archive:
-            archive.write(self.quota_filepath_csv,
-                          self.quota_filepath_csv)
-           
+            archive.write(self.quota_filepath_csv, self.quota_filename_csv)
+
+        # Load quota CSV to AWS
+        print("Loading quota CSV to AWS bucket")
+        self.aws_path_quotas_csv = os.path.join(self.scope, "csv", self.quota_filename_csv.replace(".csv", ".7z"))
+        bucket = AwsBucket()
+        bucket.upload_file(self.zipfile, self.aws_path_quotas_csv)
+
     def get_commodity_footnotes(self):
         print("Getting commodity-level footnote associations")
         self.commodity_footnotes = []
