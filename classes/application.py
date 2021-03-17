@@ -7,7 +7,7 @@ import py7zr
 from pathlib2 import Path
 
 from dotenv import load_dotenv
-from datetime import datetime
+from datetime import datetime, timedelta
 from classes.additional_code_parser import AdditionalCodeParser
 from classes.commodity_parser import CommodityParser
 from classes.footnote_parser import FootnoteParser
@@ -53,9 +53,10 @@ class Application(object):
 
         d = datetime.now()
         self.SNAPSHOT_DATE = d.strftime('%Y-%m-%d')
+        a_week = timedelta(days = 7)
+        # self.COMPARISON_DATE = datetime.strptime(os.getenv('COMPARISON_DATE'), '%Y-%m-%d')
+        self.COMPARISON_DATE = d - a_week
 
-        self.COMPARISON_DATE = datetime.strptime(
-            os.getenv('COMPARISON_DATE'), '%Y-%m-%d')
         self.mfns = {}
         self.get_scope()
         self.get_folders()
@@ -1035,51 +1036,59 @@ class Application(object):
 
     def create_email_message(self):
         self.html_content = """
-        <p>Dear all,</p>
-        <p>The following data files have been loaded to AWS:</p>
-        <table>
+        <p style="color:#000">Dear all,</p>
+        <p style="color:#000">The following data files are available for download, representing tariff data for <b>{6}</b>:</p>
+        <p style="color:#000">Changes in this issue are as follows:</p>
+        <ul>
+            <li>Change 1</li>
+            <li>Change 2</li>
+            <li>Change 3</li>
+            <li>Change 4</li>
+        </ul>
+        <table cellspacing="0">
             <tr>
-                <th style="text-align:left">Description</th>
-                <th style="text-align:left">File</th>
+                <th style="text-align:left;padding:3px 0px">Description</th>
+                <th style="text-align:left;padding:3px 3px">File</th>
             </tr>
             <tr>
-                <td>Electronic Tariff file (ICL VME format)</td>
-                <td>{0}</td>
+                <td style="padding:3px 0px">Electronic Tariff File (ICL VME format)</td>
+                <td style="padding:3px 3px">{0}</td>
             </tr>
             <tr>
-                <td>Measures, as applied to commodity codes (CSV)</td>
-                <td>{1}</td>
+                <td style="padding:3px 0px">Measures, as applied to commodity codes (CSV)</td>
+                <td style="padding:3px 3px">{1}</td>
             </tr>
             <tr>
-                <td>Commodities</td>
-                <td>{2}</td>
+                <td style="padding:3px 0px">Commodities</td>
+                <td style="padding:3px 3px">{2}</td>
             </tr>
             <tr>
-                <td>Footnotes</td>
-                <td>{3}</td>
+                <td style="padding:3px 0px">Footnotes</td>
+                <td style="padding:3px 3px">{3}</td>
             </tr>
             <tr>
-                <td>Certificates</td>
-                <td>{4}</td>
+                <td style="padding:3px 0px">Certificates</td>
+                <td style="padding:3px 3px">{4}</td>
             </tr>
             <tr>
-                <td>Quotas</td>
-                <td>{5}</td>
+                <td style="padding:3px 0px">Quotas</td>
+                <td style="padding:3px 3px">{5}</td>
             </tr>
         </table>
         
-        <p>Thanks,</p>
-        <p>The Online Tariff Team.</p>""".format(
+        <p style="color:#000">Thank you,</p>
+        <p style="color:#000">The Online Tariff Team.</p>""".format(
             self.bucket_url + self.aws_path_icl_vme,
             self.bucket_url + self.aws_path_measures_csv,
             self.bucket_url + self.aws_path_commodities_csv,
             self.bucket_url + self.aws_path_footnotes_csv,
             self.bucket_url + self.aws_path_certificates_csv,
-            self.bucket_url + self.aws_path_quotas_csv
+            self.bucket_url + self.aws_path_quotas_csv,
+            self.SNAPSHOT_DATE
         )
 
     def send_email_message(self):
-        subject = "Electronic tariff file data uploaded to AWS"
+        subject = "Issue of updated HMRC Electronic Tariff File for " + self.SNAPSHOT_DATE
         s = SendgridMailer(subject, self.html_content)
         s.send()
 
