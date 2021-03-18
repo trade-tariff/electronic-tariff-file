@@ -402,5 +402,5 @@ class Measure(object):
         self.extract_line_csv += CommonString.quote_char + g.app.geographical_areas_friendly[self.geographical_area_id] + CommonString.quote_char + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + self.exclusion_string + CommonString.quote_char + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + self.exclusions_desc + CommonString.quote_char + CommonString.comma
-        self.extract_line_csv += CommonString.quote_char + self.process_null(self.ordernumber) + CommonString.quote_char + CommonString.comma
+        self.extract_line_csv += CommonString.quote_char + self.process_null(self.ordernumber) + CommonString.quote_char
         self.extract_line_csv += CommonString.line_feed

@@ -637,6 +637,7 @@ class Application(object):
         and mc.certificate_type_code = c.certificate_type_code
         and mc.certificate_code = c.certificate_code
         and (m.validity_end_date is null or m.validity_end_date > '""" + self.SNAPSHOT_DATE + """')
+        and (c.validity_end_date is null or c.validity_end_date > '""" + self.SNAPSHOT_DATE + """')
         order by 1
         """
         d = Database()
@@ -1454,7 +1455,7 @@ class Application(object):
         d = Database()
         rows = d.run_query(sql)
         for row in rows:
-            self.additional_codes_friendly[row[0]] = row[2]
+            self.additional_codes_friendly[row[0]] = row[2].replace('"', '')
 
     def get_geographical_areas_friendly(self):
         sql = """SELECT g.geographical_area_sid,
