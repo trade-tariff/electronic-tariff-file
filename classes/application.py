@@ -4,6 +4,7 @@ import sys
 import csv
 import time
 import py7zr
+from zipfile import ZipFile
 from pathlib2 import Path
 
 from dotenv import load_dotenv
@@ -50,6 +51,7 @@ class Application(object):
         self.WRITE_FOOTNOTES = int(os.getenv('WRITE_FOOTNOTES'))
         self.password = os.getenv('PASSWORD')
         self.use_password = int(os.getenv('USE_PASSWORD'))
+        self.write_to_aws = int(os.getenv('WRITE_TO_AWS'))
 
         d = datetime.now()
         self.SNAPSHOT_DATE = d.strftime('%Y-%m-%d')
@@ -78,7 +80,7 @@ class Application(object):
         self.run_grep()
 
         self.zip_extract()
-        self.zip_extract_csv()
+        self.zip_extract_measures_csv()
         self.zip_extract_commodity_csv()
         self.zip_extract_footnote_csv()
         self.zip_extract_certificate_csv()
@@ -1038,7 +1040,7 @@ class Application(object):
     def create_email_message(self):
         self.html_content = """
         <p style="color:#000">Dear all,</p>
-        <p style="color:#000">The following data files are available for download, representing tariff data for <b>{6}</b>:</p>
+        <p style="color:#000">The following data files are available for download, representing tariff data for <b>{7}</b>:</p>
         <p style="color:#000">Changes in this issue are as follows:</p>
         <ul>
             <li>Change 1</li>
@@ -1052,34 +1054,39 @@ class Application(object):
                 <th style="text-align:left;padding:3px 3px">File</th>
             </tr>
             <tr>
-                <td style="padding:3px 0px">Electronic Tariff File (ICL VME format)</td>
+                <td style="padding:3px 0px">Electronic Tariff File (ICL VME format) - 7-Zip</td>
                 <td style="padding:3px 3px">{0}</td>
             </tr>
             <tr>
-                <td style="padding:3px 0px">Measures, as applied to commodity codes (CSV)</td>
+                <td style="padding:3px 0px">Electronic Tariff File (ICL VME format) - Zip</td>
                 <td style="padding:3px 3px">{1}</td>
             </tr>
             <tr>
-                <td style="padding:3px 0px">Commodities</td>
+                <td style="padding:3px 0px">Measures, as applied to commodity codes (CSV)</td>
                 <td style="padding:3px 3px">{2}</td>
             </tr>
             <tr>
-                <td style="padding:3px 0px">Footnotes</td>
+                <td style="padding:3px 0px">Commodities</td>
                 <td style="padding:3px 3px">{3}</td>
             </tr>
             <tr>
-                <td style="padding:3px 0px">Certificates</td>
+                <td style="padding:3px 0px">Footnotes</td>
                 <td style="padding:3px 3px">{4}</td>
             </tr>
             <tr>
-                <td style="padding:3px 0px">Quotas</td>
+                <td style="padding:3px 0px">Certificates</td>
                 <td style="padding:3px 3px">{5}</td>
+            </tr>
+            <tr>
+                <td style="padding:3px 0px">Quotas</td>
+                <td style="padding:3px 3px">{6}</td>
             </tr>
         </table>
         
         <p style="color:#000">Thank you,</p>
         <p style="color:#000">The Online Tariff Team.</p>""".format(
             self.bucket_url + self.aws_path_icl_vme,
+            self.bucket_url + self.aws_path_icl_vme_zip,
             self.bucket_url + self.aws_path_measures_csv,
             self.bucket_url + self.aws_path_commodities_csv,
             self.bucket_url + self.aws_path_footnotes_csv,
@@ -1093,100 +1100,99 @@ class Application(object):
         s = SendgridMailer(subject, self.html_content)
         s.send()
 
+    def load_to_aws(self, msg, file, aws_path):
+        if self.write_to_aws == 1:
+            print(msg)
+            bucket = AwsBucket()
+            bucket.upload_file(file, aws_path)
+
     def zip_extract(self):
-        self.zipfile = self.filepath.replace(".txt", ".7z")
+        # Write the 7Zip file
+        self.seven_zipfile = self.filepath.replace(".txt", ".7z")
         try:
-            os.remove(self.zipfile)
+            os.remove(self.seven_zipfile)
         except:
             pass
         if self.use_password == 1:
-            with py7zr.SevenZipFile(self.zipfile, 'w', password=self.password) as archive:
+            with py7zr.SevenZipFile(self.seven_zipfile, 'w', password=self.password) as archive:
                 archive.write(self.filepath, self.filename)
+
         else:
-            with py7zr.SevenZipFile(self.zipfile, 'w') as archive:
+            with py7zr.SevenZipFile(self.seven_zipfile, 'w') as archive:
                 archive.write(self.filepath, self.filename)
 
-        # Load ICL VME file to AWS
-        print("Loading ICL VME file to AWS bucket")
-        self.aws_path_icl_vme = os.path.join(self.scope, "icl_vme", self.filename.replace(".txt", ".7z"))
-        bucket = AwsBucket()
-        bucket.upload_file(self.zipfile, self.aws_path_icl_vme)
+        # Write the Zip file (not 7z) - as per request from client (Landmark Global)
+        self.zip_zipfile = self.filepath.replace(".txt", ".zip")
+        zipObj = ZipFile(self.zip_zipfile, 'w')
+        zipObj.write(self.filepath, os.path.basename(self.filepath))
+        zipObj.close()
 
-    def zip_extract_csv(self):
-        self.zipfile = self.filepath_csv.replace(".csv", ".7z")
+        self.aws_path_icl_vme = os.path.join(self.scope, "icl_vme", self.filename.replace(".txt", ".7z"))
+        self.load_to_aws("Loading ICL VME file to AWS bucket (7z)", self.seven_zipfile, self.aws_path_icl_vme)
+
+        self.aws_path_icl_vme_zip = os.path.join(self.scope, "icl_vme_zip", self.filename.replace(".txt", ".zip"))
+        self.load_to_aws("Loading ICL VME file to AWS bucket (ZIP)", self.zip_zipfile, self.aws_path_icl_vme_zip)
+        
+    def zip_extract_measures_csv(self):
+        self.seven_zipfile = self.filepath_csv.replace(".csv", ".7z")
         try:
-            os.remove(self.zipfile)
+            os.remove(self.seven_zipfile)
         except:
             pass
-        with py7zr.SevenZipFile(self.zipfile, 'w') as archive:
+        with py7zr.SevenZipFile(self.seven_zipfile, 'w') as archive:
             archive.write(self.filepath_csv, self.filename_csv)
 
-        # Load measures CSV to AWS
-        print("Loading measures CSV to AWS bucket")
         self.aws_path_measures_csv = os.path.join(self.scope, "csv", self.filename_csv.replace(".csv", ".7z"))
-        bucket = AwsBucket()
-        bucket.upload_file(self.zipfile, self.aws_path_measures_csv)
+        self.load_to_aws("Loading measures CSV file to AWS bucket", self.seven_zipfile, self.aws_path_measures_csv)
 
     def zip_extract_commodity_csv(self):
-        self.zipfile = self.commodity_filepath_csv.replace(".csv", ".7z")
+        self.seven_zipfile = self.commodity_filepath_csv.replace(".csv", ".7z")
         try:
-            os.remove(self.zipfile)
+            os.remove(self.seven_zipfile)
         except:
             pass
-        with py7zr.SevenZipFile(self.zipfile, 'w') as archive:
+        with py7zr.SevenZipFile(self.seven_zipfile, 'w') as archive:
             archive.write(self.commodity_filepath_csv, self.commodity_filename_csv)
 
-        # Load commodity CSV to AWS
-        print("Loading commodity CSV to AWS bucket")
         self.aws_path_commodities_csv = os.path.join(self.scope, "csv", self.commodity_filename_csv.replace(".csv", ".7z"))
-        bucket = AwsBucket()
-        bucket.upload_file(self.zipfile, self.aws_path_commodities_csv)
+        self.load_to_aws("Loading commodity CSV file to AWS bucket", self.seven_zipfile, self.aws_path_commodities_csv)
 
     def zip_extract_footnote_csv(self):
-        self.zipfile = self.footnote_filepath_csv.replace(".csv", ".7z")
+        self.seven_zipfile = self.footnote_filepath_csv.replace(".csv", ".7z")
         try:
-            os.remove(self.zipfile)
+            os.remove(self.seven_zipfile)
         except:
             pass
-        with py7zr.SevenZipFile(self.zipfile, 'w') as archive:
+        with py7zr.SevenZipFile(self.seven_zipfile, 'w') as archive:
             archive.write(self.footnote_filepath_csv,
                           self.footnote_filename_csv)
 
-        # Load footnote CSV to AWS
-        print("Loading footnote CSV to AWS bucket")
         self.aws_path_footnotes_csv = os.path.join(self.scope, "csv", self.footnote_filename_csv.replace(".csv", ".7z"))
-        bucket = AwsBucket()
-        bucket.upload_file(self.zipfile, self.aws_path_footnotes_csv)
+        self.load_to_aws("Loading footnote CSV file to AWS bucket", self.seven_zipfile, self.aws_path_footnotes_csv)
 
     def zip_extract_certificate_csv(self):
-        self.zipfile = self.certificate_filepath_csv.replace(".csv", ".7z")
+        self.seven_zipfile = self.certificate_filepath_csv.replace(".csv", ".7z")
         try:
-            os.remove(self.zipfile)
+            os.remove(self.seven_zipfile)
         except:
             pass
-        with py7zr.SevenZipFile(self.zipfile, 'w') as archive:
+        with py7zr.SevenZipFile(self.seven_zipfile, 'w') as archive:
             archive.write(self.certificate_filepath_csv, self.certificate_filename_csv)
 
-        # Load certificate CSV to AWS
-        print("Loading certificate CSV to AWS bucket")
         self.aws_path_certificates_csv = os.path.join(self.scope, "csv", self.certificate_filename_csv.replace(".csv", ".7z"))
-        bucket = AwsBucket()
-        bucket.upload_file(self.zipfile, self.aws_path_certificates_csv)
+        self.load_to_aws("Loading certificate CSV file to AWS bucket", self.seven_zipfile, self.aws_path_certificates_csv)
 
     def zip_extract_quota_csv(self):
-        self.zipfile = self.quota_filepath_csv.replace(".csv", ".7z")
+        self.seven_zipfile = self.quota_filepath_csv.replace(".csv", ".7z")
         try:
-            os.remove(self.zipfile)
+            os.remove(self.seven_zipfile)
         except:
             pass
-        with py7zr.SevenZipFile(self.zipfile, 'w') as archive:
+        with py7zr.SevenZipFile(self.seven_zipfile, 'w') as archive:
             archive.write(self.quota_filepath_csv, self.quota_filename_csv)
 
-        # Load quota CSV to AWS
-        print("Loading quota CSV to AWS bucket")
         self.aws_path_quotas_csv = os.path.join(self.scope, "csv", self.quota_filename_csv.replace(".csv", ".7z"))
-        bucket = AwsBucket()
-        bucket.upload_file(self.zipfile, self.aws_path_quotas_csv)
+        self.load_to_aws("Loading quota CSV file to AWS bucket", self.seven_zipfile, self.aws_path_quotas_csv)
 
     def get_commodity_footnotes(self):
         print("Getting commodity-level footnote associations")
