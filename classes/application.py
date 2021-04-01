@@ -18,6 +18,7 @@ from classes.enums import CommonString
 from classes.functions import functions as f
 from classes.aws_bucket import AwsBucket
 from classes.sendgrid_mailer import SendgridMailer
+from classes.zipper import Zipper
 
 
 from classes_gen.database import Database
@@ -49,15 +50,10 @@ class Application(object):
         self.WRITE_MEASURES = int(os.getenv('WRITE_MEASURES'))
         self.WRITE_ADDITIONAL_CODES = int(os.getenv('WRITE_ADDITIONAL_CODES'))
         self.WRITE_FOOTNOTES = int(os.getenv('WRITE_FOOTNOTES'))
-        self.password = os.getenv('PASSWORD')
-        self.use_password = int(os.getenv('USE_PASSWORD'))
-        self.write_to_aws = int(os.getenv('WRITE_TO_AWS'))
 
         d = datetime.now()
         self.SNAPSHOT_DATE = d.strftime('%Y-%m-%d')
-        a_week = timedelta(days = 7)
-        # self.COMPARISON_DATE = datetime.strptime(os.getenv('COMPARISON_DATE'), '%Y-%m-%d')
-        self.COMPARISON_DATE = d - a_week
+        self.COMPARISON_DATE = d - timedelta(days = 7)
 
         self.mfns = {}
         self.get_scope()
@@ -79,12 +75,12 @@ class Application(object):
         self.close_extract()
         self.run_grep()
 
-        self.zip_extract()
-        self.zip_extract_measures_csv()
-        self.zip_extract_commodity_csv()
-        self.zip_extract_footnote_csv()
-        self.zip_extract_certificate_csv()
-        self.zip_extract_quota_csv()
+        self.zip_and_upload()
+        # self.zip_extract_measures_csv()
+        # self.zip_extract_commodity_csv()
+        # self.zip_extract_footnote_csv()
+        # self.zip_extract_certificate_csv()
+        # self.zip_extract_quota_csv()
         self.create_email_message()
         self.send_email_message()
 
@@ -92,7 +88,7 @@ class Application(object):
         print("Starting measure count")
         self.measure_count = 0
         self.measure_exception_count = 0
-        with open(self.filepath) as fp:
+        with open(self.filepath_icl_vme) as fp:
             line = fp.readline()
             while line:
                 if line[0:2] == "ME":
@@ -109,7 +105,7 @@ class Application(object):
         self.TOTAL_RECORD_COUNT += self.measure_count
         self.TOTAL_RECORD_COUNT += self.measure_exception_count
 
-        path = Path(self.filepath)
+        path = Path(self.filepath_icl_vme)
         text = path.read_text()
         text = text.replace("ME_RECORD_COUNT", str(
             self.measure_count).rjust(7, "0"))
@@ -947,6 +943,8 @@ class Application(object):
         self.data_in_folder = os.path.join(self.data_folder, "in")
         self.data_out_folder = os.path.join(self.data_folder, "out")
         self.export_folder = os.path.join(self.current_folder, "_export")
+        self.documentation_folder = os.path.join(self.current_folder, "documentation")
+        self.documentation_file = os.path.join(self.documentation_folder, "Documentation on new tariff data formats.docx")
 
         # Make the date-specific folder
         date_time_obj = datetime.strptime(self.SNAPSHOT_DATE, '%Y-%m-%d')
@@ -978,8 +976,8 @@ class Application(object):
                 "-" + self.month + "-" + self.year + ".txt"
 
         # Work out the path to the ICL VME extract
-        self.filepath = os.path.join(self.icl_vme_folder, self.filename)
-        self.extract_file = open(self.filepath, "w+")
+        self.filepath_icl_vme = os.path.join(self.icl_vme_folder, self.filename)
+        self.extract_file = open(self.filepath_icl_vme, "w+")
 
         # Work out the path to the measures CSV extract
         self.filename_csv = self.filename.replace(".txt", ".csv")
@@ -1040,7 +1038,7 @@ class Application(object):
     def create_email_message(self):
         self.html_content = """
         <p style="color:#000">Dear all,</p>
-        <p style="color:#000">The following data files are available for download, representing tariff data for <b>{7}</b>:</p>
+        <p style="color:#000">The following data files are available for download, representing tariff data for <b>{0}</b>:</p>
         <p style="color:#000">Changes in this issue are as follows:</p>
         <ul>
             <li>Change 1</li>
@@ -1048,17 +1046,50 @@ class Application(object):
             <li>Change 3</li>
             <li>Change 4</li>
         </ul>
+        <p style="color:#000"><b>Files compressed using ZIP compression</b>:</p>
         <table cellspacing="0">
             <tr>
                 <th style="text-align:left;padding:3px 0px">Description</th>
                 <th style="text-align:left;padding:3px 3px">File</th>
             </tr>
             <tr>
-                <td style="padding:3px 0px">Electronic Tariff File (ICL VME format) - 7-Zip</td>
-                <td style="padding:3px 3px">{0}</td>
+                <td style="padding:3px 0px">Electronic Tariff File (ICL VME format)</td>
+                <td style="padding:3px 3px">{8}</td>
             </tr>
             <tr>
-                <td style="padding:3px 0px">Electronic Tariff File (ICL VME format) - Zip</td>
+                <td style="padding:3px 0px">Measures, as applied to commodity codes (CSV)</td>
+                <td style="padding:3px 3px">{9}</td>
+            </tr>
+            <tr>
+                <td style="padding:3px 0px">Commodities</td>
+                <td style="padding:3px 3px">{10}</td>
+            </tr>
+            <tr>
+                <td style="padding:3px 0px">Footnotes</td>
+                <td style="padding:3px 3px">{11}</td>
+            </tr>
+            <tr>
+                <td style="padding:3px 0px">Certificates</td>
+                <td style="padding:3px 3px">{12}</td>
+            </tr>
+            <tr>
+                <td style="padding:3px 0px">Quotas</td>
+                <td style="padding:3px 3px">{13}</td>
+            </tr>
+            <tr>
+                <td style="padding:3px 0px">Geographical areas</td>
+                <td style="padding:3px 3px">{14}</td>
+            </tr>
+        </table>
+        
+        <br><br><p style="color:#000"><b>Files compressed using 7z compression</b>:</p>
+        <table cellspacing="0">
+            <tr>
+                <th style="text-align:left;padding:3px 0px">Description</th>
+                <th style="text-align:left;padding:3px 3px">File</th>
+            </tr>
+            <tr>
+                <td style="padding:3px 0px">Electronic Tariff File (ICL VME format)</td>
                 <td style="padding:3px 3px">{1}</td>
             </tr>
             <tr>
@@ -1081,23 +1112,36 @@ class Application(object):
                 <td style="padding:3px 0px">Quotas</td>
                 <td style="padding:3px 3px">{6}</td>
             </tr>
+            <tr>
+                <td style="padding:3px 0px">Geographical areas</td>
+                <td style="padding:3px 3px">{7}</td>
+            </tr>
         </table>
+        
+
         
         <p style="color:#000">Thank you,</p>
         <p style="color:#000">The Online Tariff Team.</p>""".format(
-            self.bucket_url + self.aws_path_icl_vme,
-            self.bucket_url + self.aws_path_icl_vme_zip,
-            self.bucket_url + self.aws_path_measures_csv,
-            self.bucket_url + self.aws_path_commodities_csv,
-            self.bucket_url + self.aws_path_footnotes_csv,
-            self.bucket_url + self.aws_path_certificates_csv,
-            self.bucket_url + self.aws_path_quotas_csv,
-            self.SNAPSHOT_DATE
+            self.SNAPSHOT_DATE,
+            self.bucket_url + self.aws_path_icl_vme_tuple[0],
+            self.bucket_url + self.aws_path_measures_csv_tuple[0],
+            self.bucket_url + self.aws_path_commodities_csv_tuple[0],
+            self.bucket_url + self.aws_path_footnotes_csv_tuple[0],
+            self.bucket_url + self.aws_path_certificates_csv_tuple[0],
+            self.bucket_url + self.aws_path_quotas_csv_tuple[0],
+            self.bucket_url + self.aws_path_geographical_areas_csv_tuple[0],
+            self.bucket_url + self.aws_path_icl_vme_tuple[1],
+            self.bucket_url + self.aws_path_measures_csv_tuple[1],
+            self.bucket_url + self.aws_path_commodities_csv_tuple[1],
+            self.bucket_url + self.aws_path_footnotes_csv_tuple[1],
+            self.bucket_url + self.aws_path_certificates_csv_tuple[1],
+            self.bucket_url + self.aws_path_quotas_csv_tuple[1],
+            self.bucket_url + self.aws_path_geographical_areas_csv_tuple[1]
         )
 
     def send_email_message(self):
         subject = "Issue of updated HMRC Electronic Tariff File for " + self.SNAPSHOT_DATE
-        s = SendgridMailer(subject, self.html_content)
+        s = SendgridMailer(subject, self.html_content, self.documentation_file)
         s.send()
 
     def load_to_aws(self, msg, file, aws_path):
@@ -1106,93 +1150,14 @@ class Application(object):
             bucket = AwsBucket()
             bucket.upload_file(file, aws_path)
 
-    def zip_extract(self):
-        # Write the 7Zip file
-        self.seven_zipfile = self.filepath.replace(".txt", ".7z")
-        try:
-            os.remove(self.seven_zipfile)
-        except:
-            pass
-        if self.use_password == 1:
-            with py7zr.SevenZipFile(self.seven_zipfile, 'w', password=self.password) as archive:
-                archive.write(self.filepath, self.filename)
-
-        else:
-            with py7zr.SevenZipFile(self.seven_zipfile, 'w') as archive:
-                archive.write(self.filepath, self.filename)
-
-        # Write the Zip file (not 7z) - as per request from client (Landmark Global)
-        self.zip_zipfile = self.filepath.replace(".txt", ".zip")
-        zipObj = ZipFile(self.zip_zipfile, 'w')
-        zipObj.write(self.filepath, os.path.basename(self.filepath))
-        zipObj.close()
-
-        self.aws_path_icl_vme = os.path.join(self.scope, "icl_vme", self.filename.replace(".txt", ".7z"))
-        self.load_to_aws("Loading ICL VME file to AWS bucket (7z)", self.seven_zipfile, self.aws_path_icl_vme)
-
-        self.aws_path_icl_vme_zip = os.path.join(self.scope, "icl_vme_zip", self.filename.replace(".txt", ".zip"))
-        self.load_to_aws("Loading ICL VME file to AWS bucket (ZIP)", self.zip_zipfile, self.aws_path_icl_vme_zip)
-        
-    def zip_extract_measures_csv(self):
-        self.seven_zipfile = self.filepath_csv.replace(".csv", ".7z")
-        try:
-            os.remove(self.seven_zipfile)
-        except:
-            pass
-        with py7zr.SevenZipFile(self.seven_zipfile, 'w') as archive:
-            archive.write(self.filepath_csv, self.filename_csv)
-
-        self.aws_path_measures_csv = os.path.join(self.scope, "csv", self.filename_csv.replace(".csv", ".7z"))
-        self.load_to_aws("Loading measures CSV file to AWS bucket", self.seven_zipfile, self.aws_path_measures_csv)
-
-    def zip_extract_commodity_csv(self):
-        self.seven_zipfile = self.commodity_filepath_csv.replace(".csv", ".7z")
-        try:
-            os.remove(self.seven_zipfile)
-        except:
-            pass
-        with py7zr.SevenZipFile(self.seven_zipfile, 'w') as archive:
-            archive.write(self.commodity_filepath_csv, self.commodity_filename_csv)
-
-        self.aws_path_commodities_csv = os.path.join(self.scope, "csv", self.commodity_filename_csv.replace(".csv", ".7z"))
-        self.load_to_aws("Loading commodity CSV file to AWS bucket", self.seven_zipfile, self.aws_path_commodities_csv)
-
-    def zip_extract_footnote_csv(self):
-        self.seven_zipfile = self.footnote_filepath_csv.replace(".csv", ".7z")
-        try:
-            os.remove(self.seven_zipfile)
-        except:
-            pass
-        with py7zr.SevenZipFile(self.seven_zipfile, 'w') as archive:
-            archive.write(self.footnote_filepath_csv,
-                          self.footnote_filename_csv)
-
-        self.aws_path_footnotes_csv = os.path.join(self.scope, "csv", self.footnote_filename_csv.replace(".csv", ".7z"))
-        self.load_to_aws("Loading footnote CSV file to AWS bucket", self.seven_zipfile, self.aws_path_footnotes_csv)
-
-    def zip_extract_certificate_csv(self):
-        self.seven_zipfile = self.certificate_filepath_csv.replace(".csv", ".7z")
-        try:
-            os.remove(self.seven_zipfile)
-        except:
-            pass
-        with py7zr.SevenZipFile(self.seven_zipfile, 'w') as archive:
-            archive.write(self.certificate_filepath_csv, self.certificate_filename_csv)
-
-        self.aws_path_certificates_csv = os.path.join(self.scope, "csv", self.certificate_filename_csv.replace(".csv", ".7z"))
-        self.load_to_aws("Loading certificate CSV file to AWS bucket", self.seven_zipfile, self.aws_path_certificates_csv)
-
-    def zip_extract_quota_csv(self):
-        self.seven_zipfile = self.quota_filepath_csv.replace(".csv", ".7z")
-        try:
-            os.remove(self.seven_zipfile)
-        except:
-            pass
-        with py7zr.SevenZipFile(self.seven_zipfile, 'w') as archive:
-            archive.write(self.quota_filepath_csv, self.quota_filename_csv)
-
-        self.aws_path_quotas_csv = os.path.join(self.scope, "csv", self.quota_filename_csv.replace(".csv", ".7z"))
-        self.load_to_aws("Loading quota CSV file to AWS bucket", self.seven_zipfile, self.aws_path_quotas_csv)
+    def zip_and_upload(self):
+        self.aws_path_icl_vme_tuple = Zipper(self.filepath_icl_vme, self.scope, "icl_vme", "ICL VME file").compress()
+        self.aws_path_measures_csv_tuple = Zipper(self.filepath_csv, self.scope, "csv", "Measures CSV").compress()
+        self.aws_path_commodities_csv_tuple = Zipper(self.commodity_filepath_csv, self.scope, "csv", "Commodities CSV").compress()
+        self.aws_path_footnotes_csv_tuple = Zipper(self.footnote_filepath_csv, self.scope, "csv", "Footnotes CSV").compress()
+        self.aws_path_certificates_csv_tuple = Zipper(self.certificate_filepath_csv, self.scope, "csv", "Certificates CSV").compress()
+        self.aws_path_quotas_csv_tuple = Zipper(self.quota_filepath_csv, self.scope, "csv", "Quotas CSV").compress()
+        self.aws_path_geographical_areas_csv_tuple = Zipper(self.geography_filepath_csv, self.scope, "csv", "Geographical areas CSV").compress()
 
     def get_commodity_footnotes(self):
         print("Getting commodity-level footnote associations")

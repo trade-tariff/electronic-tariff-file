@@ -1,5 +1,6 @@
 import os
 import py7zr
+import zipfile
 
 from classes.aws_bucket import AwsBucket
 
@@ -19,6 +20,22 @@ def test_aws():
     bucket = AwsBucket()
     bucket.upload_file("requirements.txt", "requirements.txt")
     pass
-        
-test_aws()
+    
+
+def create_zip_archive():
+    # Create the archive in ZIP format
+    archive = "test.zip"
+    arc = "changed.txt"
+    # self.base_filename = os.path.basename(self.source_filename)
+    # self.archive_base_filename = os.path.basename(self.archive)
+    
+    zipObj = zipfile.ZipFile(archive, 'w')
+    compression = zipfile.ZIP_DEFLATED
+    zipObj.write(archive, arcname=arc) #, compress_type=compression)
+    # zipObj.write(self.base_filename, compress_type=compression)
+    zipObj.close()
+
+    
+# test_aws()
 # zip_extract_commodity_csv()
+create_zip_archive()
