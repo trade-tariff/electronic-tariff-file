@@ -219,8 +219,6 @@ class Application(object):
             for loop in range(0, commodity_count - 1):
                 commodity = self.commodities[loop]
                 if commodity.pseudo_line == True:
-                    if commodity.COMMODITY_CODE == "9702000000":
-                        a = 1
                     for loop2 in range(loop + 1, commodity_count - 1):
                         commodity2 = self.commodities[loop2]
                         if commodity.COMMODITY_CODE[0:4] != commodity2.COMMODITY_CODE[0:4]:
@@ -230,8 +228,6 @@ class Application(object):
                         for item in commodity2.hierarchy:
                             if item.COMMODITY_CODE == commodity.COMMODITY_CODE:
                                 for m in commodity2.measures:
-                                    if m.measure_sid == -440410:
-                                        a = 1
                                     inheritable_measure_types = [
                                         "103", "105", "305", "306"]
                                     if m.measure_type_id in inheritable_measure_types:
@@ -945,6 +941,7 @@ class Application(object):
         self.export_folder = os.path.join(self.current_folder, "_export")
         self.documentation_folder = os.path.join(self.current_folder, "documentation")
         self.documentation_file = os.path.join(self.documentation_folder, "Documentation on new tariff data formats.docx")
+        self.correlation_file = os.path.join(self.documentation_folder, "Ascii file and CDS measure type correlation table 1.0.docx")
 
         # Make the date-specific folder
         date_time_obj = datetime.strptime(self.SNAPSHOT_DATE, '%Y-%m-%d')
@@ -969,11 +966,11 @@ class Application(object):
 
     def open_extract(self):
         if CommonString.divider == "|":
-            self.filename = "hmrc-tariff-ascii-" + self.day + \
-                "-" + self.month + "-" + self.year + "-piped.txt"
+            # self.filename = "hmrc-tariff-ascii-" + self.day + "-" + self.month + "-" + self.year + "-piped.txt"
+            self.filename = "hmrc-tariff-ascii-" + self.SNAPSHOT_DATE + "-piped.txt"
         else:
-            self.filename = "hmrc-tariff-ascii-" + self.day + \
-                "-" + self.month + "-" + self.year + ".txt"
+            # self.filename = "hmrc-tariff-ascii-" + self.day + "-" + self.month + "-" + self.year + ".txt"
+            self.filename = "hmrc-tariff-ascii-" + self.SNAPSHOT_DATE + ".txt"
 
         # Work out the path to the ICL VME extract
         self.filepath_icl_vme = os.path.join(self.icl_vme_folder, self.filename)
@@ -1046,6 +1043,13 @@ class Application(object):
             <li>Change 3</li>
             <li>Change 4</li>
         </ul>
+        
+        <p style="color:#000">Two files are attached to this email, as follows:</p>
+        <ul>
+            <li>Documentation on the attached CSV formats</li>
+            <li>ASCII file and CDS measure type correlation table</li>
+        </ul>
+
         <p style="color:#000"><b>Files compressed using ZIP compression</b>:</p>
         <table cellspacing="0">
             <tr>
@@ -1141,7 +1145,11 @@ class Application(object):
 
     def send_email_message(self):
         subject = "Issue of updated HMRC Electronic Tariff File for " + self.SNAPSHOT_DATE
-        s = SendgridMailer(subject, self.html_content, self.documentation_file)
+        attachment_list = [
+            self.documentation_file,
+            self.correlation_file
+        ]
+        s = SendgridMailer(subject, self.html_content, attachment_list) # self.documentation_file)
         s.send()
 
     def load_to_aws(self, msg, file, aws_path):
