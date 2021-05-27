@@ -3,6 +3,7 @@ boto3==1.17.29
 botocore==1.20.29
 cffi==1.14.4
 jmespath==0.10.0
+MonthDelta==0.9.1
 multivolumefile==0.1.2
 pathlib2==2.3.5
 ppmd-cffi==0.3.2
@@ -11,6 +12,7 @@ py7zr==0.12.0
 pycodestyle==2.6.0
 pycparser==2.20
 pycryptodome==3.9.9
+pyminizip==0.2.4
 python-dateutil==2.8.1
 python-dotenv==0.15.0
 python-http-client==3.3.2

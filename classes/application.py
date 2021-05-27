@@ -19,6 +19,8 @@ from classes.functions import functions as f
 from classes.aws_bucket import AwsBucket
 from classes.sendgrid_mailer import SendgridMailer
 from classes.zipper import Zipper
+from classes.delta import Delta
+
 
 
 from classes_gen.database import Database
@@ -75,12 +77,15 @@ class Application(object):
         self.close_extract()
         self.run_grep()
 
+        self.create_delta()
+        
         self.zip_and_upload()
         # self.zip_extract_measures_csv()
         # self.zip_extract_commodity_csv()
         # self.zip_extract_footnote_csv()
         # self.zip_extract_certificate_csv()
         # self.zip_extract_quota_csv()
+        
         self.create_email_message()
         self.send_email_message()
 
@@ -961,8 +966,11 @@ class Application(object):
         # Finally, make the destination folders
         self.icl_vme_folder = os.path.join(self.scope_folder, "icl_vme")
         self.csv_folder = os.path.join(self.scope_folder, "csv")
+        self.delta_folder = os.path.join(self.scope_folder, "delta")
+        
         os.makedirs(self.icl_vme_folder, exist_ok=True)
         os.makedirs(self.csv_folder, exist_ok=True)
+        os.makedirs(self.delta_folder, exist_ok=True)
 
     def open_extract(self):
         if CommonString.divider == "|":
@@ -1036,15 +1044,24 @@ class Application(object):
         self.html_content = """
         <p style="color:#000">Dear all,</p>
         <p style="color:#000">The following data files are available for download, representing tariff data for <b>{0}</b>:</p>
-        <p style="color:#000">Changes in this issue are as follows:</p>
-        <ul>
-            <li>Change 1</li>
-            <li>Change 2</li>
-            <li>Change 3</li>
-            <li>Change 4</li>
-        </ul>
+        <p style="color:#000">Changes in this issue are as listed in the relevant links, as follows:</p>
+
+        <table cellspacing="0">
+            <tr>
+                <th style="text-align:left;padding:3px 0px">Description</th>
+                <th style="text-align:left;padding:3px 3px">File</th>
+            </tr>
+            <tr>
+                <td style="padding:3px 0px">Commodity changes</td>
+                <td style="padding:3px 3px">{15}</td>
+            </tr>
+            <tr>
+                <td style="padding:3px 0px">Measure changes</td>
+                <td style="padding:3px 3px">{16}</td>
+            </tr>
+        </table>
         
-        <p style="color:#000">Two files are attached to this email, as follows:</p>
+        <p style="color:#000">Two additional files are attached to this email, as follows:</p>
         <ul>
             <li>Documentation on the attached CSV formats</li>
             <li>ASCII file and CDS measure type correlation table</li>
@@ -1140,7 +1157,9 @@ class Application(object):
             self.bucket_url + self.aws_path_footnotes_csv_tuple[1],
             self.bucket_url + self.aws_path_certificates_csv_tuple[1],
             self.bucket_url + self.aws_path_quotas_csv_tuple[1],
-            self.bucket_url + self.aws_path_geographical_areas_csv_tuple[1]
+            self.bucket_url + self.aws_path_geographical_areas_csv_tuple[1],
+            self.bucket_url + self.aws_path_commodities_delta_tuple[1],
+            self.bucket_url + self.aws_path_measures_delta_tuple[1]
         )
 
     def send_email_message(self):
@@ -1166,6 +1185,10 @@ class Application(object):
         self.aws_path_certificates_csv_tuple = Zipper(self.certificate_filepath_csv, self.scope, "csv", "Certificates CSV").compress()
         self.aws_path_quotas_csv_tuple = Zipper(self.quota_filepath_csv, self.scope, "csv", "Quotas CSV").compress()
         self.aws_path_geographical_areas_csv_tuple = Zipper(self.geography_filepath_csv, self.scope, "csv", "Geographical areas CSV").compress()
+        
+        # Delta description files
+        self.aws_path_commodities_delta_tuple = Zipper(self.delta.commodities_filename, self.scope, "delta", "Changes to commodity codes").compress()
+        self.aws_path_measures_delta_tuple = Zipper(self.delta.measures_filename, self.scope, "delta", "Changes to measures").compress()
 
     def get_commodity_footnotes(self):
         print("Getting commodity-level footnote associations")
@@ -1516,3 +1539,8 @@ class Application(object):
                     geographical_area = GeographicalArea(
                         row[0], row[1], row[2])
                     self.geographical_areas.append(geographical_area)
+
+    def create_delta(self):
+        self.change_date = self.SNAPSHOT_DATE
+        self.change_period = "week"
+        self.delta = Delta()
