@@ -1,12 +1,12 @@
 import os
 import py7zr
-# from zipfile import ZipFile
 import zipfile
 import zlib
 import pyminizip
 from dotenv import load_dotenv
-
 from classes.aws_bucket import AwsBucket
+
+import classes.globals as g
 
 
 class Zipper(object):
@@ -18,7 +18,10 @@ class Zipper(object):
         self.create_zip = int(os.getenv('CREATE_ZIP'))
         self.use_password = int(os.getenv('USE_PASSWORD'))
         self.password = os.getenv('PASSWORD')
-        self.write_to_aws = int(os.getenv('WRITE_TO_AWS'))
+        if g.app.start != 0 or g.app.end != 10:
+            self.write_to_aws = False
+        else:
+            self.write_to_aws = int(os.getenv('WRITE_TO_AWS'))
         self.compress_level = 9
         
         self.scope = scope
