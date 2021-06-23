@@ -7,7 +7,7 @@ MonthDelta==0.9.1
 multivolumefile==0.1.2
 pathlib2==2.3.5
 ppmd-cffi==0.3.2
-psycopg2==2.8.6
+psycopg2-binary==2.8.6
 py7zr==0.12.0
 pycodestyle==2.6.0
 pycparser==2.20

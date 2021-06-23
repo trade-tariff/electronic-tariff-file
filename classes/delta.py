@@ -89,7 +89,7 @@ class Delta(object):
 
         self.to_date = datetime.strptime(g.app.change_date, '%Y-%m-%d')
         if (g.app.change_period == "week"):
-            self.from_date = self.to_date - timedelta(days=6)
+            self.from_date = self.to_date - timedelta(days=7)
         elif (g.app.change_period == "month"):
             self.from_date = self.to_date - monthdelta(1)
         else:
