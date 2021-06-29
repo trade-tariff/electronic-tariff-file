@@ -110,6 +110,7 @@ temp/
 .DS_Store
 instructions.md
 data/excel/
+data/explore/
 data/icl_vme/
 data/in/
 data/out/

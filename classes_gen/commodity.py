@@ -43,6 +43,11 @@ class Commodity(object):
         self.additional_code_string = ""
         self.pseudo_line = False
         
+        self.written_ADD = []
+        self.written_ADP = []
+        self.written_CVD = []
+        self.written_CVP = []
+
     def determine_commodity_type(self):
         if self.leaf == 1:
             if self.significant_digits == 10:

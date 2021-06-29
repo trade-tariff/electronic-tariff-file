@@ -300,6 +300,11 @@ class Measure(object):
         self.extract_line += self.DESTINATION_CTY_GRP_CODE + CommonString.divider
         self.extract_line += self.DESTINATION_ADD_CH_TYPE + CommonString.divider
 
+        # Because we are only showing one record for each of these types, we have to mask the rates
+        if self.MEASURE_TYPE_CODE in ("ADD", "ADP", "CVD", "CVP"):
+            for i in range(0, 5):
+                self.rates[i] = '00000000000000000000000'
+
         if override_rates is False:
             self.extract_line += self.rates[0] + CommonString.divider
             self.extract_line += self.rates[1] + CommonString.divider

@@ -22,7 +22,6 @@ from classes.zipper import Zipper
 from classes.delta import Delta
 
 
-
 from classes_gen.database import Database
 from classes_gen.footnote import Footnote
 from classes_gen.certificate import Certificate
@@ -55,7 +54,7 @@ class Application(object):
 
         d = datetime.now()
         self.SNAPSHOT_DATE = d.strftime('%Y-%m-%d')
-        self.COMPARISON_DATE = d - timedelta(days = 7)
+        self.COMPARISON_DATE = d - timedelta(days=7)
 
         self.mfns = {}
         self.get_scope()
@@ -78,14 +77,14 @@ class Application(object):
         self.run_grep()
 
         self.create_delta()
-        
+
         self.zip_and_upload()
         # self.zip_extract_measures_csv()
         # self.zip_extract_commodity_csv()
         # self.zip_extract_footnote_csv()
         # self.zip_extract_certificate_csv()
         # self.zip_extract_quota_csv()
-        
+
         self.create_email_message()
         self.send_email_message()
 
@@ -233,22 +232,16 @@ class Application(object):
                         for item in commodity2.hierarchy:
                             if item.COMMODITY_CODE == commodity.COMMODITY_CODE:
                                 for m in commodity2.measures:
-                                    inheritable_measure_types = [
-                                        "103", "105", "305", "306"]
+                                    inheritable_measure_types = ["103", "105", "305", "306"]
                                     if m.measure_type_id in inheritable_measure_types:
                                         found = False
-                                        if m.measure_type_id == "305":
-                                            a = 1
                                         for m2 in commodity.measures_inherited:
                                             if m2.measure_type_id == m.measure_type_id:
                                                 if m2.additional_code_id == m.additional_code_id:
                                                     found = True
                                                     break
                                         if found is False:
-                                            commodity.measures_inherited.append(
-                                                m)
-
-                                a = 1
+                                            commodity.measures_inherited.append(m)
 
             for commodity in self.commodities:
                 commodity.create_extract_line()
@@ -914,14 +907,49 @@ class Application(object):
                     for measure in commodity.measures_inherited:
                         if measure.measure_type_series_id not in barred_series:
                             if measure.RECORD_TYPE == "MX":
-                                self.measure_exception_count += 1  # measure.line_count
+                                self.measure_exception_count += 1
                             else:
                                 self.measure_count += measure.line_count
-                            self.extract_file.write(measure.extract_line)
+                            
+                            # Write to the ICL VME file
+                            # Only write measures of type CVD and ADD once, not multiple times
+                            skip_write = False
+                            
+                            if measure.MEASURE_TYPE_CODE == "ADD":
+                                if measure.geographical_area_id in commodity.written_ADD:
+                                    skip_write = True
+                            
+                            if measure.MEASURE_TYPE_CODE == "CVD":
+                                if measure.geographical_area_id in commodity.written_CVD:
+                                    skip_write = True
+                            
+                            if measure.MEASURE_TYPE_CODE == "ADP":
+                                if measure.geographical_area_id in commodity.written_ADP:
+                                    skip_write = True
+                            
+                            if measure.MEASURE_TYPE_CODE == "CVP":
+                                if measure.geographical_area_id in commodity.written_CVP:
+                                    skip_write = True
+                            
+                            if not skip_write:
+                                self.extract_file.write(measure.extract_line)
+                            
+                            # Prevent ADD and CVD measure types etc. from being written again
+                            if measure.MEASURE_TYPE_CODE == "ADD":
+                                commodity.written_ADD.append(measure.geographical_area_id)
+
+                            if measure.MEASURE_TYPE_CODE == "CVD":
+                                commodity.written_CVD.append(measure.geographical_area_id)
+
+                            if measure.MEASURE_TYPE_CODE == "ADP":
+                                commodity.written_ADP.append(measure.geographical_area_id)
+
+                            if measure.MEASURE_TYPE_CODE == "CVP":
+                                commodity.written_CVP.append(measure.geographical_area_id)
+
+                            # Write to CSV - all measures get written
                             if measure.extract_line_csv != "":
-                                # self.extract_file_csv.write(CommonString.quote_char + commodity.COMMODITY_CODE + CommonString.quote_char + ",")
-                                self.extract_file_csv.write(
-                                    measure.extract_line_csv)
+                                self.extract_file_csv.write(measure.extract_line_csv)
 
                     self.pipe_pr_measures(commodity.COMMODITY_CODE)
 
@@ -967,7 +995,7 @@ class Application(object):
         self.icl_vme_folder = os.path.join(self.scope_folder, "icl_vme")
         self.csv_folder = os.path.join(self.scope_folder, "csv")
         self.delta_folder = os.path.join(self.scope_folder, "delta")
-        
+
         os.makedirs(self.icl_vme_folder, exist_ok=True)
         os.makedirs(self.csv_folder, exist_ok=True)
         os.makedirs(self.delta_folder, exist_ok=True)
@@ -1168,7 +1196,7 @@ class Application(object):
             self.documentation_file,
             self.correlation_file
         ]
-        s = SendgridMailer(subject, self.html_content, attachment_list) # self.documentation_file)
+        s = SendgridMailer(subject, self.html_content, attachment_list)  # self.documentation_file)
         s.send()
 
     def load_to_aws(self, msg, file, aws_path):
@@ -1185,7 +1213,7 @@ class Application(object):
         self.aws_path_certificates_csv_tuple = Zipper(self.certificate_filepath_csv, self.scope, "csv", "Certificates CSV").compress()
         self.aws_path_quotas_csv_tuple = Zipper(self.quota_filepath_csv, self.scope, "csv", "Quotas CSV").compress()
         self.aws_path_geographical_areas_csv_tuple = Zipper(self.geography_filepath_csv, self.scope, "csv", "Geographical areas CSV").compress()
-        
+
         # Delta description files
         self.aws_path_commodities_delta_tuple = Zipper(self.delta.commodities_filename, self.scope, "delta", "Changes to commodity codes").compress()
         self.aws_path_measures_delta_tuple = Zipper(self.delta.measures_filename, self.scope, "delta", "Changes to measures").compress()
