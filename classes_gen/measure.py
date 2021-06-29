@@ -183,7 +183,7 @@ class Measure(object):
                     self.MEASURE_GROUP_CODE = measure_type.measure_group_code
                     if measure_type.measure_type_code == "PRF": # Preferential measures need to differentiate GSP + others
                         self.found_measure_type = True
-                        if self.geographical_area_id in ('2005', '2029', '2027'):
+                        if self.geographical_area_id in ('2005', '2020', '2027'):
                             self.MEASURE_TYPE_CODE = "101"
                         else:
                             self.MEASURE_TYPE_CODE = "100"
