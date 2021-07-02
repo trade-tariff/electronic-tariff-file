@@ -8,7 +8,7 @@ from zipfile import ZipFile
 from pathlib2 import Path
 
 from dotenv import load_dotenv
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from classes.additional_code_parser import AdditionalCodeParser
 from classes.commodity_parser import CommodityParser
 from classes.footnote_parser import FootnoteParser
@@ -178,8 +178,9 @@ class Application(object):
             self.assign_measure_excluded_geographical_areas()
             self.assign_footnote_association_measures()
             self.create_measure_duties()
-
+            
             iteration = str(i) + "%"
+            self.get_recent_descriptions(str(i))
             sql = "select * from utils.goods_nomenclature_export_new('" + \
                 iteration + "', '" + self.SNAPSHOT_DATE + "') order by 2, 3"
             d = Database()
@@ -204,8 +205,7 @@ class Application(object):
 
             self.assign_measures()
 
-            if self.WRITE_FOOTNOTES == 1:
-                self.assign_commodity_footnotes()
+            self.assign_commodity_footnotes()
             self.build_commodity_hierarchy()
 
             for commodity in self.commodities:
@@ -251,6 +251,26 @@ class Application(object):
             print(f"Ran in {toc - tic:0.2f} seconds")
 
         self.write_commodity_footer()
+        
+    def get_recent_descriptions(self, iteration):
+        self.descriptions = []
+        sql = """
+        select goods_nomenclature_item_id, validity_start_date 
+        from goods_nomenclature_description_periods gndp
+        where productline_suffix = '80'
+        and left(goods_nomenclature_item_id, 1) = %s
+        and validity_start_date >= '2021-01-01'
+        order by 1;
+        """
+        params = [
+            iteration
+        ]
+        d = Database()
+        rows = d.run_query(sql, params)
+        if len(rows) > 0:
+            self.descriptions = rows
+        a = 1
+
 
     def categorise_and_sort_measures(self):
         # Used to set a priority precedence for the measures that appear in
@@ -872,24 +892,18 @@ class Application(object):
         for commodity in self.commodities:
             commodity_string = ""
             commodity_string += str(commodity.goods_nomenclature_sid) + ","
-            commodity_string += CommonString.quote_char + \
-                commodity.COMMODITY_CODE + CommonString.quote_char + ","
-            commodity_string += CommonString.quote_char + \
-                commodity.productline_suffix + CommonString.quote_char + ","
+            commodity_string += CommonString.quote_char + commodity.COMMODITY_CODE + CommonString.quote_char + ","
+            commodity_string += CommonString.quote_char + commodity.productline_suffix + CommonString.quote_char + ","
             commodity_string += commodity.validity_start_date.strftime(
                 '%Y-%m-%d') + ","
             if commodity.validity_end_date is None:
                 commodity_string += ","
             else:
-                commodity_string += commodity.validity_end_date.strftime(
-                    '%Y-%m-%d') + ","
-            commodity_string += CommonString.quote_char + \
-                commodity.description_csv + CommonString.quote_char + ","
+                commodity_string += commodity.validity_end_date.strftime('%Y-%m-%d') + ","
+            commodity_string += CommonString.quote_char + commodity.description_csv + CommonString.quote_char + ","
             commodity_string += str(commodity.number_indents_csv) + ","
-            commodity_string += CommonString.quote_char + \
-                commodity.entity_type + CommonString.quote_char + ","
-            commodity_string += CommonString.quote_char + \
-                f.YN(commodity.leaf) + CommonString.quote_char
+            commodity_string += CommonString.quote_char + commodity.entity_type + CommonString.quote_char + ","
+            commodity_string += CommonString.quote_char + f.YN(commodity.leaf) + CommonString.quote_char
 
             self.commodity_file_csv.write(
                 commodity_string + CommonString.line_feed)
@@ -1321,10 +1335,17 @@ class Application(object):
         # DATE-CREATED 8
         # TIME-CREATED 6
         # RUN-NUMBER 5
+        
+        my_date = date.today()
+        year, week_num, day_of_week = my_date.isocalendar()
+        week_num = str(week_num).zfill(3)
+        year = datetime.strftime(my_date, "%y")
+
         self.commodity_header = "HE"
         self.commodity_header += self.YYYYMMDD(datetime.now())
         self.commodity_header += self.HHMMSS(datetime.now())
-        self.commodity_header += "21002"
+        self.commodity_header += year
+        self.commodity_header += week_num
         self.commodity_header += CommonString.line_feed
         self.extract_file.write(self.commodity_header)
 

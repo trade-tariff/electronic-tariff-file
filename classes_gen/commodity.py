@@ -259,7 +259,19 @@ class Commodity(object):
         if self.validity_start_date >= g.app.COMPARISON_DATE:
             self.COMMODITY_AMEND_IND = "N"
         else:
-            self.COMMODITY_AMEND_IND = "A"
+            is_amended = False
+            if len(g.app.descriptions) > 0:
+                for description in g.app.descriptions:
+                    if description[0] == self.COMMODITY_CODE:
+                        if description[1] >= g.app.COMPARISON_DATE:
+                            is_amended = True
+                        break
+                        a = 1
+                a = 1
+            if is_amended:
+                self.COMMODITY_AMEND_IND = "A"
+            else:
+                self.COMMODITY_AMEND_IND = " "
     
     def create_extract_line(self):
         self.extract_line = self.RECORD_TYPE + CommonString.divider
