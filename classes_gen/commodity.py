@@ -182,7 +182,8 @@ class Commodity(object):
             self.additional_code_string = "CA" + CommonString.divider
             self.additional_code_string += str(len(self.additional_codes)).rjust(4, "0") + CommonString.divider
             for additional_code in self.additional_codes:
-                self.additional_code_string += additional_code + CommonString.divider
+                if additional_code not in self.additional_code_string:
+                    self.additional_code_string += additional_code + CommonString.divider
 
             self.additional_code_string += CommonString.line_feed
 
