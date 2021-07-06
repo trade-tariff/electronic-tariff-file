@@ -122,25 +122,33 @@ class Measure(object):
             self.DUTY_TYPE = "16" # The only one possible with four components
 
     def resolve_geography(self, geographical_areas):
+        if self.measure_sid == 20041036:
+            a = 1
+            pass
+            
         if len(self.geographical_area_id) == 2:
             # Standard country or region code
             self.ORIGIN_COUNTRY_CODE = self.geographical_area_id
             self.ORIGIN_COUNTRY_GROUP_CODE = "    "
         else:
-            # Country groups need to be looked up in the list of geographical areas
-            self.ORIGIN_COUNTRY_CODE = "  "
-            found = False
-            for geographical_area in geographical_areas:
-                if self.geographical_area_id == geographical_area.taric_area:
-                    self.ORIGIN_COUNTRY_GROUP_CODE = geographical_area.chief_area
-                    if geographical_area.suppress == "Y":
-                        self.suppressed_geography = True
-                    if geographical_area.has_members:
-                        self.members = geographical_area.members
-                    found = True
-                    break
-            if not found:
-                self.ORIGIN_COUNTRY_GROUP_CODE = self.geographical_area_id 
+            if self.measure_type_id in ('551', '552', '553', '554') and self.geographical_area_id == "1011":
+                self.ORIGIN_COUNTRY_CODE = "  "
+                self.ORIGIN_COUNTRY_GROUP_CODE = "G012"
+            else:
+                # Country groups need to be looked up in the list of geographical areas
+                self.ORIGIN_COUNTRY_CODE = "  "
+                found = False
+                for geographical_area in geographical_areas:
+                    if self.geographical_area_id == geographical_area.taric_area:
+                        self.ORIGIN_COUNTRY_GROUP_CODE = geographical_area.chief_area
+                        if geographical_area.suppress == "Y":
+                            self.suppressed_geography = True
+                        if geographical_area.has_members:
+                            self.members = geographical_area.members
+                        found = True
+                        break
+                if not found:
+                    self.ORIGIN_COUNTRY_GROUP_CODE = self.geographical_area_id 
 
     def lookup_measure_types(self, measure_types):
         if self.measure_type_id == "305":

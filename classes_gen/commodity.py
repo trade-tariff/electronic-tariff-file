@@ -307,3 +307,9 @@ class Commodity(object):
                 self.entity_type = "Heading"
         else:
             self.entity_type = "Commodity"
+
+    def determine_imp_exp_use(self):
+        if self.leaf == 0 and self.significant_digits >= 8:
+            self.COMMODITY_IMP_EXP_USE = "2"
+        else:
+            self.COMMODITY_IMP_EXP_USE = "0"

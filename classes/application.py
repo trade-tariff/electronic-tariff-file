@@ -199,6 +199,7 @@ class Application(object):
                     commodity.number_indents = int(row[6])
                     commodity.leaf = int(str(row[9]))
                     commodity.significant_digits = int(row[10])
+                    commodity.determine_imp_exp_use()
                     commodity.determine_commodity_type()
                     commodity.get_amendment_status()
                     self.commodities.append(commodity)
@@ -558,8 +559,7 @@ class Application(object):
             if measure.measure_sid == 20100524:
                 a = 1
 
-            measure.expand_raw_data(
-                self.measure_types, self.geographical_areas)
+            measure.expand_raw_data(self.measure_types, self.geographical_areas)
 
             self.measures.append(measure)
 
@@ -1579,8 +1579,7 @@ class Application(object):
     def get_geographical_areas(self):
         print("Getting geographical areas")
         self.geographical_areas = []
-        filename = os.path.join(self.reference_folder,
-                                "geographical_areas.csv")
+        filename = os.path.join(self.reference_folder, "geographical_areas.csv")
         with open(filename) as csv_file:
             csv_reader = csv.reader(csv_file, delimiter=',')
             for row in csv_reader:
