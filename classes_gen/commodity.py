@@ -180,10 +180,15 @@ class Commodity(object):
         if len(self.additional_codes) > 0:
             self.additional_codes.sort()
             self.additional_code_string = "CA" + CommonString.divider
-            self.additional_code_string += str(len(self.additional_codes)).rjust(4, "0") + CommonString.divider
+            # self.additional_code_string += str(len(self.additional_codes)).rjust(4, "0") + CommonString.divider
+            self.additional_code_string += "XXXX" + CommonString.divider
+            count = 0
             for additional_code in self.additional_codes:
                 if additional_code not in self.additional_code_string:
+                    count += 1
                     self.additional_code_string += additional_code + CommonString.divider
+                    
+            self.additional_code_string = self.additional_code_string.replace("XXXX", str(count).rjust(4, "0"))
 
             self.additional_code_string += CommonString.line_feed
 

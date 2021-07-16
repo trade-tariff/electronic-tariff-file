@@ -53,7 +53,8 @@ class Application(object):
         self.WRITE_FOOTNOTES = int(os.getenv('WRITE_FOOTNOTES'))
 
         d = datetime.now()
-        self.SNAPSHOT_DATE = d.strftime('%Y-%m-%d')
+        # self.SNAPSHOT_DATE = d.strftime('%Y-%m-%d')
+        self.SNAPSHOT_DATE = "2021-07-15"
         self.COMPARISON_DATE = d - timedelta(days=7)
 
         self.mfns = {}
@@ -178,7 +179,7 @@ class Application(object):
             self.assign_measure_excluded_geographical_areas()
             self.assign_footnote_association_measures()
             self.create_measure_duties()
-            
+
             iteration = str(i) + "%"
             self.get_recent_descriptions(str(i))
             sql = "select * from utils.goods_nomenclature_export_new('" + \
@@ -252,7 +253,7 @@ class Application(object):
             print(f"Ran in {toc - tic:0.2f} seconds")
 
         self.write_commodity_footer()
-        
+
     def get_recent_descriptions(self, iteration):
         self.descriptions = []
         sql = """
@@ -271,7 +272,6 @@ class Application(object):
         if len(rows) > 0:
             self.descriptions = rows
         a = 1
-
 
     def categorise_and_sort_measures(self):
         # Used to set a priority precedence for the measures that appear in
@@ -914,8 +914,7 @@ class Application(object):
                 if self.WRITE_ADDITIONAL_CODES == 1:
                     if commodity.additional_code_string != "":
                         self.additional_code_count += 1
-                        self.extract_file.write(
-                            commodity.additional_code_string)
+                        self.extract_file.write(commodity.additional_code_string)
 
                 if self.WRITE_MEASURES == 1:
                     for measure in commodity.measures_inherited:
@@ -924,30 +923,30 @@ class Application(object):
                                 self.measure_exception_count += 1
                             else:
                                 self.measure_count += measure.line_count
-                            
+
                             # Write to the ICL VME file
                             # Only write measures of type CVD and ADD once, not multiple times
                             skip_write = False
-                            
+
                             if measure.MEASURE_TYPE_CODE == "ADD":
                                 if measure.geographical_area_id in commodity.written_ADD:
                                     skip_write = True
-                            
+
                             if measure.MEASURE_TYPE_CODE == "CVD":
                                 if measure.geographical_area_id in commodity.written_CVD:
                                     skip_write = True
-                            
+
                             if measure.MEASURE_TYPE_CODE == "ADP":
                                 if measure.geographical_area_id in commodity.written_ADP:
                                     skip_write = True
-                            
+
                             if measure.MEASURE_TYPE_CODE == "CVP":
                                 if measure.geographical_area_id in commodity.written_CVP:
                                     skip_write = True
-                            
+
                             if not skip_write:
                                 self.extract_file.write(measure.extract_line)
-                            
+
                             # Prevent ADD and CVD measure types etc. from being written again
                             if measure.MEASURE_TYPE_CODE == "ADD":
                                 commodity.written_ADD.append(measure.geographical_area_id)
@@ -1335,7 +1334,7 @@ class Application(object):
         # DATE-CREATED 8
         # TIME-CREATED 6
         # RUN-NUMBER 5
-        
+
         my_date = date.today()
         year, week_num, day_of_week = my_date.isocalendar()
         week_num = str(week_num).zfill(3)
