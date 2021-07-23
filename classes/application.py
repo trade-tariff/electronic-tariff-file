@@ -53,8 +53,8 @@ class Application(object):
         self.WRITE_FOOTNOTES = int(os.getenv('WRITE_FOOTNOTES'))
 
         d = datetime.now()
-        # self.SNAPSHOT_DATE = d.strftime('%Y-%m-%d')
-        self.SNAPSHOT_DATE = "2021-07-15"
+        self.SNAPSHOT_DATE = d.strftime('%Y-%m-%d')
+        # self.SNAPSHOT_DATE = "2021-07-15"
         self.COMPARISON_DATE = d - timedelta(days=7)
 
         self.mfns = {}
