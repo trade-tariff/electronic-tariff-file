@@ -58,7 +58,11 @@ class Application(object):
         self.COMPARISON_DATE = d - timedelta(days=7)
 
         self.mfns = {}
-        self.get_scope()
+        if ("dest" not in sys.argv[0]):
+            self.get_scope()
+        else:
+            self.scope = "uk"
+
         self.get_folders()
         self.get_process_scope()
 
