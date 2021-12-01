@@ -30,7 +30,7 @@ from classes_gen.commodity import Commodity
 from classes_gen.measure import Measure
 from classes_gen.measure_component import MeasureComponent
 from classes_gen.measure_condition import MeasureCondition
-from classes_gen.measure_type import MeasureType
+from classes_gen.measure_type import MeasureType, MeasureType2
 from classes_gen.seasonal_rate import SeasonalRate
 from classes_gen.supplementary_unit import SupplementaryUnit
 from classes_gen.supplementary_unit import UnmatchedSupplementaryUnit
@@ -51,10 +51,11 @@ class Application(object):
         self.WRITE_MEASURES = int(os.getenv('WRITE_MEASURES'))
         self.WRITE_ADDITIONAL_CODES = int(os.getenv('WRITE_ADDITIONAL_CODES'))
         self.WRITE_FOOTNOTES = int(os.getenv('WRITE_FOOTNOTES'))
+        self.WRITE_ANCILLARY_FILES = int(os.getenv('WRITE_ANCILLARY_FILES'))
+        self.DEBUG_OVERRIDE = int(os.getenv('DEBUG_OVERRIDE'))
 
         d = datetime.now()
         self.SNAPSHOT_DATE = d.strftime('%Y-%m-%d')
-        # self.SNAPSHOT_DATE = "2021-07-15"
         self.COMPARISON_DATE = d - timedelta(days=7)
 
         self.mfns = {}
@@ -65,6 +66,7 @@ class Application(object):
 
         self.get_folders()
         self.get_process_scope()
+        self.message_string = ""
 
     def create_icl_vme(self):
         self.get_reference_data()
@@ -74,27 +76,33 @@ class Application(object):
         self.write_commodity_header()
         self.get_commodities()
         self.write_footnotes()
-        self.get_all_footnotes()
-        self.get_all_certificates()
-        self.get_all_quotas()
-        self.get_all_geographies()
+        
+        if self.WRITE_ANCILLARY_FILES == 1:
+            self.get_all_footnotes()
+            self.get_all_certificates()
+            self.get_all_quotas()
+            self.get_all_geographies()
+            self.get_all_measure_types()
+        
         self.close_extract()
-        self.run_grep()
+        self.count_measures()
 
         self.create_delta()
 
-        self.zip_and_upload()
-        # self.zip_extract_measures_csv()
-        # self.zip_extract_commodity_csv()
-        # self.zip_extract_footnote_csv()
-        # self.zip_extract_certificate_csv()
-        # self.zip_extract_quota_csv()
+        # Only compress, upload and email when we have DEBUG_OVERRIDE switched off
+        if self.DEBUG_OVERRIDE == 0:
+            self.zip_and_upload()
+            self.create_email_message()
+            self.send_email_message()
 
-        self.create_email_message()
-        self.send_email_message()
+        self.write_log()
 
-    def run_grep(self):
-        print("Starting measure count")
+    def write_log(self):
+        f = open(self.log_filename, "w")
+        f.write(self.message_string)
+
+    def count_measures(self):
+        self.start_timer("Counting measures and updating counts in ICL VME file")
         self.measure_count = 0
         self.measure_exception_count = 0
         with open(self.filepath_icl_vme) as fp:
@@ -123,11 +131,10 @@ class Application(object):
         text = text.replace("TOTAL_RECORD_COUNT", str(
             self.TOTAL_RECORD_COUNT).rjust(11, "0"))
         path.write_text(text)
-        print("Ending measure count")
 
-        pass
         # grep -c "^ME" hmrc-tariff-ascii-05-mar-2021.txt
         # grep -c "^MX" hmrc-tariff-ascii-05-mar-2021.txt
+        self.end_timer("Counting measures and updating counts in ICL VME file")
 
     def get_scope(self):
         # Takes arguments from the command line to identify
@@ -169,27 +176,35 @@ class Application(object):
         self.measure_exception_count = 0
 
         for i in range(self.start, self.end):
+            self.start_loop_timer("Creating data for commodity codes starting with " + str(i))
             self.commodities = []
-            tic = time.perf_counter()
-            print("\nDEALING WITH COMMODITY CODES STARTING WITH " + str(i))
             self.get_measure_components(i)
             self.get_measure_conditions(i)
             self.get_measure_excluded_geographical_areas(i)
             self.get_footnote_association_measures(i)
             self.get_measures(i)
-            self.categorise_and_sort_measures()
-            self.assign_measure_components()
-            self.assign_measure_conditions()
+            self.categorise_measures()
+            self.assign_measure_components_to_measures()
+            self.assign_measure_conditions_to_measures()
             self.assign_measure_excluded_geographical_areas()
-            self.assign_footnote_association_measures()
+            self.assign_footnote_associations_to_measures()
+            self.sort_measures_by_commodity_code()
             self.create_measure_duties()
 
             iteration = str(i) + "%"
             self.get_recent_descriptions(str(i))
-            sql = "select * from utils.goods_nomenclature_export_new('" + \
-                iteration + "', '" + self.SNAPSHOT_DATE + "') order by 2, 3"
+
+            sql = """select goods_nomenclature_sid, goods_nomenclature_item_id, producline_suffix, 
+            validity_start_date, validity_end_date, description, number_indents, chapter, node,
+            leaf, significant_digits
+            from utils.goods_nomenclature_export_new(%s, %s) order by 2, 3"""
+
             d = Database()
-            rows = d.run_query(sql)
+            params = [
+                iteration,
+                self.SNAPSHOT_DATE
+            ]
+            rows = d.run_query(sql, params)
             for row in rows:
                 commodity = Commodity()
                 commodity.COMMODITY_CODE = row[1]
@@ -209,11 +224,12 @@ class Application(object):
                     commodity.get_amendment_status()
                     self.commodities.append(commodity)
 
-            self.assign_measures()
+            self.assign_measures_to_commodities()
 
             self.assign_commodity_footnotes()
             self.build_commodity_hierarchy()
 
+            self.start_timer("Applying inheritance etc.")
             for commodity in self.commodities:
                 commodity.apply_commodity_inheritance()
                 commodity.sort_inherited_measures()
@@ -224,7 +240,10 @@ class Application(object):
                 commodity.get_supplementary_units(self.supplementary_units)
                 commodity.get_spv(self.spvs)
 
-            # Bubble up the VAT and excixe measures from down below
+            self.end_timer("Applying inheritance etc.")
+
+            # Bubble up the VAT and excise measures from down below
+            self.start_timer("Bubble up VAT and excise")
             commodity_count = len(self.commodities)
             for loop in range(0, commodity_count - 1):
                 commodity = self.commodities[loop]
@@ -248,15 +267,55 @@ class Application(object):
                                                     break
                                         if found is False:
                                             commodity.measures_inherited.append(m)
+            
+            self.end_timer("Bubble up VAT and excise")
 
+            self.start_timer("Creating extract lines")
             for commodity in self.commodities:
                 commodity.create_extract_line()
+            self.end_timer("Creating extract lines")
 
-            toc = time.perf_counter()
             self.write_commodities()
-            print(f"Ran in {toc - tic:0.2f} seconds")
+
+            self.end_loop_timer("\nDEALING WITH COMMODITY CODES STARTING WITH " + str(i) + "\n")
 
         self.write_commodity_footer()
+
+    def sort_measures_by_commodity_code(self):
+        self.start_timer("Sorting commodity codes")
+        self.measures.sort(key=lambda x: (x.additional_code_id is None, x.additional_code_id), reverse=False)
+        self.measures.sort(key=lambda x: (x.additional_code_type_id is None, x.additional_code_type_id), reverse=False)
+        self.measures.sort(key=lambda x: (x.ordernumber is None, x.ordernumber), reverse=False)
+        self.measures.sort(key=lambda x: x.geographical_area_id, reverse=False)
+        self.measures.sort(key=lambda x: x.priority, reverse=False)
+        self.measures.sort(key=lambda x: x.goods_nomenclature_item_id, reverse=False)
+        self.end_timer("Sorting commodity codes")
+
+    def start_timer(self, msg):
+        self.tic = time.perf_counter()
+        # msg = msg.upper() + "\n - Starting"
+        msg = msg.upper()
+        print(msg)
+        self.message_string += msg + "\n"
+
+    def end_timer(self, msg):
+        self.toc = time.perf_counter()
+        msg = " - Completed in " + "{:.1f}".format(self.toc - self.tic) + " seconds\n"
+        print(msg)
+        self.message_string += msg + "\n"
+
+    def start_loop_timer(self, msg):
+        self.loop_tic = time.perf_counter()
+        # msg = msg.upper() + "\n - Starting"
+        msg = msg.upper()
+        print(msg + "\n")
+        self.message_string += msg + "\n"
+
+    def end_loop_timer(self, msg):
+        self.loop_toc = time.perf_counter()
+        msg = msg.upper() + " - Completed in " + "{:.1f}".format(self.loop_toc - self.loop_tic) + " seconds\n"
+        print(msg + "\n")
+        self.message_string += msg + "\n"
 
     def get_recent_descriptions(self, iteration):
         self.descriptions = []
@@ -277,7 +336,7 @@ class Application(object):
             self.descriptions = rows
         a = 1
 
-    def categorise_and_sort_measures(self):
+    def categorise_measures(self):
         # Used to set a priority precedence for the measures that appear in
         # the export file(s) - MFNs come first etc.
         priority_lookup = {
@@ -308,96 +367,126 @@ class Application(object):
                 priority = 99
             measure.priority = priority
 
-        self.measures.sort(key=lambda x: x.geographical_area_id, reverse=False)
-        self.measures.sort(key=lambda x: x.priority, reverse=False)
-
-    def assign_measure_components(self):
-        # Assign the measure components to thr measures
-        # Very slow - could be improved
-        print("Assigning measure components")
-        measure_count = len(self.measures)
-        start_pos = 0
-        for measure_component in self.measure_components:
-            for measure in self.measures:
-                if measure.measure_sid == measure_component.measure_sid:
-                    measure.measure_components.append(measure_component)
-                    break
-
-    def assign_measure_conditions(self):
+    def assign_measure_conditions_to_measures(self):
         # This is used for working out if there is a chance that the heading is ex head
         # If there is a 'Y' condition, then this typically means that there are exclusions
-        print("Assigning measure conditions")
+        self.start_timer("Assigning measure conditions to measures")
 
+        start_point = 0
         for measure_condition in self.measure_conditions:
-            for measure in self.measures:
+            for i in range(start_point, len(self.measures)):
+                measure = self.measures[i]
                 if measure.measure_sid == measure_condition.measure_sid:
+                    start_point = i
                     measure.measure_conditions.append(measure_condition)
                     break
 
+        start_point = 0
         for measure_condition in self.measure_conditions_exemption:
-            for measure in self.measures:
+            for i in range(start_point, len(self.measures)):
+                measure = self.measures[i]
                 if measure.measure_sid == measure_condition:
+                    start_point = i
                     measure.CMDTY_MEASURE_EX_HEAD_IND = "Y"
                     break
 
+        start_point = 0
         for measure_condition in self.measure_conditions_licence:
-            for measure in self.measures:
+            for i in range(start_point, len(self.measures)):
+                measure = self.measures[i]
                 if measure.measure_sid == measure_condition:
+                    start_point = i
                     measure.FREE_CIRC_DOTI_REQD_IND = "Y"
                     break
 
-    def assign_measure_excluded_geographical_areas(self):
-        # Assign measure exclusions to measures
-        print("Assigning measure excluded geographical areas")
-        for measure_excluded_geographical_area in self.measure_excluded_geographical_areas:
-            for measure in self.measures:
-                if measure.measure_sid == measure_excluded_geographical_area.measure_sid:
-                    measure.measure_excluded_geographical_areas.append(
-                        measure_excluded_geographical_area)
+        self.end_timer("Assigning measure conditions to measures")
+
+    def assign_measure_components_to_measures(self):
+        # Assign the measure components to the measures
+        self.start_timer("Assigning measure components to measures")
+        start_point = 0
+        for measure_component in self.measure_components:
+            for i in range(start_point, len(self.measures)):
+                measure = self.measures[i]
+                if measure.measure_sid == measure_component.measure_sid:
+                    start_point = i
+                    measure.measure_components.append(measure_component)
                     break
 
-    def assign_footnote_association_measures(self):
+        self.end_timer("Assigning measure components to measures")
+
+    def assign_measure_excluded_geographical_areas(self):
+        # Assign measure exclusions to measures
+        self.start_timer("Assigning measure excluded geographical areas to measures")
+        start_point = 0
+        for measure_excluded_geographical_area in self.measure_excluded_geographical_areas:
+            for i in range(start_point, len(self.measures)):
+                measure = self.measures[i]
+                if measure.measure_sid == measure_excluded_geographical_area.measure_sid:
+                    start_point = i
+                    measure.measure_excluded_geographical_areas.append(measure_excluded_geographical_area)
+                    break
+
+        self.end_timer("Assigning measure excluded geographical areas to measures")
+
+    # def assign_measure_excluded_geographical_areas_old(self):
+    #     # Assign measure exclusions to measures
+    #     self.start_timer("Assigning measure excluded geographical areas to measures")
+    #     for measure_excluded_geographical_area in self.measure_excluded_geographical_areas:
+    #         for measure in self.measures:
+    #             if measure.measure_sid == measure_excluded_geographical_area.measure_sid:
+    #                 measure.measure_excluded_geographical_areas.append(measure_excluded_geographical_area)
+    #                 break
+    #     self.end_timer("Assigning measure excluded geographical areas to measures")
+
+    def assign_footnote_associations_to_measures(self):
         # Assign footnote_association_measures
-        print("Assigning footnotes to measures")
+        self.start_timer("Assigning footnotes to measures")
+        start_point = 0
         for footnote_association_measure in self.footnote_association_measures:
-            for measure in self.measures:
+            for i in range(start_point, len(self.measures)):
+                measure = self.measures[i]
                 if measure.measure_sid == footnote_association_measure.measure_sid:
-                    measure.footnote_association_measures.append(
-                        footnote_association_measure)
+                    start_point = i
+                    measure.footnote_association_measures.append(footnote_association_measure)
                     break
 
         # Now create a string from the associations per measure.
         # Start by sorting the footnotes alphabetically
         for measure in self.measures:
-            measure.footnote_association_measures.sort(
-                key=lambda x: x.footnote_id, reverse=False)
-            measure.footnote_association_measures.sort(
-                key=lambda x: x.footnote_type_id, reverse=False)
+            measure.footnote_association_measures.sort(key=lambda x: x.footnote_id, reverse=False)
+            measure.footnote_association_measures.sort(key=lambda x: x.footnote_type_id, reverse=False)
             measure.footnote_string = ""
             for footnote_association_measure in measure.footnote_association_measures:
-                measure.footnote_string += footnote_association_measure.footnote_type_id + \
-                    footnote_association_measure.footnote_id + "|"
+                measure.footnote_string += footnote_association_measure.footnote_type_id + footnote_association_measure.footnote_id + "|"
             measure.footnote_string = measure.footnote_string.strip("|")
 
+        self.end_timer("Assigning footnotes to measures")
+
     def create_measure_duties(self):
-        print("Creating measure duties")
+        self.start_timer("Creating measure duties")
         for measure in self.measures:
             measure.create_measure_duties()
             measure.create_extract_line_per_geography()
 
-    def assign_measures(self):
-        # Assign measures to commodity codes
-        print("Assigning measures")
+        self.end_timer("Creating measure duties")
+
+    def assign_measures_to_commodities(self):
+        self.start_timer("Assigning measures to commodities")
+        start_point = 0
         for measure in self.measures:
-            for commodity in self.commodities:
+            for i in range(start_point, len(self.commodities)):
+                commodity = self.commodities[i]
                 if commodity.productline_suffix == "80":
                     if measure.goods_nomenclature_item_id == commodity.COMMODITY_CODE:
+                        start_point = i
                         commodity.measures.append(measure)
                         break
 
+        self.end_timer("Assigning measures to commodities")
+
     def get_measure_conditions(self, iteration):
-        # Get relevant measures conditions
-        print("Getting measure conditions")
+        self.start_timer("Getting measure conditions")
         self.measure_conditions = []
         self.measure_conditions_exemption = []
         self.measure_conditions_licence = []
@@ -438,14 +527,14 @@ class Application(object):
                 # Get licence requirement
                 self.measure_conditions_licence.append(mc.measure_sid)
 
-        self.measure_conditions_exemption = list(
-            set(self.measure_conditions_exemption))
-        self.measure_conditions_licence = list(
-            set(self.measure_conditions_licence))
+        self.measure_conditions_exemption = list(set(self.measure_conditions_exemption))
+        self.measure_conditions_licence = list(set(self.measure_conditions_licence))
+
+        self.end_timer("Getting measure conditions")
 
     def get_measure_components(self, iteration):
         # Get measure components
-        print("Getting measure components")
+        self.start_timer("Getting measure components")
         self.measure_components = []
         sql = """select mc.measure_sid, mc.duty_expression_id, mc.duty_amount, mc.monetary_unit_code,
         mc.measurement_unit_code, mc.measurement_unit_qualifier_code, m.goods_nomenclature_item_id
@@ -454,7 +543,7 @@ class Application(object):
         and left(m.goods_nomenclature_item_id, """ + str(len(str(iteration))) + """) = '""" + str(iteration) + """'
         and m.validity_start_date <= '""" + self.SNAPSHOT_DATE + """'
         and (m.validity_end_date is null or m.validity_end_date > '""" + self.SNAPSHOT_DATE + """')
-        order by m.goods_nomenclature_item_id, m.measure_sid, mc.duty_expression_id;"""
+        order by m.measure_sid, mc.duty_expression_id;"""
         d = Database()
         rows = d.run_query(sql)
         for row in rows:
@@ -470,9 +559,11 @@ class Application(object):
 
             self.measure_components.append(measure_component)
 
+        self.end_timer("Getting measure components")
+
     def get_measure_excluded_geographical_areas(self, iteration):
         # Get measure geo exclusions
-        print("Getting measure excluded geographical areas")
+        self.start_timer("Getting measure excluded geographical areas")
         self.measure_excluded_geographical_areas = []
         sql = """select mega.measure_sid, mega.excluded_geographical_area, mega.geographical_area_sid 
         from measure_excluded_geographical_areas mega, utils.materialized_measures_real_end_dates m
@@ -489,12 +580,12 @@ class Application(object):
             measure_excluded_geographical_area.excluded_geographical_area = row[1]
             measure_excluded_geographical_area.geographical_area_sid = row[2]
 
-            self.measure_excluded_geographical_areas.append(
-                measure_excluded_geographical_area)
+            self.measure_excluded_geographical_areas.append(measure_excluded_geographical_area)
+        self.end_timer("Getting measure excluded geographical areas")
 
     def get_footnote_association_measures(self, iteration):
         # Get measure footnotes
-        print("Getting measure footnotes")
+        self.start_timer("Getting measure footnotes")
         self.footnote_association_measures = []
         sql = """
         select m.measure_sid, fam.footnote_type_id, fam.footnote_id 
@@ -513,13 +604,14 @@ class Application(object):
             footnote_association_measure.footnote_type_id = row[1]
             footnote_association_measure.footnote_id = row[2]
 
-            self.footnote_association_measures.append(
-                footnote_association_measure)
+            self.footnote_association_measures.append(footnote_association_measure)
+        self.end_timer("Getting measure footnotes")
 
     def get_measures(self, iteration):
         # Get measures
-        print("Getting measures")
+        self.start_timer("Getting measures")
         self.measures = []
+
         sql = """select m.*, mt.measure_type_series_id,
         mt.measure_component_applicable_code, mt.trade_movement_code
         from utils.materialized_measures_real_end_dates m, measure_types mt
@@ -527,9 +619,17 @@ class Application(object):
         and left(goods_nomenclature_item_id, """ + str(len(str(iteration))) + """) = '""" + str(iteration) + """'
         and (m.validity_end_date is null or m.validity_end_date >= '""" + self.SNAPSHOT_DATE + """')
         and m.validity_start_date <= '""" + self.SNAPSHOT_DATE + """'
-        order by goods_nomenclature_item_id, measure_type_id;"""
-        # print(sql)
-        # sys.exit()
+        order by goods_nomenclature_item_id, measure_type_id, ordernumber, additional_code_type_id, additional_code_id;"""
+
+        # Sort by measure SID to speed up processing in the assignment functions later
+        sql = """select m.*, mt.measure_type_series_id,
+        mt.measure_component_applicable_code, mt.trade_movement_code
+        from utils.materialized_measures_real_end_dates m, measure_types mt
+        where m.measure_type_id = mt.measure_type_id
+        and left(goods_nomenclature_item_id, """ + str(len(str(iteration))) + """) = '""" + str(iteration) + """'
+        and (m.validity_end_date is null or m.validity_end_date >= '""" + self.SNAPSHOT_DATE + """')
+        and m.validity_start_date <= '""" + self.SNAPSHOT_DATE + """'
+        order by measure_sid;"""
 
         d = Database()
         rows = d.run_query(sql)
@@ -559,17 +659,14 @@ class Application(object):
             measure.measure_component_applicable_code = int(row[22])
             measure.trade_movement_code = row[23]
             measure.get_import_export()
-
-            if measure.measure_sid == 20100524:
-                a = 1
-
             measure.expand_raw_data(self.measure_types, self.geographical_areas)
 
             self.measures.append(measure)
 
+        self.end_timer("Getting measures")
+
     def get_all_footnotes(self):
-        # Get footnotes
-        print("Getting all footnotes for CSV export")
+        self.start_timer("Getting and writing all footnotes for CSV export")
         self.measures = []
         sql = """
         with footnotes_cte as (
@@ -592,8 +689,8 @@ class Application(object):
         where f.footnote_id = fam.footnote_id 
         and f.footnote_type_id = fam.footnote_type_id 
         and fam.measure_sid = m.measure_sid 
-        and (m.validity_end_date is null or m.validity_end_date >= '""" + self.SNAPSHOT_DATE + """')
-        and m.validity_start_date <= '""" + self.SNAPSHOT_DATE + """'
+        and (m.validity_end_date is null or m.validity_end_date >= %s)
+        and m.validity_start_date <= %s
         and f.validity_end_date is null
 
         union 
@@ -603,15 +700,20 @@ class Application(object):
         where f.footnote_id = fagn.footnote_id 
         and f.footnote_type_id = fagn.footnote_type
         and fagn.goods_nomenclature_sid = gn.goods_nomenclature_sid
-        and (gn.validity_end_date is null or gn.validity_end_date >= '""" + self.SNAPSHOT_DATE + """')
-        and gn.validity_start_date <= '""" + self.SNAPSHOT_DATE + """'
+        and (gn.validity_end_date is null or gn.validity_end_date >= %s)
+        and gn.validity_start_date <= %s
         and f.validity_end_date is null
-
         order by 1;
         """
 
         d = Database()
-        rows = d.run_query(sql)
+        params = [
+            self.SNAPSHOT_DATE,
+            self.SNAPSHOT_DATE,
+            self.SNAPSHOT_DATE,
+            self.SNAPSHOT_DATE
+        ]
+        rows = d.run_query(sql, params)
         self.all_footnotes = []
         for row in rows:
             footnote = Footnote()
@@ -623,14 +725,13 @@ class Application(object):
             footnote.get_footnote_csv_string()
 
             self.all_footnotes.append(footnote)
-            self.footnote_file_csv.write(footnote.footnote_csv_string)
+            self.footnote_csv_file.write(footnote.footnote_csv_string)
 
-        print("Writing footnotes for CSV export")
-        self.footnote_file_csv.close()
+        self.footnote_csv_file.close()
+        self.end_timer("Getting and writing all footnotes for CSV export")
 
     def get_all_certificates(self):
-        # Get footnotes
-        print("Getting all certificates for CSV export")
+        self.start_timer("Getting and writing all certificates for CSV export")
         self.measures = []
         sql = """
         with certificate_cte as (
@@ -668,14 +769,13 @@ class Application(object):
             certificate.get_csv_string()
 
             self.all_certificates.append(certificate)
-            self.certificate_file_csv.write(certificate.certificate_csv_string)
+            self.certificate_csv_file.write(certificate.certificate_csv_string)
 
-        print("Writing certificates for CSV export")
-        self.certificate_file_csv.close()
+        self.end_timer("Getting and writing all certificates for CSV export")
+        self.certificate_csv_file.close()
 
     def get_all_geographies(self):
-        # Get footnotes
-        print("Getting all geographical areas for CSV export")
+        self.start_timer("Getting and writing all geographical areas for CSV export")
         self.measures = []
         sql = """
         with cte_geography as (
@@ -725,15 +825,40 @@ class Application(object):
             geographical_area.get_csv_string()
 
             self.all_geographies.append(geographical_area)
-            self.geography_file_csv.write(geographical_area.csv_string)
+            self.geography_csv_file.write(geographical_area.csv_string)
 
-        print("Writing geographical areas for CSV export")
-        self.geography_file_csv.close()
+        self.end_timer("Getting and writing all geographical areas for CSV export")
+        self.geography_csv_file.close()
+
+
+    def get_all_measure_types(self):
+        self.start_timer("Getting and writing all measure types for CSV export")
+        sql = """
+        select mtd.measure_type_id, mtd.description, count(m.*) 
+        from measure_types mt, measure_type_descriptions mtd, utils.materialized_measures_real_end_dates m
+        where mt.measure_type_id = mtd.measure_type_id 
+        and m.measure_type_id = mt.measure_type_id 
+        and m.validity_end_date is null 
+        group by mtd.measure_type_id, mtd.description
+        order by measure_type_id
+        """
+        d = Database()
+        rows = d.run_query(sql)
+        self.all_measure_types = []
+        for row in rows:
+            measure_type = MeasureType2()
+            measure_type.measure_type_id = row[0]
+            measure_type.description = row[1]
+            measure_type.get_csv_string()
+
+            self.all_measure_types.append(measure_type)
+            self.measure_type_csv_file.write(measure_type.csv_string)
+
+        self.end_timer("Getting and writing all measure types for CSV export")
+        self.measure_type_csv_file.close()
 
     def get_all_quotas(self):
-        print("Getting all quota definitions for CSV export")
-
-        # Get quota commodities
+        self.start_timer("Getting and writing all quota definitions for CSV export")
         self.quota_commodities = []
         sql = """
         select ordernumber, string_agg(distinct goods_nomenclature_item_id, '|' order by m.goods_nomenclature_item_id)
@@ -845,15 +970,15 @@ class Application(object):
 
         for quota_definition in self.all_quota_definitions:
             if quota_definition.commodities != "":
-                self.quota_file_csv.write(quota_definition.csv_string)
+                self.quota_csv_file.write(quota_definition.csv_string)
 
-        print("Writing quota_definitions for CSV export")
-        self.quota_file_csv.close()
+        self.end_timer("Getting and writing all quota definitions for CSV export")
+        self.quota_csv_file.close()
 
     def rebase_chapters(self):
         # Reset the indent of chapters to -1, so that they are
         # omitted from the hierarchy string
-        print("Rebasing chapters")
+        self.start_timer("Rebasing chapters")
         for commodity in self.commodities:
             commodity.get_entity_type()
 
@@ -864,10 +989,12 @@ class Application(object):
             if commodity.significant_digits == 2:
                 commodity.number_indents = -1
 
+        self.end_timer("Rebasing chapters")
+
     def build_commodity_hierarchy(self):
         # Builds the commodity hierarchy
         self.rebase_chapters()
-        print("Building commodity hierarchy")
+        self.start_timer("Building commodity hierarchy")
         commodity_count = len(self.commodities)
         for loop in range(0, commodity_count):
             commodity = self.commodities[loop]
@@ -887,12 +1014,12 @@ class Application(object):
                     break
             commodity.hierarchy.reverse()
             commodity.build_hierarchy_string()
+        self.end_timer("Building commodity hierarchy")
 
     def write_commodities(self):
         # Write all commodities
-        print("Writing commmodities")
-        barred_series = ['E', 'F', 'G', 'H', 'K',
-                         'L', 'M', "N", "O", "R", "S", "Z"]
+        self.start_timer("Writing commodities")
+        barred_series = ['E', 'F', 'G', 'H', 'K', 'L', 'M', "N", "O", "R", "S", "Z"]
         for commodity in self.commodities:
             commodity_string = ""
             commodity_string += str(commodity.goods_nomenclature_sid) + ","
@@ -909,16 +1036,16 @@ class Application(object):
             commodity_string += CommonString.quote_char + commodity.entity_type + CommonString.quote_char + ","
             commodity_string += CommonString.quote_char + f.YN(commodity.leaf) + CommonString.quote_char
 
-            self.commodity_file_csv.write(
-                commodity_string + CommonString.line_feed)
+            self.commodity_csv_file.write(commodity_string + CommonString.line_feed)
 
+            # Write measures for the ICL VME file
             if commodity.leaf == 1 or (commodity.significant_digits >= 8 and commodity.productline_suffix == "80") or commodity.pseudo_line == True:
                 self.commodity_count += 1
-                self.extract_file.write(commodity.extract_line)
+                self.icl_vme_file.write(commodity.extract_line)
                 if self.WRITE_ADDITIONAL_CODES == 1:
                     if commodity.additional_code_string != "":
                         self.additional_code_count += 1
-                        self.extract_file.write(commodity.additional_code_string)
+                        self.icl_vme_file.write(commodity.additional_code_string)
 
                 if self.WRITE_MEASURES == 1:
                     for measure in commodity.measures_inherited:
@@ -949,7 +1076,7 @@ class Application(object):
                                     skip_write = True
 
                             if not skip_write:
-                                self.extract_file.write(measure.extract_line)
+                                self.icl_vme_file.write(measure.extract_line)
 
                             # Prevent ADD and CVD measure types etc. from being written again
                             if measure.MEASURE_TYPE_CODE == "ADD":
@@ -964,19 +1091,30 @@ class Application(object):
                             if measure.MEASURE_TYPE_CODE == "CVP":
                                 commodity.written_CVP.append(measure.geographical_area_id)
 
-                            # Write to CSV - all measures get written
-                            if measure.extract_line_csv != "":
-                                self.extract_file_csv.write(measure.extract_line_csv)
+                    self.pipe_pr_measures_into_icl_vme_file(commodity.COMMODITY_CODE)
+                    
+            # Write measures to the measures CSV file
+            if commodity.leaf == 1:
+                measure_sids = []
+                for measure in commodity.measures_inherited:
+                    if measure.extract_line_csv != "":
+                        if measure.measure_sid not in measure_sids:
+                            s = measure.extract_line_csv
+                            s = s.replace("COMMODITY_CODE_PLACEHOLDER", commodity.COMMODITY_CODE)
+                            self.measure_csv_file.write(s)
 
-                    self.pipe_pr_measures(commodity.COMMODITY_CODE)
+                    measure_sids.append(measure.measure_sid)
 
-    def pipe_pr_measures(self, commodity):
+                
+
+        self.end_timer("Writing commodities")
+
+    def pipe_pr_measures_into_icl_vme_file(self, commodity):
         has_found = False
         for pr_measure in self.pr_measures:
             if pr_measure.commodity == commodity:
                 self.measure_count += 1
-                self.extract_file.write(
-                    pr_measure.line + CommonString.line_feed)
+                self.icl_vme_file.write(pr_measure.line + CommonString.line_feed)
                 has_found = True
             else:
                 if has_found == True:
@@ -990,7 +1128,7 @@ class Application(object):
         self.data_out_folder = os.path.join(self.data_folder, "out")
         self.export_folder = os.path.join(self.current_folder, "_export")
         self.documentation_folder = os.path.join(self.current_folder, "documentation")
-        self.documentation_file = os.path.join(self.documentation_folder, "Documentation on new tariff data formats.docx")
+        self.documentation_file = os.path.join(self.documentation_folder, "Documentation on tariff CSV data files.docx")
         self.correlation_file = os.path.join(self.documentation_folder, "Ascii file and CDS measure type correlation table 1.0.docx")
 
         # Make the date-specific folder
@@ -1012,78 +1150,79 @@ class Application(object):
         self.icl_vme_folder = os.path.join(self.scope_folder, "icl_vme")
         self.csv_folder = os.path.join(self.scope_folder, "csv")
         self.delta_folder = os.path.join(self.scope_folder, "delta")
+        self.log_folder = os.path.join(self.scope_folder, "logs")
+        self.log_filename = os.path.join(self.log_folder, "etf_creation_log.txt")
 
         os.makedirs(self.icl_vme_folder, exist_ok=True)
         os.makedirs(self.csv_folder, exist_ok=True)
         os.makedirs(self.delta_folder, exist_ok=True)
+        os.makedirs(self.log_folder, exist_ok=True)
 
     def open_extract(self):
         if CommonString.divider == "|":
-            # self.filename = "hmrc-tariff-ascii-" + self.day + "-" + self.month + "-" + self.year + "-piped.txt"
             self.filename = "hmrc-tariff-ascii-" + self.SNAPSHOT_DATE + "-piped.txt"
         else:
-            # self.filename = "hmrc-tariff-ascii-" + self.day + "-" + self.month + "-" + self.year + ".txt"
             self.filename = "hmrc-tariff-ascii-" + self.SNAPSHOT_DATE + ".txt"
 
         # Work out the path to the ICL VME extract
         self.filepath_icl_vme = os.path.join(self.icl_vme_folder, self.filename)
-        self.extract_file = open(self.filepath_icl_vme, "w+")
+        self.icl_vme_file = open(self.filepath_icl_vme, "w+")
 
-        # Work out the path to the measures CSV extract
-        self.filename_csv = self.filename.replace(".txt", ".csv")
-        self.filename_csv = self.filename_csv.replace("ascii", "measures")
-        self.filepath_csv = os.path.join(self.csv_folder, self.filename_csv)
-        self.extract_file_csv = open(self.filepath_csv, "w+")
-        self.extract_file_csv.write('"commodity__sid","commodity__code","measure__sid","measure__type__id","measure__type__description","measure__additional_code__code","measure__additional_code__description","measure__duty_expression","measure__effective_start_date","measure__effective_end_date","measure__reduction_indicator","measure__footnotes","measure__conditions","measure__geographical_area__sid","measure__geographical_area__id","measure__geographical_area__description","measure__excluded_geographical_areas__ids","measure__excluded_geographical_areas__descriptions","measure__quota__order_number"' + CommonString.line_feed)
+        # Measures CSV extract filename
+        self.measure_csv_filename = self.filename.replace(".txt", ".csv")
+        self.measure_csv_filename = self.measure_csv_filename.replace("ascii", "measures")
+        self.measure_csv_filepath = os.path.join(self.csv_folder, self.measure_csv_filename)
+        self.measure_csv_file = open(self.measure_csv_filepath, "w+")
+        self.measure_csv_file.write('"commodity__sid","commodity__code","measure__sid","measure__type__id","measure__type__description","measure__additional_code__code","measure__additional_code__description","measure__duty_expression","measure__effective_start_date","measure__effective_end_date","measure__reduction_indicator","measure__footnotes","measure__conditions","measure__geographical_area__sid","measure__geographical_area__id","measure__geographical_area__description","measure__excluded_geographical_areas__ids","measure__excluded_geographical_areas__descriptions","measure__quota__order_number"' + CommonString.line_feed)
 
-        # Commodities CSV
-        self.commodity_filename_csv = self.filename_csv.replace(
-            "measures", "commodities")
-        self.commodity_filepath_csv = os.path.join(
-            self.csv_folder, self.commodity_filename_csv)
-        self.commodity_file_csv = open(self.commodity_filepath_csv, "w+")
-        self.commodity_file_csv.write(
-            '"commodity__sid","commodity__code","productline__suffix","start__date","end__date","description","indents","entity__type","end__line"' + CommonString.line_feed)
+        # Commodities CSV extract filename
+        self.commodity_csv_filename = self.measure_csv_filename.replace("measures", "commodities")
+        self.commodity_csv_filepath = os.path.join(self.csv_folder, self.commodity_csv_filename)
+        self.commodity_csv_file = open(self.commodity_csv_filepath, "w+")
+        self.commodity_csv_file.write('"commodity__sid","commodity__code","productline__suffix","start__date","end__date","description","indents","entity__type","end__line"' + CommonString.line_feed)
 
-        # Footnotes CSV
-        self.footnote_filename_csv = self.filename_csv.replace("measures", "footnotes")
-        self.footnote_filepath_csv = os.path.join(
-            self.csv_folder, self.footnote_filename_csv)
-        self.footnote_file_csv = open(self.footnote_filepath_csv, "w+")
-        self.footnote_file_csv.write(
-            '"footnote__id","footnote__description","start__date","end__date","footnote__type"' + CommonString.line_feed)
+        if self.WRITE_ANCILLARY_FILES:
+            # Footnotes CSV extract filename
+            self.footnote_csv_filename = self.measure_csv_filename.replace("measures", "footnotes")
+            self.footnote_csv_filepath = os.path.join(self.csv_folder, self.footnote_csv_filename)
+            self.footnote_csv_file = open(self.footnote_csv_filepath, "w+")
+            self.footnote_csv_file.write('"footnote__id","footnote__description","start__date","end__date","footnote__type"' + CommonString.line_feed)
 
-        # Certificates CSV
-        self.certificate_filename_csv = self.filename_csv.replace("measures", "certificates")
-        self.certificate_filepath_csv = os.path.join(self.csv_folder, self.certificate_filename_csv)
-        self.certificate_file_csv = open(self.certificate_filepath_csv, "w+")
-        self.certificate_file_csv.write(
-            '"certificate__id","certificate__description","start__date","end__date"' + CommonString.line_feed)
+            # Certificates CSV extract filename
+            self.certificate_csv_filename = self.measure_csv_filename.replace("measures", "certificates")
+            self.certificate_csv_filepath = os.path.join(self.csv_folder, self.certificate_csv_filename)
+            self.certificate_csv_file = open(self.certificate_csv_filepath, "w+")
+            self.certificate_csv_file.write('"certificate__id","certificate__description","start__date","end__date"' + CommonString.line_feed)
 
-        # Quotas CSV
-        self.quota_filename_csv = self.filename_csv.replace("measures", "quotas")
-        self.quota_filepath_csv = os.path.join(
-            self.csv_folder, self.quota_filename_csv)
-        self.quota_file_csv = open(self.quota_filepath_csv, "w+")
-        self.quota_file_csv.write(
-            '"quota__order__number__id","definition__start__date","definition__end__date","initial__volume","unit","critical__state","critical__threshold","quota__type","origins","origin__exclusions","commodities"' + CommonString.line_feed)
+            # Quotas CSV extract filename
+            self.quota_csv_filename = self.measure_csv_filename.replace("measures", "quotas")
+            self.quota_csv_filepath = os.path.join(self.csv_folder, self.quota_csv_filename)
+            self.quota_csv_file = open(self.quota_csv_filepath, "w+")
+            self.quota_csv_file.write('"quota__order__number__id","definition__start__date","definition__end__date","initial__volume","unit","critical__state","critical__threshold","quota__type","origins","origin__exclusions","commodities"' + CommonString.line_feed)
 
-        # Geography CSV
-        self.geography_filename_csv = self.filename_csv.replace(
-            "measures", "geography")
-        self.geography_filepath_csv = os.path.join(
-            self.csv_folder, self.geography_filename_csv)
-        self.geography_file_csv = open(self.geography_filepath_csv, "w+")
-        self.geography_file_csv.write(
-            '"geographical_area_id","description","area_type","members"' + CommonString.line_feed)
+            # Geography CSV extract filename
+            self.geography_csv_filename = self.measure_csv_filename.replace("measures", "geography")
+            self.geography_csv_filepath = os.path.join(self.csv_folder, self.geography_csv_filename)
+            self.geography_csv_file = open(self.geography_csv_filepath, "w+")
+            self.geography_csv_file.write('"geographical_area_id","description","area_type","members"' + CommonString.line_feed)
+
+            # Measure type CSV extract filename
+            self.measure_type_csv_filename = self.measure_csv_filename.replace("measures", "measure_type")
+            self.measure_type_csv_filepath = os.path.join(self.csv_folder, self.measure_type_csv_filename)
+            self.measure_type_csv_file = open(self.measure_type_csv_filepath, "w+")
+            self.measure_type_csv_file.write('"measure_type_id","description"' + CommonString.line_feed)
 
     def close_extract(self):
-        self.extract_file.close()
-        self.extract_file_csv.close()
-        self.commodity_file_csv.close()
-        self.footnote_file_csv.close()
-        self.certificate_file_csv.close()
-        self.quota_file_csv.close()
+        self.icl_vme_file.close()
+        self.measure_csv_file.close()
+        self.commodity_csv_file.close()
+        
+        if self.WRITE_ANCILLARY_FILES == 1:
+            self.footnote_csv_file.close()
+            self.certificate_csv_file.close()
+            self.quota_csv_file.close()
+            self.geography_csv_file.close()
+            self.measure_type_csv_file.close()
 
     def create_email_message(self):
         self.html_content = """
@@ -1098,11 +1237,11 @@ class Application(object):
             </tr>
             <tr>
                 <td style="padding:3px 0px">Commodity changes</td>
-                <td style="padding:3px 3px">{15}</td>
+                <td style="padding:3px 3px">{16}</td>
             </tr>
             <tr>
                 <td style="padding:3px 0px">Measure changes</td>
-                <td style="padding:3px 3px">{16}</td>
+                <td style="padding:3px 3px">{17}</td>
             </tr>
         </table>
         
@@ -1145,6 +1284,10 @@ class Application(object):
             <tr>
                 <td style="padding:3px 0px">Geographical areas</td>
                 <td style="padding:3px 3px">{14}</td>
+            </tr>
+            <tr>
+                <td style="padding:3px 0px">Measure types</td>
+                <td style="padding:3px 3px">{15}</td>
             </tr>
         </table>
         
@@ -1203,6 +1346,7 @@ class Application(object):
             self.bucket_url + self.aws_path_certificates_csv_tuple[1],
             self.bucket_url + self.aws_path_quotas_csv_tuple[1],
             self.bucket_url + self.aws_path_geographical_areas_csv_tuple[1],
+            self.bucket_url + self.aws_path_measure_types_csv_tuple[1],
             self.bucket_url + self.aws_path_commodities_delta_tuple[1],
             self.bucket_url + self.aws_path_measures_delta_tuple[1]
         )
@@ -1216,20 +1360,22 @@ class Application(object):
         s = SendgridMailer(subject, self.html_content, attachment_list)  # self.documentation_file)
         s.send()
 
-    def load_to_aws(self, msg, file, aws_path):
-        if self.write_to_aws == 1:
-            print(msg)
-            bucket = AwsBucket()
-            bucket.upload_file(file, aws_path)
-
     def zip_and_upload(self):
         self.aws_path_icl_vme_tuple = Zipper(self.filepath_icl_vme, self.scope, "icl_vme", "ICL VME file").compress()
-        self.aws_path_measures_csv_tuple = Zipper(self.filepath_csv, self.scope, "csv", "Measures CSV").compress()
-        self.aws_path_commodities_csv_tuple = Zipper(self.commodity_filepath_csv, self.scope, "csv", "Commodities CSV").compress()
-        self.aws_path_footnotes_csv_tuple = Zipper(self.footnote_filepath_csv, self.scope, "csv", "Footnotes CSV").compress()
-        self.aws_path_certificates_csv_tuple = Zipper(self.certificate_filepath_csv, self.scope, "csv", "Certificates CSV").compress()
-        self.aws_path_quotas_csv_tuple = Zipper(self.quota_filepath_csv, self.scope, "csv", "Quotas CSV").compress()
-        self.aws_path_geographical_areas_csv_tuple = Zipper(self.geography_filepath_csv, self.scope, "csv", "Geographical areas CSV").compress()
+        self.aws_path_measures_csv_tuple = Zipper(self.measure_csv_filepath, self.scope, "csv", "Measures CSV").compress()
+        self.aws_path_commodities_csv_tuple = Zipper(self.commodity_csv_filepath, self.scope, "csv", "Commodities CSV").compress()
+        if self.WRITE_ANCILLARY_FILES:
+            self.aws_path_footnotes_csv_tuple = Zipper(self.footnote_csv_filepath, self.scope, "csv", "Footnotes CSV").compress()
+            self.aws_path_certificates_csv_tuple = Zipper(self.certificate_csv_filepath, self.scope, "csv", "Certificates CSV").compress()
+            self.aws_path_quotas_csv_tuple = Zipper(self.quota_csv_filepath, self.scope, "csv", "Quotas CSV").compress()
+            self.aws_path_geographical_areas_csv_tuple = Zipper(self.geography_csv_filepath, self.scope, "csv", "Geographical areas CSV").compress()
+            self.aws_path_measure_types_csv_tuple = Zipper(self.measure_type_csv_filepath, self.scope, "csv", "Geographical areas CSV").compress()
+        else:
+            self.aws_path_footnotes_csv_tuple = ("n/a", "n/a")
+            self.aws_path_certificates_csv_tuple = ("n/a", "n/a")
+            self.aws_path_quotas_csv_tuple = ("n/a", "n/a")
+            self.aws_path_geographical_areas_csv_tuple = ("n/a", "n/a")
+            self.aws_path_measure_types_csv_tuple = ("n/a", "n/a")
 
         # Delta description files
         self.aws_path_commodities_delta_tuple = Zipper(self.delta.commodities_filename, self.scope, "delta", "Changes to commodity codes").compress()
@@ -1262,7 +1408,7 @@ class Application(object):
         self.commodities_with_footnotes = set(self.commodities_with_footnotes)
 
     def assign_commodity_footnotes(self):
-        print("Starting footnote assignment")
+        self.start_timer("Assigning footnotes to commodities")
         for footnote_association in self.commodity_footnotes:
             for commodity in self.commodities:
                 if footnote_association.goods_nomenclature_sid == commodity.goods_nomenclature_sid:
@@ -1272,7 +1418,7 @@ class Application(object):
         for commodity in self.commodities:
             commodity.append_footnotes_to_description()
 
-        print("Ending footnote assignment")
+        self.end_timer("Assigning footnotes to commodities")
 
     def get_footnotes(self):
         # Problem with footnotes is the size of the fields
@@ -1322,7 +1468,7 @@ class Application(object):
         self.footnote_header += self.HHMMSS(datetime.now())
         self.footnote_header += "21002"
         self.footnote_header += CommonString.line_feed
-        self.extract_file.write(self.footnote_header)
+        self.icl_vme_file.write(self.footnote_header)
 
     def write_footnote_footer(self):
         # CF0000120
@@ -1330,7 +1476,7 @@ class Application(object):
         # FOOTNOTE-RECORD-COUNT 7
         self.footnote_footer = "CF"
         self.footnote_footer += str(len(self.footnotes)).zfill(7)
-        self.extract_file.write(self.footnote_footer)
+        self.icl_vme_file.write(self.footnote_footer)
 
     def write_commodity_header(self):
         # HF2020121500000021001
@@ -1350,7 +1496,7 @@ class Application(object):
         self.commodity_header += year
         self.commodity_header += week_num
         self.commodity_header += CommonString.line_feed
-        self.extract_file.write(self.commodity_header)
+        self.icl_vme_file.write(self.commodity_header)
 
     def write_commodity_footer(self):
         """
@@ -1390,15 +1536,16 @@ class Application(object):
         self.commodity_footer += "MX_RECORD_COUNT"
         self.commodity_footer += "TOTAL_RECORD_COUNT" + CommonString.line_feed
 
-        self.extract_file.write(self.commodity_footer)
+        self.icl_vme_file.write(self.commodity_footer)
 
     def write_footnotes(self):
         if self.WRITE_FOOTNOTES == 1:
-            print("Writing footnotes")
+            self.start_timer("Writing list of footnotes to ICL VME file")
             self.write_footnote_header()
             for footnote in self.footnotes:
-                self.extract_file.write(footnote.extract_line)
+                self.icl_vme_file.write(footnote.extract_line)
             self.write_footnote_footer()
+            self.end_timer("Writing list of footnotes to ICL VME file")
 
     def YYYYMMDD(self, d):
         if d is None:

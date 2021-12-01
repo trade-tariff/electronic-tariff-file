@@ -7,6 +7,7 @@ from classes.functions import functions as f
 from classes.enums import CommonString
 from classes_gen.supplementary_unit import SupplementaryUnit
 
+
 class Commodity(object):
     def __init__(self):
         self.RECORD_TYPE = "CM"
@@ -19,12 +20,12 @@ class Commodity(object):
         self.END_OF_SEASON_DATE = "000000"
         self.START_OF_SEASON_DATE = "000000"
         self.SPV_CODE = "       "
-        self.COMMODITY_TYPE = "0" # Set it determine_commodity_type
-        self.WAREHOUSE_COMMODITY_IND = "N" # This is always set to "N"
-        self.COMMODITY_END_USE_ALLWD = "N" # Basing this on the judgement call of 103 versus 105 duty
-        self.COMMODITY_IMP_EXP_USE = "0" # Always zero
-        self.COMMODITY_AMEND_IND = " " # An amendment indicator - has this changed since last time? 1st instance this will be set to A (I think)
-        self.UNIT_OF_QUANTITY = "1023" + CommonString.unit_divider + "0000" + CommonString.unit_divider + "0000" # The applicable supplementary unit(s) - we're making this 12 digits long
+        self.COMMODITY_TYPE = "0"  # Set it determine_commodity_type
+        self.WAREHOUSE_COMMODITY_IND = "N"  # This is always set to "N"
+        self.COMMODITY_END_USE_ALLWD = "N"  # Basing this on the judgement call of 103 versus 105 duty
+        self.COMMODITY_IMP_EXP_USE = "0"  # Always zero
+        self.COMMODITY_AMEND_IND = " "  # An amendment indicator - has this changed since last time? 1st instance this will be set to A (I think)
+        self.UNIT_OF_QUANTITY = "1023" + CommonString.unit_divider + "0000" + CommonString.unit_divider + "0000"  # The applicable supplementary unit(s) - we're making this 12 digits long
         self.ALPHA_SIZE = ""
         self.ALPHA_TEXT = ""
 
@@ -42,7 +43,7 @@ class Commodity(object):
         self.seasonal = False
         self.additional_code_string = ""
         self.pseudo_line = False
-        
+
         self.written_ADD = []
         self.written_ADP = []
         self.written_CVD = []
@@ -56,7 +57,7 @@ class Commodity(object):
                 self.COMMODITY_TYPE = "0"
         else:
             self.COMMODITY_TYPE = "1"
-        
+
     def apply_commodity_inheritance(self):
         if self.leaf == 1:
             for commodity in self.hierarchy:
@@ -65,22 +66,22 @@ class Commodity(object):
         else:
             inheritable_measure_types = ["103", "105", "305", "306"]
             if self.significant_digits > 2:
-            # if self.significant_digits == 8:
                 if self.productline_suffix == "80":
                     for commodity in self.hierarchy:
                         for measure in commodity.measures:
                             if measure.measure_type_id in inheritable_measure_types:
                                 self.measures_inherited.append(measure)
-                
-                
+
     def sort_inherited_measures(self):
         self.measures_inherited.sort(key=lambda x: x.geographical_area_id, reverse=False)
         self.measures_inherited.sort(key=lambda x: x.priority, reverse=False)
-    
+
     def get_supplementary_units(self, supplementary_units_reference):
+        # This is extremely inefficient: takes c. 17 seconds to run and needs to be resolved
+        
         if self.leaf == 1 or (self.significant_digits >= 6 and self.productline_suffix == "80"):
             # First we need to look up the supplementary unit in the last CHIEF file, and only
-            # if we can't ifnd it, do we look in CDS
+            # if we can't find it, do we look in CDS
             found_in_chief = False
             json_file = os.path.join(g.app.reference_folder, "supp_units.json")
             with open(json_file) as f:
@@ -92,8 +93,7 @@ class Commodity(object):
                     pass
                 except:
                     pass
-                
-            
+
             if found_in_chief == False:
                 self.supplementary_unit = None
                 supp_types = ['109', '110']
@@ -106,20 +106,20 @@ class Commodity(object):
                         self.supplementary_unit.measurement_unit_qualifier_code = measure_component.measurement_unit_qualifier_code
                         if self.supplementary_unit.measurement_unit_qualifier_code is None:
                             self.supplementary_unit.measurement_unit_qualifier_code = ""
-                        
+
                         for item in supplementary_units_reference:
                             if self.supplementary_unit.measurement_unit_code == item.measurement_unit_code:
                                 if self.supplementary_unit.measurement_unit_qualifier_code == item.measurement_unit_qualifier_code:
                                     self.supplementary_unit.quantity_code = item.quantity_code
                                     found_quantity_code = True
                                     break
-                        
+
                         if found_quantity_code == False:
-                            print ("Missing supp code on comm code " + self.COMMODITY_CODE)
+                            print("Missing supp code on comm code " + self.COMMODITY_CODE)
                         else:
                             self.UNIT_OF_QUANTITY = "1023" + CommonString.unit_divider + "2" + self.supplementary_unit.quantity_code + CommonString.unit_divider + "0000"
                             break
-                        
+
                 # If there are no units assigned then do this
                 if found_quantity_code == False:
                     for unmatched in g.app.unmatched_supplementary_units:
@@ -140,7 +140,7 @@ class Commodity(object):
                     self.END_OF_SEASON_DATE = seasonal_rate.to_date
                     self.START_OF_SEASON_DATE = seasonal_rate.from_date
                     break
-            
+
     def get_additional_code_indicator(self):
         """
         CODE IMPORT          EXPORT
@@ -161,7 +161,7 @@ class Commodity(object):
                         self.has_import_additional_codes = True
                     if measure.is_export:
                         self.has_export_additional_codes = True
-        
+
         if self.has_import_additional_codes:
             if self.has_export_additional_codes:
                 self.EC_SUPP_CODE_IND = "E"
@@ -171,9 +171,9 @@ class Commodity(object):
             self.EC_SUPP_CODE_IND = "H"
         else:
             self.EC_SUPP_CODE_IND = "I"
-            
+
         self.get_additional_code_string()
-        
+
     def get_additional_code_string(self):
         # CA000291409150
         self.additional_code_string = ""
@@ -187,7 +187,7 @@ class Commodity(object):
                 if additional_code not in self.additional_code_string:
                     count += 1
                     self.additional_code_string += additional_code + CommonString.divider
-                    
+
             self.additional_code_string = self.additional_code_string.replace("XXXX", str(count).rjust(4, "0"))
 
             self.additional_code_string += CommonString.line_feed
@@ -202,10 +202,10 @@ class Commodity(object):
 
         if not found:
             self.SPV_CODE = "       "
-            
+
     def get_end_use(self):
         # There may be some other criteria that need to be considered here
-        # At least temporarily, we are just checking to see if there is a 
+        # At least temporarily, we are just checking to see if there is a
         # 105 measure, and this signifies that the comm code is end use
         # The 105 may be inherited down
         self.is_end_use = False
@@ -219,11 +219,11 @@ class Commodity(object):
             self.COMMODITY_END_USE_ALLWD = "N"
 
     def append_footnotes_to_description(self):
-        self.description_csv = f.format_string(self.description, full = False)
+        self.description_csv = f.format_string(self.description, full=False)
         if len(self.footnotes) > 0:
             for footnote in self.footnotes:
                 self.description += "<" + footnote.FOOTNOTE_NUMBER + ">"
-    
+
     def build_hierarchy_string(self):
         token = ""
         taric_token_count = 0
@@ -233,8 +233,8 @@ class Commodity(object):
             current_depth = 0
             for item in self.hierarchy:
                 current_depth += 1
-                if item.significant_digits != 2: # ignore chapters
-                    if item.significant_digits == 10: # We are into the Taric codes
+                if item.significant_digits != 2:  # ignore chapters
+                    if item.significant_digits == 10:  # We are into the Taric codes
                         taric_token_count += 1
                         if taric_token_count == 1:
                             token = "++++"
@@ -244,7 +244,7 @@ class Commodity(object):
                             else:
                                 token = ":"
                     else:
-                        if current_depth == 2: # remember the chapter
+                        if current_depth == 2:  # remember the chapter
                             token = ""
                         elif current_depth == 3:
                             token = ":"
@@ -254,12 +254,12 @@ class Commodity(object):
             self.ALPHA_TEXT = self.hierarchy_string
         else:
             self.ALPHA_TEXT = self.description
-        
+
         self.ALPHA_TEXT = f.format_string(self.ALPHA_TEXT)
         if len(self.ALPHA_TEXT) > 2200:
             self.ALPHA_TEXT = self.ALPHA_TEXT[0:2195] + "..."
-        self.ALPHA_SIZE = str(len(self.ALPHA_TEXT)).zfill(4) 
-            
+        self.ALPHA_SIZE = str(len(self.ALPHA_TEXT)).zfill(4)
+
     def get_amendment_status(self):
         # This may need to change for the second round
         if self.validity_start_date >= g.app.COMPARISON_DATE:
@@ -278,7 +278,7 @@ class Commodity(object):
                 self.COMMODITY_AMEND_IND = "A"
             else:
                 self.COMMODITY_AMEND_IND = " "
-    
+
     def create_extract_line(self):
         self.extract_line = self.RECORD_TYPE + CommonString.divider
         self.extract_line += self.COMMODITY_CODE + CommonString.divider
@@ -300,7 +300,7 @@ class Commodity(object):
         self.extract_line += self.ALPHA_TEXT
 
         self.extract_line += CommonString.line_feed
-        
+
     def get_entity_type(self):
         # Get the entity type - Chapter, Heading, Heading / commodity, Commodity
         if self.significant_digits == 2:

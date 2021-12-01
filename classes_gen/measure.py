@@ -397,7 +397,8 @@ class Measure(object):
         self.measure__reduction_indicator = ""
         self.extract_line_csv = ""
         self.extract_line_csv += str(self.goods_nomenclature_sid) + CommonString.comma
-        self.extract_line_csv += CommonString.quote_char + self.goods_nomenclature_item_id + CommonString.quote_char + CommonString.comma
+        # self.extract_line_csv += CommonString.quote_char + self.goods_nomenclature_item_id + CommonString.quote_char + CommonString.comma
+        self.extract_line_csv += CommonString.quote_char + "COMMODITY_CODE_PLACEHOLDER" + CommonString.quote_char + CommonString.comma
         self.extract_line_csv += str(self.measure_sid) + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + self.measure_type_id + CommonString.quote_char + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + g.app.measure_types_friendly[self.measure_type_id] + CommonString.quote_char + CommonString.comma
@@ -411,7 +412,6 @@ class Measure(object):
         self.extract_line_csv += CommonString.quote_char + self.conditions_string + CommonString.quote_char + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + str(self.geographical_area_sid) + CommonString.quote_char + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + self.geographical_area_id + CommonString.quote_char + CommonString.comma
-        # self.extract_line_csv += CommonString.quote_char + g.app.geographical_areas_friendly[self.geographical_area_sid] + CommonString.quote_char + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + g.app.geographical_areas_friendly[self.geographical_area_id] + CommonString.quote_char + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + self.exclusion_string + CommonString.quote_char + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + self.exclusions_desc + CommonString.quote_char + CommonString.comma
