@@ -1,4 +1,4 @@
-import sys
+import re
 import os
 import json
 
@@ -48,7 +48,13 @@ class Commodity(object):
         self.written_ADP = []
         self.written_CVD = []
         self.written_CVP = []
-
+        
+    def cleanse_description(self):
+        self.description = re.sub(r"<br>",  " ", self.description)
+        self.description = re.sub(r"\r",  " ", self.description)
+        self.description = re.sub(r"\n",  " ", self.description)
+        self.description = re.sub(r"[ ]{2,10}",  " ", self.description)
+        
     def determine_commodity_type(self):
         if self.leaf == 1:
             if self.significant_digits == 10:

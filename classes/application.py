@@ -174,6 +174,8 @@ class Application(object):
         self.additional_code_count = 0
         self.measure_count = 0
         self.measure_exception_count = 0
+        
+        self.commodities_dict = {}
 
         for i in range(self.start, self.end):
             self.start_loop_timer("Creating data for commodity codes starting with " + str(i))
@@ -222,7 +224,11 @@ class Application(object):
                     commodity.determine_imp_exp_use()
                     commodity.determine_commodity_type()
                     commodity.get_amendment_status()
+                    commodity.cleanse_description()
                     self.commodities.append(commodity)
+                    
+                    if commodity.productline_suffix == "80":
+                        self.commodities_dict[commodity.COMMODITY_CODE] = commodity.description
 
             self.assign_measures_to_commodities()
 
@@ -1102,6 +1108,14 @@ class Application(object):
                             s = measure.extract_line_csv
                             s = s.replace("COMMODITY_CODE_PLACEHOLDER", commodity.COMMODITY_CODE)
                             self.measure_csv_file.write(s)
+                            
+                            if measure.measure_type_id in ("103", ":105"):
+                                s = measure.extract_line_mfn_csv
+                                s = s.replace("COMMODITY_CODE_PLACEHOLDER", commodity.COMMODITY_CODE)
+                                s = s.replace("COMMODITY_CODE_DESCRIPTION", self.commodities_dict[commodity.COMMODITY_CODE])
+                                
+                                self.mfn_csv_file.write(s)
+                                
 
                     measure_sids.append(measure.measure_sid)
 
@@ -1175,6 +1189,14 @@ class Application(object):
         self.measure_csv_file = open(self.measure_csv_filepath, "w+")
         self.measure_csv_file.write('"commodity__sid","commodity__code","measure__sid","measure__type__id","measure__type__description","measure__additional_code__code","measure__additional_code__description","measure__duty_expression","measure__effective_start_date","measure__effective_end_date","measure__reduction_indicator","measure__footnotes","measure__conditions","measure__geographical_area__sid","measure__geographical_area__id","measure__geographical_area__description","measure__excluded_geographical_areas__ids","measure__excluded_geographical_areas__descriptions","measure__quota__order_number"' + CommonString.line_feed)
 
+
+        # MFN (103 / 105) CSV extract filename
+        self.mfn_csv_filename = self.filename.replace(".txt", ".csv")
+        self.mfn_csv_filename = self.mfn_csv_filename.replace("ascii", "mfn")
+        self.mfn_csv_filepath = os.path.join(self.csv_folder, self.mfn_csv_filename)
+        self.mfn_csv_file = open(self.mfn_csv_filepath, "w+")
+        self.mfn_csv_file.write('"commodity__sid","commodity__code","commodity__code__description","measure__sid","measure__type__id","measure__type__description","measure__additional_code__code","measure__additional_code__description","measure__duty_expression","measure__effective_start_date","measure__effective_end_date"' + CommonString.line_feed)
+
         # Commodities CSV extract filename
         self.commodity_csv_filename = self.measure_csv_filename.replace("measures", "commodities")
         self.commodity_csv_filepath = os.path.join(self.csv_folder, self.commodity_csv_filename)
@@ -1215,6 +1237,7 @@ class Application(object):
     def close_extract(self):
         self.icl_vme_file.close()
         self.measure_csv_file.close()
+        self.mfn_csv_file.close()
         self.commodity_csv_file.close()
         
         if self.WRITE_ANCILLARY_FILES == 1:
@@ -1225,6 +1248,10 @@ class Application(object):
             self.measure_type_csv_file.close()
 
     def create_email_message(self):
+        self.send_mail = int(os.getenv('SEND_MAIL'))
+        if self.send_mail == 0:
+            return
+        
         self.html_content = """
         <p style="color:#000">Dear all,</p>
         <p style="color:#000">The following data files are available for download, representing tariff data for <b>{0}</b>:</p>
@@ -1237,11 +1264,11 @@ class Application(object):
             </tr>
             <tr>
                 <td style="padding:3px 0px">Commodity changes</td>
-                <td style="padding:3px 3px">{16}</td>
+                <td style="padding:3px 3px">{19}</td>
             </tr>
             <tr>
                 <td style="padding:3px 0px">Measure changes</td>
-                <td style="padding:3px 3px">{17}</td>
+                <td style="padding:3px 3px">{20}</td>
             </tr>
         </table>
         
@@ -1259,36 +1286,40 @@ class Application(object):
             </tr>
             <tr>
                 <td style="padding:3px 0px">Electronic Tariff File (ICL VME format)</td>
-                <td style="padding:3px 3px">{8}</td>
-            </tr>
-            <tr>
-                <td style="padding:3px 0px">Measures, as applied to commodity codes (CSV)</td>
-                <td style="padding:3px 3px">{9}</td>
-            </tr>
-            <tr>
-                <td style="padding:3px 0px">Commodities</td>
                 <td style="padding:3px 3px">{10}</td>
             </tr>
             <tr>
-                <td style="padding:3px 0px">Footnotes</td>
+                <td style="padding:3px 0px">Measures, as applied to commodity codes (CSV)</td>
                 <td style="padding:3px 3px">{11}</td>
             </tr>
             <tr>
-                <td style="padding:3px 0px">Certificates</td>
+                <td style="padding:3px 0px">Commodities</td>
                 <td style="padding:3px 3px">{12}</td>
             </tr>
             <tr>
-                <td style="padding:3px 0px">Quotas</td>
+                <td style="padding:3px 0px">Footnotes</td>
                 <td style="padding:3px 3px">{13}</td>
             </tr>
             <tr>
-                <td style="padding:3px 0px">Geographical areas</td>
+                <td style="padding:3px 0px">Certificates</td>
                 <td style="padding:3px 3px">{14}</td>
             </tr>
             <tr>
-                <td style="padding:3px 0px">Measure types</td>
+                <td style="padding:3px 0px">Quotas</td>
                 <td style="padding:3px 3px">{15}</td>
             </tr>
+            <tr>
+                <td style="padding:3px 0px">Geographical areas</td>
+                <td style="padding:3px 3px">{16}</td>
+            </tr>
+            <tr>
+                <td style="padding:3px 0px">Measure types</td>
+                <td style="padding:3px 3px">{17}</td>
+            </tr>
+            <!--<tr>
+                <td style="padding:3px 0px">MFN duties</td>
+                <td style="padding:3px 3px">{18}</td>
+            </tr>//-->
         </table>
         
         <br><br><p style="color:#000"><b>Files compressed using 7z compression</b>:</p>
@@ -1325,6 +1356,14 @@ class Application(object):
                 <td style="padding:3px 0px">Geographical areas</td>
                 <td style="padding:3px 3px">{7}</td>
             </tr>
+            <tr>
+                <td style="padding:3px 0px">Measure types</td>
+                <td style="padding:3px 3px">{8}</td>
+            </tr>
+            <!--<tr>
+                <td style="padding:3px 0px">Third-country duties</td>
+                <td style="padding:3px 3px">{9}</td>
+            </tr>//-->
         </table>
         
 
@@ -1339,6 +1378,8 @@ class Application(object):
             self.bucket_url + self.aws_path_certificates_csv_tuple[0],
             self.bucket_url + self.aws_path_quotas_csv_tuple[0],
             self.bucket_url + self.aws_path_geographical_areas_csv_tuple[0],
+            self.bucket_url + self.aws_path_measure_types_csv_tuple[0],
+            self.bucket_url + self.aws_path_mfn_csv_tuple[0],
             self.bucket_url + self.aws_path_icl_vme_tuple[1],
             self.bucket_url + self.aws_path_measures_csv_tuple[1],
             self.bucket_url + self.aws_path_commodities_csv_tuple[1],
@@ -1347,11 +1388,15 @@ class Application(object):
             self.bucket_url + self.aws_path_quotas_csv_tuple[1],
             self.bucket_url + self.aws_path_geographical_areas_csv_tuple[1],
             self.bucket_url + self.aws_path_measure_types_csv_tuple[1],
+            self.bucket_url + self.aws_path_mfn_csv_tuple[1],
             self.bucket_url + self.aws_path_commodities_delta_tuple[1],
             self.bucket_url + self.aws_path_measures_delta_tuple[1]
         )
 
     def send_email_message(self):
+        self.send_mail = int(os.getenv('SEND_MAIL'))
+        if self.send_mail == 0:
+            return
         subject = "Issue of updated HMRC Electronic Tariff File for " + self.SNAPSHOT_DATE
         attachment_list = [
             self.documentation_file,
@@ -1363,6 +1408,7 @@ class Application(object):
     def zip_and_upload(self):
         self.aws_path_icl_vme_tuple = Zipper(self.filepath_icl_vme, self.scope, "icl_vme", "ICL VME file").compress()
         self.aws_path_measures_csv_tuple = Zipper(self.measure_csv_filepath, self.scope, "csv", "Measures CSV").compress()
+        self.aws_path_mfn_csv_tuple = Zipper(self.mfn_csv_filepath, self.scope, "csv", "Third country duty CSV").compress()
         self.aws_path_commodities_csv_tuple = Zipper(self.commodity_csv_filepath, self.scope, "csv", "Commodities CSV").compress()
         if self.WRITE_ANCILLARY_FILES:
             self.aws_path_footnotes_csv_tuple = Zipper(self.footnote_csv_filepath, self.scope, "csv", "Footnotes CSV").compress()

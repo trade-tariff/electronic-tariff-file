@@ -9,6 +9,7 @@ class Measure(object):
     def __init__(self):
         self.extract_line = None
         self.extract_line_csv = None
+        self.extract_line_mfn_csv = None
 
         self.RECORD_TYPE = "ME" # or MX
         self.MEASURE_GROUP_CODE = "  "
@@ -395,9 +396,9 @@ class Measure(object):
         else:
             self.additional_code_description = ""
         self.measure__reduction_indicator = ""
+
         self.extract_line_csv = ""
         self.extract_line_csv += str(self.goods_nomenclature_sid) + CommonString.comma
-        # self.extract_line_csv += CommonString.quote_char + self.goods_nomenclature_item_id + CommonString.quote_char + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + "COMMODITY_CODE_PLACEHOLDER" + CommonString.quote_char + CommonString.comma
         self.extract_line_csv += str(self.measure_sid) + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + self.measure_type_id + CommonString.quote_char + CommonString.comma
@@ -417,3 +418,32 @@ class Measure(object):
         self.extract_line_csv += CommonString.quote_char + self.exclusions_desc + CommonString.quote_char + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + self.process_null(self.ordernumber) + CommonString.quote_char
         self.extract_line_csv += CommonString.line_feed
+
+        # self.mfn_csv_file.write(
+        # '"commodity__sid",
+        # "commodity__code",
+        # "measure__sid",
+        # "measure__type__id",
+        # "measure__type__description",
+        # "measure__additional_code__code",
+        # "measure__additional_code__description",
+        # "measure__duty_expression",
+        # "measure__effective_start_date",
+        # "measure__effective_end_date"' + CommonString.line_feed)
+
+        self.extract_line_mfn_csv = ""
+        self.extract_line_mfn_csv += str(self.goods_nomenclature_sid) + CommonString.comma
+        self.extract_line_mfn_csv += CommonString.quote_char + "COMMODITY_CODE_PLACEHOLDER" + CommonString.quote_char + CommonString.comma
+        self.extract_line_mfn_csv += CommonString.quote_char + "COMMODITY_CODE_DESCRIPTION" + CommonString.quote_char + CommonString.comma
+        self.extract_line_mfn_csv += str(self.measure_sid) + CommonString.comma
+        self.extract_line_mfn_csv += CommonString.quote_char + self.measure_type_id + CommonString.quote_char + CommonString.comma
+        self.extract_line_mfn_csv += CommonString.quote_char + g.app.measure_types_friendly[self.measure_type_id] + CommonString.quote_char + CommonString.comma
+        self.extract_line_mfn_csv += CommonString.quote_char + self.additional_code_code + CommonString.quote_char + CommonString.comma
+        self.extract_line_mfn_csv += CommonString.quote_char + self.additional_code_description + CommonString.quote_char + CommonString.comma
+        self.extract_line_mfn_csv += CommonString.quote_char + self.english_duty_string + CommonString.quote_char + CommonString.comma
+        self.extract_line_mfn_csv += CommonString.quote_char + self.validity_start_date + CommonString.quote_char + CommonString.comma
+        self.extract_line_mfn_csv += CommonString.quote_char + self.process_null(self.validity_end_date) + CommonString.quote_char + CommonString.comma
+
+
+        self.extract_line_mfn_csv += CommonString.line_feed
+        a = 1
