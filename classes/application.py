@@ -53,16 +53,19 @@ class Application(object):
         self.WRITE_FOOTNOTES = int(os.getenv('WRITE_FOOTNOTES'))
         self.WRITE_ANCILLARY_FILES = int(os.getenv('WRITE_ANCILLARY_FILES'))
         self.DEBUG_OVERRIDE = int(os.getenv('DEBUG_OVERRIDE'))
-
-        d = datetime.now()
-        self.SNAPSHOT_DATE = d.strftime('%Y-%m-%d')
-        self.COMPARISON_DATE = d - timedelta(days=7)
+        self.PLACEHOLDER_FOR_EMPTY_DESCRIPTIONS = os.getenv('PLACEHOLDER_FOR_EMPTY_DESCRIPTIONS')
+        self.VSCODE_DEBUG_MODE = os.getenv('VSCODE_DEBUG_MODE')
 
         self.mfns = {}
+
+        # Check whether UK or XI
         if ("dest" not in sys.argv[0]):
             self.get_scope()
         else:
             self.scope = "uk"
+
+        # Date of the report
+        self.get_date()
 
         self.get_folders()
         self.get_process_scope()
@@ -89,8 +92,8 @@ class Application(object):
 
         self.create_delta()
 
-        # Only compress, upload and email when we have DEBUG_OVERRIDE switched off
-        if self.DEBUG_OVERRIDE == 0:
+        # Only compress, upload and email when we have DEBUG_OVERRIDE switched on
+        if self.DEBUG_OVERRIDE == 1 or self.VSCODE_DEBUG_MODE == False:
             self.zip_and_upload()
             self.create_email_message()
             self.send_email_message()
@@ -135,6 +138,22 @@ class Application(object):
         # grep -c "^ME" hmrc-tariff-ascii-05-mar-2021.txt
         # grep -c "^MX" hmrc-tariff-ascii-05-mar-2021.txt
         self.end_timer("Counting measures and updating counts in ICL VME file")
+
+    def get_date(self):
+        if len(sys.argv) > 4:
+            d = sys.argv[4].lower()
+            date_format = "%Y-%m-%d"
+            try:
+                datetime.strptime(d, date_format)
+                self.SNAPSHOT_DATE = d
+                self.COMPARISON_DATE = datetime.strptime(d, '%Y-%m-%d') - timedelta(days=7)
+            except ValueError:
+                print("This is the incorrect date string format. It should be YYYY-MM-DD")
+                sys.exit()
+        else:
+            d = datetime.now()
+            self.SNAPSHOT_DATE = d.strftime('%Y-%m-%d')
+            self.COMPARISON_DATE = d - timedelta(days=7)
 
     def get_scope(self):
         # Takes arguments from the command line to identify
@@ -192,6 +211,8 @@ class Application(object):
             self.assign_footnote_associations_to_measures()
             self.sort_measures_by_commodity_code()
             self.create_measure_duties()
+            self.valid_descriptions = self.get_latest_valid_descriptions(i)
+            self.valid_descriptions_xi = self.get_latest_valid_descriptions(i, "xi")
 
             iteration = str(i) + "%"
             self.get_recent_descriptions(str(i))
@@ -217,7 +238,7 @@ class Application(object):
                     commodity.validity_end_date = row[4]
                     commodity.COMMODITY_EDATE = self.YYYYMMDD(row[3])
                     commodity.COMMODITY_LDATE = self.YYYYMMDD(row[4])
-                    commodity.description = row[5].replace('"', "'")
+                    commodity.description = row[5]
                     commodity.number_indents = int(row[6])
                     commodity.leaf = int(str(row[9]))
                     commodity.significant_digits = int(row[10])
@@ -286,6 +307,34 @@ class Application(object):
             self.end_loop_timer("\nDEALING WITH COMMODITY CODES STARTING WITH " + str(i) + "\n")
 
         self.write_commodity_footer()
+        
+    def get_latest_valid_descriptions(self, iteration, scope_override = None):
+        tmp = {}
+        sql = """
+        with cte as (
+        select distinct on (gnd.goods_nomenclature_sid) 
+        gndp.goods_nomenclature_sid, gndp.goods_nomenclature_item_id, gndp.productline_suffix, gnd.description 
+        from goods_nomenclature_description_periods gndp, goods_nomenclature_descriptions gnd 
+        where gndp.goods_nomenclature_sid = gnd.goods_nomenclature_sid 
+        and left(gnd.goods_nomenclature_item_id, 1) = %s
+        and gndp.validity_start_date <= %s
+        and gnd.description is not null
+        order by gnd.goods_nomenclature_sid, gndp.validity_start_date desc, gnd.goods_nomenclature_item_id
+        )
+        select (goods_nomenclature_item_id || productline_suffix) as code, description
+        from cte order by goods_nomenclature_item_id, productline_suffix;
+        """
+        params = [
+            str(iteration),
+            self.SNAPSHOT_DATE
+        ]
+        d = Database(scope_override)
+        rows = d.run_query(sql, params)
+        if len(rows) > 0:
+            for row in rows:
+                tmp[row[0]] = row[1]
+
+        return (tmp)
 
     def sort_measures_by_commodity_code(self):
         self.start_timer("Sorting commodity codes")
@@ -324,6 +373,7 @@ class Application(object):
         self.message_string += msg + "\n"
 
     def get_recent_descriptions(self, iteration):
+        # This is used to check for amendment status - do not touch
         self.descriptions = []
         sql = """
         select goods_nomenclature_item_id, validity_start_date 
@@ -434,16 +484,6 @@ class Application(object):
                     break
 
         self.end_timer("Assigning measure excluded geographical areas to measures")
-
-    # def assign_measure_excluded_geographical_areas_old(self):
-    #     # Assign measure exclusions to measures
-    #     self.start_timer("Assigning measure excluded geographical areas to measures")
-    #     for measure_excluded_geographical_area in self.measure_excluded_geographical_areas:
-    #         for measure in self.measures:
-    #             if measure.measure_sid == measure_excluded_geographical_area.measure_sid:
-    #                 measure.measure_excluded_geographical_areas.append(measure_excluded_geographical_area)
-    #                 break
-    #     self.end_timer("Assigning measure excluded geographical areas to measures")
 
     def assign_footnote_associations_to_measures(self):
         # Assign footnote_association_measures

@@ -10,10 +10,17 @@ import classes.globals as g
 class Database:
     """PostgreSQL Database class."""
 
-    def __init__(self):
+    def __init__(self, scope = None):
         load_dotenv('.env')
         # self.database_url = os.getenv('DATABASE_UK')
-        self.database_url = g.app.DATABASE
+        if scope is None:
+            self.database_url = g.app.DATABASE
+        else:
+            if scope == "xi":
+                self.database_url = os.getenv('DATABASE_EU')
+            else:
+                self.database_url = os.getenv('DATABASE_UK')
+                
         self.conn = None
 
     def open_connection(self):
