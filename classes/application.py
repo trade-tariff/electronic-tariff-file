@@ -93,7 +93,8 @@ class Application(object):
         self.create_delta()
 
         # Only compress, upload and email when we have DEBUG_OVERRIDE switched on
-        if self.DEBUG_OVERRIDE == 1 or self.VSCODE_DEBUG_MODE == False:
+        # if self.DEBUG_OVERRIDE == 1 or self.VSCODE_DEBUG_MODE == False:
+        if 1 > 0:
             self.zip_and_upload()
             self.create_email_message()
             self.send_email_message()
@@ -217,12 +218,37 @@ class Application(object):
             iteration = str(i) + "%"
             self.get_recent_descriptions(str(i))
 
+            # Get UK commodities
             sql = """select goods_nomenclature_sid, goods_nomenclature_item_id, producline_suffix, 
             validity_start_date, validity_end_date, description, number_indents, chapter, node,
             leaf, significant_digits
             from utils.goods_nomenclature_export_new(%s, %s) order by 2, 3"""
 
             d = Database()
+            params = [
+                iteration,
+                self.SNAPSHOT_DATE
+            ]
+            rows = d.run_query(sql, params)
+            self.commodities_dict_uk = {}
+            for row in rows:
+                commodity = Commodity()
+                commodity.COMMODITY_CODE = row[1]
+                if commodity.COMMODITY_CODE[0:2] not in ('98', '99'):
+                    commodity.goods_nomenclature_sid = row[0]
+                    commodity.productline_suffix = row[2]
+                    commodity.description = row[5]
+                    commodity.cleanse_description()
+                    self.commodities_dict_uk[commodity.COMMODITY_CODE + commodity.productline_suffix] = commodity.description
+
+
+            # Get EU commodities
+            sql = """select goods_nomenclature_sid, goods_nomenclature_item_id, producline_suffix, 
+            validity_start_date, validity_end_date, description, number_indents, chapter, node,
+            leaf, significant_digits
+            from utils.goods_nomenclature_export_new(%s, %s) order by 2, 3"""
+
+            d = Database("xi")
             params = [
                 iteration,
                 self.SNAPSHOT_DATE
@@ -245,7 +271,17 @@ class Application(object):
                     commodity.determine_imp_exp_use()
                     commodity.determine_commodity_type()
                     commodity.get_amendment_status()
-                    commodity.cleanse_description()
+                    # Replace the EU code with the UK code if there is a Euro symbol in it
+                    if "€" in commodity.description:
+                        code = commodity.COMMODITY_CODE + commodity.productline_suffix
+                        try:
+                            if self.commodities_dict_uk[code] != "":
+                                commodity.description = self.commodities_dict_uk[code]
+                        except:
+                            pass
+                    else:
+                        commodity.cleanse_description()
+    
                     self.commodities.append(commodity)
                     
                     if commodity.productline_suffix == "80":
@@ -1149,7 +1185,7 @@ class Application(object):
                             s = s.replace("COMMODITY_CODE_PLACEHOLDER", commodity.COMMODITY_CODE)
                             self.measure_csv_file.write(s)
                             
-                            if measure.measure_type_id in ("103", ":105"):
+                            if measure.measure_type_id in ("103", "105"):
                                 s = measure.extract_line_mfn_csv
                                 s = s.replace("COMMODITY_CODE_PLACEHOLDER", commodity.COMMODITY_CODE)
                                 s = s.replace("COMMODITY_CODE_DESCRIPTION", self.commodities_dict[commodity.COMMODITY_CODE])
@@ -1158,8 +1194,6 @@ class Application(object):
                                 
 
                     measure_sids.append(measure.measure_sid)
-
-                
 
         self.end_timer("Writing commodities")
 

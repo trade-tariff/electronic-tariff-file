@@ -6,6 +6,7 @@ import classes.globals as g
 from classes.functions import functions as f
 from classes.enums import CommonString
 from classes_gen.supplementary_unit import SupplementaryUnit
+from unidecode import unidecode
 
 
 class Commodity(object):
@@ -77,6 +78,7 @@ class Commodity(object):
         self.description = re.sub(r"\r",  " ", self.description)
         self.description = re.sub(r"\n",  " ", self.description)
         self.description = re.sub(r"[ ]{2,10}",  " ", self.description)
+        self.description = unidecode(self.description)
 
     def determine_commodity_type(self):
         if self.leaf == 1:
