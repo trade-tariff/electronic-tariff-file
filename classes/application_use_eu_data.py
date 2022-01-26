@@ -218,6 +218,7 @@ class Application(object):
             iteration = str(i) + "%"
             self.get_recent_descriptions(str(i))
 
+            # Get UK commodities
             sql = """select goods_nomenclature_sid, goods_nomenclature_item_id, producline_suffix, 
             validity_start_date, validity_end_date, description, number_indents, chapter, node,
             leaf, significant_digits
@@ -229,28 +230,65 @@ class Application(object):
                 self.SNAPSHOT_DATE
             ]
             rows = d.run_query(sql, params)
+            # self.commodities_dict_uk = {}
+            self.commodities_dict = {}
             for row in rows:
                 commodity = Commodity()
                 commodity.COMMODITY_CODE = row[1]
                 if commodity.COMMODITY_CODE[0:2] not in ('98', '99'):
                     commodity.goods_nomenclature_sid = row[0]
                     commodity.productline_suffix = row[2]
-                    commodity.validity_start_date = row[3]
-                    commodity.validity_end_date = row[4]
-                    commodity.COMMODITY_EDATE = self.YYYYMMDD(row[3])
-                    commodity.COMMODITY_LDATE = self.YYYYMMDD(row[4])
                     commodity.description = row[5]
-                    commodity.number_indents = int(row[6])
-                    commodity.leaf = int(str(row[9]))
-                    commodity.significant_digits = int(row[10])
-                    commodity.determine_imp_exp_use()
-                    commodity.determine_commodity_type()
-                    commodity.get_amendment_status()
                     commodity.cleanse_description()
                     self.commodities.append(commodity)
+                    # self.commodities_dict_uk[commodity.COMMODITY_CODE + commodity.productline_suffix] = commodity.description
+                    self.commodities_dict[commodity.COMMODITY_CODE + commodity.productline_suffix] = commodity.description
+
+
+            # Get EU commodities
+            # sql = """select goods_nomenclature_sid, goods_nomenclature_item_id, producline_suffix, 
+            # validity_start_date, validity_end_date, description, number_indents, chapter, node,
+            # leaf, significant_digits
+            # from utils.goods_nomenclature_export_new(%s, %s) order by 2, 3"""
+
+            # d = Database("xi")
+            # params = [
+            #     iteration,
+            #     self.SNAPSHOT_DATE
+            # ]
+            # rows = d.run_query(sql, params)
+            # for row in rows:
+            #     commodity = Commodity()
+            #     commodity.COMMODITY_CODE = row[1]
+            #     if commodity.COMMODITY_CODE[0:2] not in ('98', '99'):
+            #         commodity.goods_nomenclature_sid = row[0]
+            #         commodity.productline_suffix = row[2]
+            #         commodity.validity_start_date = row[3]
+            #         commodity.validity_end_date = row[4]
+            #         commodity.COMMODITY_EDATE = self.YYYYMMDD(row[3])
+            #         commodity.COMMODITY_LDATE = self.YYYYMMDD(row[4])
+            #         commodity.description = row[5]
+            #         commodity.number_indents = int(row[6])
+            #         commodity.leaf = int(str(row[9]))
+            #         commodity.significant_digits = int(row[10])
+            #         commodity.determine_imp_exp_use()
+            #         commodity.determine_commodity_type()
+            #         commodity.get_amendment_status()
+            #         # Replace the EU code with the UK code if there is a Euro symbol in it
+            #         if "€" in commodity.description:
+            #             code = commodity.COMMODITY_CODE + commodity.productline_suffix
+            #             try:
+            #                 if self.commodities_dict_uk[code] != "":
+            #                     commodity.description = self.commodities_dict_uk[code]
+            #             except:
+            #                 pass
+            #         else:
+            #             commodity.cleanse_description()
+    
+            #         self.commodities.append(commodity)
                     
-                    if commodity.productline_suffix == "80":
-                        self.commodities_dict[commodity.COMMODITY_CODE] = commodity.description
+            #         if commodity.productline_suffix == "80":
+            #             self.commodities_dict[commodity.COMMODITY_CODE] = commodity.description
 
             self.assign_measures_to_commodities()
 
@@ -1160,8 +1198,6 @@ class Application(object):
                                 
 
                     measure_sids.append(measure.measure_sid)
-
-                
 
         self.end_timer("Writing commodities")
 

@@ -13,7 +13,7 @@ class GeographicalArea(object):
         self.suppress = suppress
         self.members = []
         
-        if self.taric_area == "2020":
+        if self.taric_area == "1013":
             a = 1
         
         if self.chief_area == "expand":
@@ -26,6 +26,7 @@ class GeographicalArea(object):
             and ga_parent.geographical_area_id = '""" + self.taric_area + """'
             and gam.validity_start_date < '""" + g.app.SNAPSHOT_DATE + """'
             and (gam.validity_end_date is null or gam.validity_end_date > '""" + g.app.SNAPSHOT_DATE + """')
+            and ga_child.geographical_area_id != 'EU'
             order by 1;
             """
             d = Database()
