@@ -38,7 +38,10 @@ class MeasureComponent(object):
                 self.measure += self.measurement_unit_qualifier_code.strip()
             
             # Get the measure unit from the supplementary units lookup
-            self.UNIT_OF_QUANTITY_CODE = g.app.supplementary_unit_dict[self.measure]
+            try:
+                self.UNIT_OF_QUANTITY_CODE = g.app.supplementary_unit_dict[self.measure]
+            except:
+                self.UNIT_OF_QUANTITY_CODE = "000"
             
             self.SPECIFIC_RATE = self.pad_multiply_value(self.duty_amount, 10)
             self.AD_VALOREM_RATE = "000000"

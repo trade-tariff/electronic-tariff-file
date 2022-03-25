@@ -221,7 +221,9 @@ class Application(object):
             sql = """select goods_nomenclature_sid, goods_nomenclature_item_id, producline_suffix, 
             validity_start_date, validity_end_date, description, number_indents, chapter, node,
             leaf, significant_digits
-            from utils.goods_nomenclature_export_new(%s, %s) order by 2, 3"""
+            from utils.goods_nomenclature_export_new(%s, %s)
+            where goods_nomenclature_item_id not in ('3824780000', '3827680091', '7019390083', '7019400083')
+            order by 2, 3"""
 
             d = Database()
             params = [
