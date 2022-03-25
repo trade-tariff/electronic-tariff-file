@@ -79,14 +79,14 @@ class Application(object):
         self.write_commodity_header()
         self.get_commodities()
         self.write_footnotes()
-        
+
         if self.WRITE_ANCILLARY_FILES == 1:
             self.get_all_footnotes()
             self.get_all_certificates()
             self.get_all_quotas()
             self.get_all_geographies()
             self.get_all_measure_types()
-        
+
         self.close_extract()
         self.count_measures()
 
@@ -194,7 +194,7 @@ class Application(object):
         self.additional_code_count = 0
         self.measure_count = 0
         self.measure_exception_count = 0
-        
+
         self.commodities_dict = {}
 
         for i in range(self.start, self.end):
@@ -250,7 +250,7 @@ class Application(object):
                     commodity.get_amendment_status()
                     commodity.cleanse_description()
                     self.commodities.append(commodity)
-                    
+
                     if commodity.productline_suffix == "80":
                         self.commodities_dict[commodity.COMMODITY_CODE] = commodity.description
 
@@ -260,6 +260,11 @@ class Application(object):
             self.build_commodity_hierarchy()
 
             self.start_timer("Applying inheritance etc.")
+            f = open("comm_codes.txt", "w")
+            # for commodity in self.commodities:
+            #     f.write(commodity.COMM_CODE + "\n")
+            # f.close()
+            # sys.exit()
             for commodity in self.commodities:
                 commodity.apply_commodity_inheritance()
                 commodity.sort_inherited_measures()
@@ -267,6 +272,8 @@ class Application(object):
                 commodity.get_additional_code_indicator()
                 commodity.apply_seasonal_rates(self.seasonal_rates)
                 commodity.get_end_use()
+                if commodity.COMMODITY_CODE == "1515905900":
+                    a = 1
                 commodity.get_supplementary_units(self.supplementary_units)
                 commodity.get_spv(self.spvs)
 
@@ -297,7 +304,7 @@ class Application(object):
                                                     break
                                         if found is False:
                                             commodity.measures_inherited.append(m)
-            
+
             self.end_timer("Bubble up VAT and excise")
 
             self.start_timer("Creating extract lines")
@@ -310,8 +317,8 @@ class Application(object):
             self.end_loop_timer("\nDEALING WITH COMMODITY CODES STARTING WITH " + str(i) + "\n")
 
         self.write_commodity_footer()
-        
-    def get_latest_valid_descriptions(self, iteration, scope_override = None):
+
+    def get_latest_valid_descriptions(self, iteration, scope_override=None):
         tmp = {}
         sql = """
         with cte as (
@@ -416,7 +423,8 @@ class Application(object):
             "551": 7,
             "552": 7,
             "553": 7,
-            "554": 7
+            "554": 7,
+            "695": 8
         }
         for measure in self.measures:
             priority = 99
@@ -662,15 +670,6 @@ class Application(object):
         self.start_timer("Getting measures")
         self.measures = []
 
-        sql = """select m.*, mt.measure_type_series_id,
-        mt.measure_component_applicable_code, mt.trade_movement_code
-        from utils.materialized_measures_real_end_dates m, measure_types mt
-        where m.measure_type_id = mt.measure_type_id
-        and left(goods_nomenclature_item_id, """ + str(len(str(iteration))) + """) = '""" + str(iteration) + """'
-        and (m.validity_end_date is null or m.validity_end_date >= '""" + self.SNAPSHOT_DATE + """')
-        and m.validity_start_date <= '""" + self.SNAPSHOT_DATE + """'
-        order by goods_nomenclature_item_id, measure_type_id, ordernumber, additional_code_type_id, additional_code_id;"""
-
         # Sort by measure SID to speed up processing in the assignment functions later
         sql = """select m.*, mt.measure_type_series_id,
         mt.measure_component_applicable_code, mt.trade_movement_code
@@ -879,7 +878,6 @@ class Application(object):
 
         self.end_timer("Getting and writing all geographical areas for CSV export")
         self.geography_csv_file.close()
-
 
     def get_all_measure_types(self):
         self.start_timer("Getting and writing all measure types for CSV export")
@@ -1142,7 +1140,7 @@ class Application(object):
                                 commodity.written_CVP.append(measure.geographical_area_id)
 
                     self.pipe_pr_measures_into_icl_vme_file(commodity.COMMODITY_CODE)
-                    
+
             # Write measures to the measures CSV file
             if commodity.leaf == 1:
                 measure_sids = []
@@ -1152,18 +1150,15 @@ class Application(object):
                             s = measure.extract_line_csv
                             s = s.replace("COMMODITY_CODE_PLACEHOLDER", commodity.COMMODITY_CODE)
                             self.measure_csv_file.write(s)
-                            
+
                             if measure.measure_type_id in ("103", "105"):
                                 s = measure.extract_line_mfn_csv
                                 s = s.replace("COMMODITY_CODE_PLACEHOLDER", commodity.COMMODITY_CODE)
                                 s = s.replace("COMMODITY_CODE_DESCRIPTION", self.commodities_dict[commodity.COMMODITY_CODE])
-                                
+
                                 self.mfn_csv_file.write(s)
-                                
 
                     measure_sids.append(measure.measure_sid)
-
-                
 
         self.end_timer("Writing commodities")
 
@@ -1233,7 +1228,6 @@ class Application(object):
         self.measure_csv_file = open(self.measure_csv_filepath, "w+")
         self.measure_csv_file.write('"commodity__sid","commodity__code","measure__sid","measure__type__id","measure__type__description","measure__additional_code__code","measure__additional_code__description","measure__duty_expression","measure__effective_start_date","measure__effective_end_date","measure__reduction_indicator","measure__footnotes","measure__conditions","measure__geographical_area__sid","measure__geographical_area__id","measure__geographical_area__description","measure__excluded_geographical_areas__ids","measure__excluded_geographical_areas__descriptions","measure__quota__order_number"' + CommonString.line_feed)
 
-
         # MFN (103 / 105) CSV extract filename
         self.mfn_csv_filename = self.filename.replace(".txt", ".csv")
         self.mfn_csv_filename = self.mfn_csv_filename.replace("ascii", "mfn")
@@ -1264,7 +1258,8 @@ class Application(object):
             self.quota_csv_filename = self.measure_csv_filename.replace("measures", "quotas")
             self.quota_csv_filepath = os.path.join(self.csv_folder, self.quota_csv_filename)
             self.quota_csv_file = open(self.quota_csv_filepath, "w+")
-            self.quota_csv_file.write('"quota__order__number__id","definition__start__date","definition__end__date","initial__volume","unit","critical__state","critical__threshold","quota__type","origins","origin__exclusions","commodities"' + CommonString.line_feed)
+            self.quota_csv_file.write(
+                '"quota__order__number__id","definition__start__date","definition__end__date","initial__volume","unit","critical__state","critical__threshold","quota__type","origins","origin__exclusions","commodities"' + CommonString.line_feed)
 
             # Geography CSV extract filename
             self.geography_csv_filename = self.measure_csv_filename.replace("measures", "geography")
@@ -1283,7 +1278,7 @@ class Application(object):
         self.measure_csv_file.close()
         self.mfn_csv_file.close()
         self.commodity_csv_file.close()
-        
+
         if self.WRITE_ANCILLARY_FILES == 1:
             self.footnote_csv_file.close()
             self.certificate_csv_file.close()
@@ -1295,7 +1290,7 @@ class Application(object):
         self.send_mail = int(os.getenv('SEND_MAIL'))
         if self.send_mail == 0:
             return
-        
+
         self.html_content = """
         <p style="color:#000">Dear all,</p>
         <p style="color:#000">The following data files are available for download, representing tariff data for <b>{0}</b>:</p>
@@ -1689,7 +1684,7 @@ class Application(object):
         self.get_geographical_areas_friendly()
         self.get_additional_codes_friendly()
         self.get_seasonal_rates()
-        self.get_unmatched_supplementary_units()
+        # self.get_unmatched_supplementary_units()
         self.get_spvs()
         self.get_geographical_areas()
         self.get_supplementary_units_reference()
@@ -1780,18 +1775,16 @@ class Application(object):
                 self.seasonal_rates.append(seasonal_rate)
 
     def get_unmatched_supplementary_units(self):
+        # This should not be run any more
         # Read the unmatched supplementary units from the reference CSV and load to a global list, needed for excise
         print("Getting unmatched supplementary units")
         self.unmatched_supplementary_units = []
-        filename = os.path.join(self.reference_folder,
-                                "unmatched_supplementary_units.csv")
+        filename = os.path.join(self.reference_folder, "unmatched_supplementary_units.csv")
         with open(filename) as csv_file:
             csv_reader = csv.reader(csv_file, delimiter=',')
             for row in csv_reader:
-                unmatched_supplementary_unit = UnmatchedSupplementaryUnit(
-                    row[0], row[1], row[2], row[4])
-                self.unmatched_supplementary_units.append(
-                    unmatched_supplementary_unit)
+                unmatched_supplementary_unit = UnmatchedSupplementaryUnit(row[0], row[1], row[2], row[4])
+                self.unmatched_supplementary_units.append(unmatched_supplementary_unit)
 
     def get_spvs(self):
         print("Getting SPVs")

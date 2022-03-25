@@ -114,9 +114,12 @@ data/explore/
 data/icl_vme/
 data/in/
 data/out/
-data/dit/
-data/comm_code_list/
 specification/
 questions/
 useful.md
 _export
+data/reference/supplementary unit archive/
+data/reference/archive/
+compare_two_files.py
+simplify_supp_units.py
+comm_codes.txt
