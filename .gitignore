@@ -123,3 +123,6 @@ data/reference/archive/
 compare_two_files.py
 simplify_supp_units.py
 comm_codes.txt
+boohoo y codes.xlsx
+data.csv
+query_csv.py
