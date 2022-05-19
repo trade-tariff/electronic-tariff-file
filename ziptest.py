@@ -11,7 +11,7 @@ def zip_extract_commodity_csv():
     filename = "hmrc-tariff-commodities-03-mar-2021.csv"
     try:
         os.remove(zipfile)
-    except:
+    except Exception as e:
         pass
     with py7zr.SevenZipFile(zipfile, 'w') as archive:
         archive.write(contained, filename)

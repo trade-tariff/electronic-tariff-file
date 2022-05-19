@@ -22,7 +22,7 @@ class FootnoteParser(object):
         csv_columns = [
             'RECORD_TYPE', 'FOOTNOTE_NUMBER', 'FOOTNOTE_EDATE', 'FOOTNOTE_ETIME',
             'FOOTNOTE_LDATE', 'FOOTNOTE_LTIME', 'FOOTNOTE_LENGTH', 'FOOTNOTE_TEXT', 'line']
-        
+
         with open(csv_file, 'w') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
             writer.writeheader()

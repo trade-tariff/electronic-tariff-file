@@ -26,5 +26,5 @@ class Appender(object):
         with open(self.csv_file, 'w') as csvfile:
             for measure in self.measures:
                 measure.line = measure.line.strip()
-                line = '"' + measure.commodity + '","' + measure.line + '"' +  + CommonString.line_feed
+                line = '"' + measure.commodity + '","' + measure.line + '"' + CommonString.line_feed
                 csvfile.write(line)

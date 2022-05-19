@@ -49,18 +49,18 @@ class Commodity(object):
         self.written_ADP = []
         self.written_CVD = []
         self.written_CVP = []
-        
+
     def get_last_valid_description(self):
         code = str(self.COMMODITY_CODE) + str(self.productline_suffix)
         try:
             tmp = g.app.valid_descriptions[code]
-        except:
+        except Exception as e:
             try:
                 tmp = g.app.valid_descriptions_xi[code]
-            except:
+            except Exception as e:
                 tmp = None
         return tmp
-        
+
     def cleanse_description(self):
         if self.description is None:
             self.description = self.get_last_valid_description()
@@ -74,10 +74,10 @@ class Commodity(object):
                     self.description = g.app.PLACEHOLDER_FOR_EMPTY_DESCRIPTIONS
 
         self.description = self.description.replace('"', "'")
-        self.description = re.sub(r"<br>",  " ", self.description)
-        self.description = re.sub(r"\r",  " ", self.description)
-        self.description = re.sub(r"\n",  " ", self.description)
-        self.description = re.sub(r"[ ]{2,10}",  " ", self.description)
+        self.description = re.sub(r"<br>", " ", self.description)
+        self.description = re.sub(r"\r", " ", self.description)
+        self.description = re.sub(r"\n", " ", self.description)
+        self.description = re.sub(r"[ ]{2,10}", " ", self.description)
         self.description = unidecode(self.description)
 
     def determine_commodity_type(self):
@@ -109,7 +109,7 @@ class Commodity(object):
 
     def get_supplementary_units(self, supplementary_units_reference):
         # This is extremely inefficient: takes c. 17 seconds to run and needs to be resolved
-        
+
         if self.leaf == 1 or (self.significant_digits >= 6 and self.productline_suffix == "80"):
             # First we need to look up the supplementary unit in the last CHIEF file, and only
             # if we can't find it, do we look in CDS
@@ -122,10 +122,10 @@ class Commodity(object):
                     self.UNIT_OF_QUANTITY = item["unit1"] + CommonString.unit_divider + item["unit2"] + CommonString.unit_divider + item["unit3"]
                     found_in_chief = True
                     pass
-                except:
+                except Exception as e:
                     pass
 
-            if found_in_chief == False:
+            if found_in_chief is False:
                 self.supplementary_unit = None
                 supp_types = ['109', '110']
                 found_quantity_code = False
@@ -145,7 +145,7 @@ class Commodity(object):
                                     found_quantity_code = True
                                     break
 
-                        if found_quantity_code == False:
+                        if found_quantity_code is False:
                             print("Missing supp code on comm code " + self.COMMODITY_CODE)
                         else:
                             self.UNIT_OF_QUANTITY = "1023" + CommonString.unit_divider + "2" + self.supplementary_unit.quantity_code + CommonString.unit_divider + "0000"

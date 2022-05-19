@@ -29,7 +29,7 @@ class MeasureParser(object):
             'DESTINATION_CTY_GRP_CODE', 'DESTINATION_ADD_CH_TYPE', 'RATE_1', 'RATE_2', 'RATE_3', 'RATE_4', 'RATE_5', 'DUTY_TYPE',
             'CMDTY_MEASURE_EX_HEAD_IND', 'FREE_CIRC_DOTI_REQD_IND', 'QUOTA_NO', 'QUOTA_CODE_UK',
             'QUOTA_UNIT_OF_QUANTITY_CODE', 'MEASURE_AMENDMENT_IND', 'line']
-               
+
         with open(self.csv_file, 'w') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
             writer.writeheader()

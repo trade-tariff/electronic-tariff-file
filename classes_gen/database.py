@@ -7,10 +7,11 @@ from dotenv import load_dotenv
 
 import classes.globals as g
 
+
 class Database:
     """PostgreSQL Database class."""
 
-    def __init__(self, scope = None):
+    def __init__(self, scope=None):
         load_dotenv('.env')
         # self.database_url = os.getenv('DATABASE_UK')
         if scope is None:
@@ -20,7 +21,7 @@ class Database:
                 self.database_url = os.getenv('DATABASE_EU')
             else:
                 self.database_url = os.getenv('DATABASE_UK')
-                
+
         self.conn = None
 
     def open_connection(self):
@@ -37,12 +38,12 @@ class Database:
     def close_connection(self):
         self.conn = None
 
-    def run_query(self, query, params = None):
+    def run_query(self, query, params=None):
         """Run a SQL query."""
         try:
             self.open_connection()
             with self.conn.cursor() as cur:
-            # with self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+                # with self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
                 if 'SELECT' in query.upper():
                     records = []
                     if params is None:

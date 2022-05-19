@@ -63,7 +63,7 @@ class SuppCodeList(object):
         self.unit1 = unit1
         self.unit2 = unit2
         self.unit3 = unit3
-        
+
         if self.unit1 == "1030":
             self.unit1 = "1023"
             self.unit2 = "1030"

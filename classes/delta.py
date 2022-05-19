@@ -31,7 +31,7 @@ class Delta(object):
         folder = g.app.delta_folder
         self.commodities_filename = os.path.join(folder, "commodities_{}.csv".format(self.to_date_string))
         self.measures_filename = os.path.join(folder, "measures_{}.csv".format(self.to_date_string))
-        
+
         self.delta_file_commodities = open(self.commodities_filename, "w")
         self.delta_file_measures = open(self.measures_filename, "w")
 
@@ -104,7 +104,7 @@ class Delta(object):
             select distinct on (gn.goods_nomenclature_sid)
             gn.goods_nomenclature_item_id, gn.producline_suffix, gnd.description,
             gn.validity_start_date, gn.validity_end_date
-            from goods_nomenclatures gn, goods_nomenclature_descriptions gnd 
+            from goods_nomenclatures gn, goods_nomenclature_descriptions gnd
             where gn.goods_nomenclature_sid = gnd.goods_nomenclature_sid
             and validity_start_date >= %s
             and validity_start_date <= %s
@@ -129,7 +129,7 @@ class Delta(object):
             select distinct on (gn.goods_nomenclature_sid)
             gn.goods_nomenclature_item_id, gn.producline_suffix, gnd.description,
             gn.validity_start_date, gn.validity_end_date
-            from goods_nomenclatures gn, goods_nomenclature_descriptions gnd 
+            from goods_nomenclatures gn, goods_nomenclature_descriptions gnd
             where gn.goods_nomenclature_sid = gnd.goods_nomenclature_sid
             and validity_end_date >= %s
             and validity_end_date <= %s

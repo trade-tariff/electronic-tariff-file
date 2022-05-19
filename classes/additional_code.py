@@ -13,7 +13,7 @@ class AdditionalCode(object):
 
         self.CODE_STRING = ""
         for i in range(0, ac_count):
-            self.CODE_STRING += self.line[6+(i * 4): 6 + (i * 4) + 4] + ":"
+            self.CODE_STRING += self.line[6 + (i * 4): 6 + (i * 4) + 4] + ":"
         self.CODE_STRING = self.CODE_STRING.strip(":")
 
         self.line = ""

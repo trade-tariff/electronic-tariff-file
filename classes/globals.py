@@ -7,4 +7,3 @@ class functions(object):
     def format_string(s):
         s = s.replace("é", "<KB>")
         return s
-    

@@ -7,9 +7,9 @@ class CommodityFootnote(object):
         self.FOOTNOTE_NUMBER = None
 
     def get_footnote_number(self):
-        if self.footnote_type_id == "NC": # add 800
+        if self.footnote_type_id == "NC":  # add 800
             self.FOOTNOTE_NUMBER = str(int(self.footnote_id) + 800)
-        elif self.footnote_type_id == "PN": # add 900
+        elif self.footnote_type_id == "PN":  # add 900
             self.FOOTNOTE_NUMBER = str(int(self.footnote_id) + 900)
         else:
             self.FOOTNOTE_NUMBER = self.footnote_id

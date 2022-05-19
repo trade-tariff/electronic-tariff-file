@@ -13,42 +13,42 @@ class MeasureComponent(object):
         self.measurement_unit_code = None
         self.measurement_unit_qualifier_code = None
         self.component_type = None
-        
-        self.UNIT_OF_QUANTITY_CODE = "000" # Three digits
-        self.QUANTITY_CODE = "000" # Three digits (always 000)
-        self.UNIT_ACCOUNT = "0" # One digit (the currency: 0 if ad valorem, 1 if specific (or 2))
-        self.SPECIFIC_RATE = "0000000000" # Ten digits
+
+        self.UNIT_OF_QUANTITY_CODE = "000"  # Three digits
+        self.QUANTITY_CODE = "000"  # Three digits (always 000)
+        self.UNIT_ACCOUNT = "0"  # One digit (the currency: 0 if ad valorem, 1 if specific (or 2))
+        self.SPECIFIC_RATE = "0000000000"  # Ten digits
         self.AD_VALOREM_RATE = "000000"
-        
+
         self.cts_component_definition = ""
         self.english_component_definition = ""
         self.duty_expression_class = None
-        
+
     def get_cts_component_definition(self):
         self.get_duty_expression_class()
         self.cts_component_definition = ""
         if self.measurement_unit_code is not None:
             # This is a SPECIFIC_RATE
             self.component_type = "specific"
-            self.UNIT_ACCOUNT = "1" # This may need to be 2 (I don't know)
-            
+            self.UNIT_ACCOUNT = "1"  # This may need to be 2 (I don't know)
+
             # Create a concatenated "measure" variable to represent the MUC and MUQC
             self.measure = self.measurement_unit_code.strip()
             if self.measurement_unit_qualifier_code is not None:
                 self.measure += self.measurement_unit_qualifier_code.strip()
-            
+
             # Get the measure unit from the supplementary units lookup
             try:
                 self.UNIT_OF_QUANTITY_CODE = g.app.supplementary_unit_dict[self.measure]
-            except:
+            except Exception as e:
                 self.UNIT_OF_QUANTITY_CODE = "000"
-            
+
             self.SPECIFIC_RATE = self.pad_multiply_value(self.duty_amount, 10)
             self.AD_VALOREM_RATE = "000000"
         else:
             # This is an AD_VALOREM_RATE
             self.component_type = "advalorem"
-            self.UNIT_ACCOUNT = "0" # Means there is no currency associated with component
+            self.UNIT_ACCOUNT = "0"  # Means there is no currency associated with component
             self.SPECIFIC_RATE = "0000000000"
             self.AD_VALOREM_RATE = self.pad_multiply_value(self.duty_amount, 6)
 
@@ -57,9 +57,9 @@ class MeasureComponent(object):
         self.cts_component_definition += self.UNIT_ACCOUNT
         self.cts_component_definition += self.SPECIFIC_RATE
         self.cts_component_definition += self.AD_VALOREM_RATE
-        
+
         self.get_english_component_definition()
-        
+
     def get_english_component_definition(self):
         self.english_component_definition = ""
         if self.monetary_unit_code is None:
@@ -69,7 +69,7 @@ class MeasureComponent(object):
         if self.measurement_unit_qualifier_code is None:
             self.measurement_unit_qualifier_code = ""
 
-        if self.duty_expression_id == "01": # Ad valorem or specific
+        if self.duty_expression_id == "01":  # Ad valorem or specific
             if self.monetary_unit_code == "":
                 self.english_component_definition += "{0:1.2f}".format(self.duty_amount) + "%"
             else:
@@ -79,7 +79,7 @@ class MeasureComponent(object):
                     if self.measurement_unit_qualifier_code != "":
                         self.english_component_definition += " / " + self.get_measurement_unit_qualifier_code()
 
-        elif self.duty_expression_id in ("04", "19", "20"): # Plus % or amount
+        elif self.duty_expression_id in ("04", "19", "20"):  # Plus % or amount
             if self.monetary_unit_code == "":
                 self.english_component_definition += " + {0:1.2f}".format(self.duty_amount) + "%"
             else:
@@ -89,10 +89,10 @@ class MeasureComponent(object):
                     if self.measurement_unit_qualifier_code != "":
                         self.english_component_definition += " / " + self.get_measurement_unit_qualifier_code()
 
-        elif self.duty_expression_id == "12": # Agri component
+        elif self.duty_expression_id == "12":  # Agri component
             self.english_component_definition += " + AC"
 
-        elif self.duty_expression_id == "15": # Minimum
+        elif self.duty_expression_id == "15":  # Minimum
             if self.monetary_unit_code == "":
                 self.english_component_definition += "MIN {0:1.2f}".format(self.duty_amount) + "%"
             else:
@@ -102,7 +102,7 @@ class MeasureComponent(object):
                     if self.measurement_unit_qualifier_code != "":
                         self.english_component_definition += " / " + self.get_measurement_unit_qualifier_code()
 
-        elif self.duty_expression_id == "17": # Maximum
+        elif self.duty_expression_id == "17":  # Maximum
             if self.monetary_unit_code == "":
                 self.english_component_definition += "MAX {0:1.2f}".format(self.duty_amount) + "%"
             else:
@@ -112,10 +112,10 @@ class MeasureComponent(object):
                     if self.measurement_unit_qualifier_code != "":
                         self.english_component_definition += " / " + self.get_measurement_unit_qualifier_code()
 
-        elif self.duty_expression_id == "21": # Sugar duty
+        elif self.duty_expression_id == "21":  # Sugar duty
             self.english_component_definition += " + SD"
 
-        elif self.duty_expression_id == "27": # Flour duty
+        elif self.duty_expression_id == "27":  # Flour duty
             self.english_component_definition += " + FD"
 
     def get_duty_expression_class(self):
@@ -144,7 +144,7 @@ class MeasureComponent(object):
 
     def get_measurement_unit(self, s):
         if s == "ASV":
-            return "% vol" # 3302101000
+            return "% vol"  # 3302101000
         if s == "NAR":
             return "item"
         elif s == "CCT":
@@ -160,9 +160,9 @@ class MeasureComponent(object):
         elif s == "GRM":
             return "g"
         elif s == "HLT":
-            return "hl" # 2209009100
+            return "hl"  # 2209009100
         elif s == "HMT":
-            return "100 m" # 3706909900
+            return "100 m"  # 3706909900
         elif s == "KGM":
             return "kg"
         elif s == "KLT":
@@ -206,7 +206,7 @@ class MeasureComponent(object):
         elif s == "TJO":
             return "TJ"
         elif s == "TNE":
-            return "tonne" # 1005900020
+            return "tonne"  # 1005900020
             # return "1000 kg" # 1005900020
         else:
             return s
@@ -215,25 +215,25 @@ class MeasureComponent(object):
         qualifier_description = ""
         s = self.measurement_unit_qualifier_code
         if s == "A":
-            qualifier_description = "tot alc" # Total alcohol
+            qualifier_description = "tot alc"  # Total alcohol
         elif s == "C":
-            qualifier_description = "1 000" # Total alcohol
+            qualifier_description = "1 000"  # Total alcohol
         elif s == "E":
-            qualifier_description = "net drained wt" # net of drained weight
+            qualifier_description = "net drained wt"  # net of drained weight
         elif s == "G":
-            qualifier_description = "gross" # Gross
+            qualifier_description = "gross"  # Gross
         elif s == "M":
-            qualifier_description = "net dry" # net of dry matter
+            qualifier_description = "net dry"  # net of dry matter
         elif s == "P":
-            qualifier_description = "lactic matter" # of lactic matter
+            qualifier_description = "lactic matter"  # of lactic matter
         elif s == "R":
-            qualifier_description = "std qual" # of the standard quality
+            qualifier_description = "std qual"  # of the standard quality
         elif s == "S":
             qualifier_description = " raw sugar"
         elif s == "T":
-            qualifier_description = "dry lactic matter" # of dry lactic matter
+            qualifier_description = "dry lactic matter"  # of dry lactic matter
         elif s == "X":
-            qualifier_description = " hl" # Hectolitre
+            qualifier_description = " hl"  # Hectolitre
         elif s == "Z":
-            qualifier_description = "% sacchar." # per 1% by weight of sucrose
+            qualifier_description = "% sacchar."  # per 1% by weight of sucrose
         return qualifier_description

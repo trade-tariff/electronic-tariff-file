@@ -10,7 +10,7 @@ class SeasonalRate(object):
 
         self.from_date = self.to_date_string(from_date)
         self.to_date = self.to_date_string(to_date)
-        
+
         if self.to_date < self.from_date:
             self.to_date = self.to_date.replace(year_now, year_next)
 

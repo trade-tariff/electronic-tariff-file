@@ -21,7 +21,7 @@ class AdditionalCodeParser(object):
         csv_file = os.path.join(g.app.data_out_folder, "additional_codes.csv")
         csv_columns = [
             'RECORD_TYPE', 'EC_SUPP_COUNT', 'CODE_STRING', 'line']
-        
+
         with open(csv_file, 'w') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
             writer.writeheader()

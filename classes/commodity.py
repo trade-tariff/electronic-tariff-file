@@ -1,5 +1,6 @@
 from classes.enums import CommonString
 
+
 class Commodity(object):
     def __init__(self, line):
         self.line = line

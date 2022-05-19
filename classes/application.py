@@ -31,6 +31,7 @@ from classes_gen.measure import Measure
 from classes_gen.measure_component import MeasureComponent
 from classes_gen.measure_condition import MeasureCondition
 from classes_gen.measure_type import MeasureType, MeasureType2
+from classes_gen.additional_code import AdditionalCode
 from classes_gen.seasonal_rate import SeasonalRate
 from classes_gen.supplementary_unit import SupplementaryUnit
 from classes_gen.supplementary_unit import UnmatchedSupplementaryUnit
@@ -86,6 +87,7 @@ class Application(object):
             self.get_all_quotas()
             self.get_all_geographies()
             self.get_all_measure_types()
+            self.get_all_additional_codes()
 
         self.close_extract()
         self.count_measures()
@@ -136,8 +138,6 @@ class Application(object):
             self.TOTAL_RECORD_COUNT).rjust(11, "0"))
         path.write_text(text)
 
-        # grep -c "^ME" hmrc-tariff-ascii-05-mar-2021.txt
-        # grep -c "^MX" hmrc-tariff-ascii-05-mar-2021.txt
         self.end_timer("Counting measures and updating counts in ICL VME file")
 
     def get_date(self):
@@ -218,7 +218,7 @@ class Application(object):
             iteration = str(i) + "%"
             self.get_recent_descriptions(str(i))
 
-            sql = """select goods_nomenclature_sid, goods_nomenclature_item_id, producline_suffix, 
+            sql = """select goods_nomenclature_sid, goods_nomenclature_item_id, producline_suffix,
             validity_start_date, validity_end_date, description, number_indents, chapter, node,
             leaf, significant_digits
             from utils.goods_nomenclature_export_new(%s, %s)
@@ -284,7 +284,7 @@ class Application(object):
             commodity_count = len(self.commodities)
             for loop in range(0, commodity_count - 1):
                 commodity = self.commodities[loop]
-                if commodity.pseudo_line == True:
+                if commodity.pseudo_line is True:
                     for loop2 in range(loop + 1, commodity_count - 1):
                         commodity2 = self.commodities[loop2]
                         if commodity.COMMODITY_CODE[0:4] != commodity2.COMMODITY_CODE[0:4]:
@@ -322,10 +322,10 @@ class Application(object):
         tmp = {}
         sql = """
         with cte as (
-        select distinct on (gnd.goods_nomenclature_sid) 
-        gndp.goods_nomenclature_sid, gndp.goods_nomenclature_item_id, gndp.productline_suffix, gnd.description 
-        from goods_nomenclature_description_periods gndp, goods_nomenclature_descriptions gnd 
-        where gndp.goods_nomenclature_sid = gnd.goods_nomenclature_sid 
+        select distinct on (gnd.goods_nomenclature_sid)
+        gndp.goods_nomenclature_sid, gndp.goods_nomenclature_item_id, gndp.productline_suffix, gnd.description
+        from goods_nomenclature_description_periods gndp, goods_nomenclature_descriptions gnd
+        where gndp.goods_nomenclature_sid = gnd.goods_nomenclature_sid
         and left(gnd.goods_nomenclature_item_id, 1) = %s
         and gndp.validity_start_date <= %s
         and gnd.description is not null
@@ -386,7 +386,7 @@ class Application(object):
         # This is used to check for amendment status - do not touch
         self.descriptions = []
         sql = """
-        select goods_nomenclature_item_id, validity_start_date 
+        select goods_nomenclature_item_id, validity_start_date
         from goods_nomenclature_description_periods gndp
         where productline_suffix = '80'
         and left(goods_nomenclature_item_id, 1) = %s
@@ -430,7 +430,7 @@ class Application(object):
             priority = 99
             try:
                 priority = priority_lookup[measure.measure_type_id]
-            except:
+            except Exception as e:
                 priority = 99
             measure.priority = priority
 
@@ -552,13 +552,13 @@ class Application(object):
         sql = """
         select mc.measure_condition_sid, mc.measure_sid, mc.condition_code, mc.component_sequence_number,
         mc.condition_duty_amount, mc.condition_monetary_unit_code, mc.condition_measurement_unit_code,
-        mc.condition_measurement_unit_qualifier_code, mc.action_code, mc.certificate_type_code, mc.certificate_code 
+        mc.condition_measurement_unit_qualifier_code, mc.action_code, mc.certificate_type_code, mc.certificate_code
         from measure_conditions mc, utils.materialized_measures_real_end_dates m
-        where m.measure_sid = mc.measure_sid 
+        where m.measure_sid = mc.measure_sid
         and m.validity_start_date <= '""" + self.SNAPSHOT_DATE + """'
         and left(m.goods_nomenclature_item_id, """ + str(len(str(iteration))) + """) = '""" + str(iteration) + """'
         and (m.validity_end_date is null or m.validity_end_date > '""" + self.SNAPSHOT_DATE + """')
-        order by mc.measure_sid, mc.condition_code, mc.component_sequence_number 
+        order by mc.measure_sid, mc.condition_code, mc.component_sequence_number
         """
         d = Database()
         rows = d.run_query(sql)
@@ -596,7 +596,7 @@ class Application(object):
         sql = """select mc.measure_sid, mc.duty_expression_id, mc.duty_amount, mc.monetary_unit_code,
         mc.measurement_unit_code, mc.measurement_unit_qualifier_code, m.goods_nomenclature_item_id
         from measure_components mc, utils.materialized_measures_real_end_dates m
-        where m.measure_sid = mc.measure_sid 
+        where m.measure_sid = mc.measure_sid
         and left(m.goods_nomenclature_item_id, """ + str(len(str(iteration))) + """) = '""" + str(iteration) + """'
         and m.validity_start_date <= '""" + self.SNAPSHOT_DATE + """'
         and (m.validity_end_date is null or m.validity_end_date > '""" + self.SNAPSHOT_DATE + """')
@@ -622,9 +622,9 @@ class Application(object):
         # Get measure geo exclusions
         self.start_timer("Getting measure excluded geographical areas")
         self.measure_excluded_geographical_areas = []
-        sql = """select mega.measure_sid, mega.excluded_geographical_area, mega.geographical_area_sid 
+        sql = """select mega.measure_sid, mega.excluded_geographical_area, mega.geographical_area_sid
         from measure_excluded_geographical_areas mega, utils.materialized_measures_real_end_dates m
-        where m.measure_sid = mega.measure_sid 
+        where m.measure_sid = mega.measure_sid
         and left(m.goods_nomenclature_item_id, """ + str(len(str(iteration))) + """) = '""" + str(iteration) + """'
         and m.validity_start_date <= '""" + self.SNAPSHOT_DATE + """'
         and (m.validity_end_date is null or m.validity_end_date > '""" + self.SNAPSHOT_DATE + """')
@@ -646,11 +646,11 @@ class Application(object):
         self.start_timer("Getting measure footnotes")
         self.footnote_association_measures = []
         sql = """
-        select m.measure_sid, fam.footnote_type_id, fam.footnote_id 
+        select m.measure_sid, fam.footnote_type_id, fam.footnote_id
         from footnote_association_measures fam, utils.materialized_measures_real_end_dates m
-        where m.measure_sid = fam.measure_sid 
+        where m.measure_sid = fam.measure_sid
         and left(m.goods_nomenclature_item_id, """ + str(len(str(iteration))) + """) = '""" + str(iteration) + """'
-        and m.validity_start_date <= '""" + self.SNAPSHOT_DATE + """'        
+        and m.validity_start_date <= '""" + self.SNAPSHOT_DATE + """'
         and (m.validity_end_date is null or m.validity_end_date > '""" + self.SNAPSHOT_DATE + """')
         order by m.goods_nomenclature_item_id, m.measure_sid, fam.footnote_id, fam.footnote_id ;
         """
@@ -735,18 +735,18 @@ class Application(object):
         )
         select distinct f.code, f.description, f.validity_start_date, f.validity_end_date, 'measure' as footnote_class
         from footnotes_cte f, footnote_association_measures fam, utils.materialized_measures_real_end_dates m
-        where f.footnote_id = fam.footnote_id 
-        and f.footnote_type_id = fam.footnote_type_id 
-        and fam.measure_sid = m.measure_sid 
+        where f.footnote_id = fam.footnote_id
+        and f.footnote_type_id = fam.footnote_type_id
+        and fam.measure_sid = m.measure_sid
         and (m.validity_end_date is null or m.validity_end_date >= %s)
         and m.validity_start_date <= %s
         and f.validity_end_date is null
 
-        union 
+        union
 
         select distinct f.code, f.description, f.validity_start_date, f.validity_end_date, 'commodity' as footnote_class
         from footnotes_cte f, footnote_association_goods_nomenclatures fagn, goods_nomenclatures gn
-        where f.footnote_id = fagn.footnote_id 
+        where f.footnote_id = fagn.footnote_id
         and f.footnote_type_id = fagn.footnote_type
         and fagn.goods_nomenclature_sid = gn.goods_nomenclature_sid
         and (gn.validity_end_date is null or gn.validity_end_date >= %s)
@@ -796,7 +796,7 @@ class Application(object):
         FROM certificate_descriptions cd2
         WHERE cd1.certificate_type_code = cd2.certificate_type_code AND cd1.certificate_code = cd2.certificate_code))
         )
-        select distinct c.code, c.description, c.validity_start_date, c.validity_end_date 
+        select distinct c.code, c.description, c.validity_start_date, c.validity_end_date
         from measure_conditions mc, utils.materialized_measures_real_end_dates m, certificate_cte c
         where m.measure_sid = mc.measure_sid
         and m.validity_start_date <= '""" + self.SNAPSHOT_DATE + """'
@@ -831,7 +831,7 @@ class Application(object):
             SELECT g.geographical_area_sid,
             geo1.geographical_area_id,
             geo1.description,
-            case 
+            case
             when geographical_code = '0' then 'Country'
             when geographical_code = '1' then 'Country group'
             when geographical_code = '2' then 'Region'
@@ -882,11 +882,11 @@ class Application(object):
     def get_all_measure_types(self):
         self.start_timer("Getting and writing all measure types for CSV export")
         sql = """
-        select mtd.measure_type_id, mtd.description, count(m.*) 
+        select mtd.measure_type_id, mtd.description, count(m.*)
         from measure_types mt, measure_type_descriptions mtd, utils.materialized_measures_real_end_dates m
-        where mt.measure_type_id = mtd.measure_type_id 
-        and m.measure_type_id = mt.measure_type_id 
-        and m.validity_end_date is null 
+        where mt.measure_type_id = mtd.measure_type_id
+        and m.measure_type_id = mt.measure_type_id
+        and m.validity_end_date is null
         group by mtd.measure_type_id, mtd.description
         order by measure_type_id
         """
@@ -904,6 +904,36 @@ class Application(object):
 
         self.end_timer("Getting and writing all measure types for CSV export")
         self.measure_type_csv_file.close()
+
+    def get_all_additional_codes(self):
+        self.start_timer("Getting and writing all additional codes for CSV export")
+        sql = """
+        select distinct ac.code, ac.description, ac.validity_start_date, ac.validity_end_date, acd.description as additional_code_description
+        from utils.additional_codes ac, utils.materialized_measures_real_end_dates m, additional_code_type_descriptions acd
+        where ac.additional_code_type_id = m.additional_code_type_id
+        and ac.additional_code = m.additional_code_id
+        and (m.validity_end_date is null or m.validity_end_date::date > current_date)
+        and ac.additional_code_type_id = acd.additional_code_type_id
+        order by 1;
+        """
+        d = Database()
+        rows = d.run_query(sql)
+        self.all_additional_codes = []
+        for row in rows:
+            additional_code = AdditionalCode()
+            additional_code.code = row[0]
+            additional_code.description = f.strip_quotes(row[1])
+            additional_code.validity_start_date = f.format_date(row[2], "%Y-%m-%d")
+            additional_code.validity_end_date = f.format_date(row[3], "%Y-%m-%d")
+            additional_code.additional_code_type_description = f.strip_quotes(row[4])
+
+            additional_code.get_csv_string()
+
+            self.all_additional_codes.append(additional_code)
+            self.additional_code_csv_file.write(additional_code.csv_string)
+
+        self.end_timer("Getting and writing all additional codes for CSV export")
+        self.additional_code_csv_file.close()
 
     def get_all_quotas(self):
         self.start_timer("Getting and writing all quota definitions for CSV export")
@@ -932,10 +962,10 @@ class Application(object):
         select qon.quota_order_number_id, qon.quota_order_number_sid,
         string_agg(ga.geographical_area_id, '|' order by ga.geographical_area_id) as exclusions
         from quota_order_number_origin_exclusions qonoe, quota_order_number_origins qono,
-        quota_order_numbers qon, geographical_areas ga 
-        where qono.quota_order_number_origin_sid = qonoe.quota_order_number_origin_sid 
-        and qon.quota_order_number_sid = qono.quota_order_number_sid 
-        and ga.geographical_area_sid = qonoe.excluded_geographical_area_sid 
+        quota_order_numbers qon, geographical_areas ga
+        where qono.quota_order_number_origin_sid = qonoe.quota_order_number_origin_sid
+        and qon.quota_order_number_sid = qono.quota_order_number_sid
+        and ga.geographical_area_sid = qonoe.excluded_geographical_area_sid
         and qon.quota_order_number_id like '05%'
         group by qon.quota_order_number_id, qon.quota_order_number_sid
         order by 1;"""
@@ -958,9 +988,9 @@ class Application(object):
         qd.measurement_unit_code || ' ' || coalesce(qd.measurement_unit_qualifier_code, '') as unit,
         qd.critical_state, qd.critical_threshold, 'First Come First Served' as quota_type,
         string_agg(distinct qono.geographical_area_id, '|' order by qono.geographical_area_id) as origins
-        from quota_order_numbers qon, quota_definitions qd, quota_order_number_origins qono 
-        where qd.quota_order_number_sid = qon.quota_order_number_sid 
-        and qon.quota_order_number_sid = qono.quota_order_number_sid 
+        from quota_order_numbers qon, quota_definitions qd, quota_order_number_origins qono
+        where qd.quota_order_number_sid = qon.quota_order_number_sid
+        and qon.quota_order_number_sid = qono.quota_order_number_sid
         and qon.validity_start_date <= '""" + self.SNAPSHOT_DATE + """'
         and (qon.validity_end_date is null or qon.validity_end_date > '""" + self.SNAPSHOT_DATE + """')
         and qd.validity_start_date <= '""" + self.SNAPSHOT_DATE + """'
@@ -970,7 +1000,7 @@ class Application(object):
         qd.initial_volume, qd.measurement_unit_code, qd.measurement_unit_qualifier_code,
         qd.critical_state, qd.critical_threshold
 
-        union 
+        union
 
         select Null as quota_order_number_sid, m.ordernumber as quota_order_number_id,
         m.validity_start_date::text, m.validity_end_date, Null as initial_volume,
@@ -1087,7 +1117,7 @@ class Application(object):
             self.commodity_csv_file.write(commodity_string + CommonString.line_feed)
 
             # Write measures for the ICL VME file
-            if commodity.leaf == 1 or (commodity.significant_digits >= 8 and commodity.productline_suffix == "80") or commodity.pseudo_line == True:
+            if commodity.leaf == 1 or (commodity.significant_digits >= 8 and commodity.productline_suffix == "80") or commodity.pseudo_line is True:
                 self.commodity_count += 1
                 self.icl_vme_file.write(commodity.extract_line)
                 if self.WRITE_ADDITIONAL_CODES == 1:
@@ -1170,7 +1200,7 @@ class Application(object):
                 self.icl_vme_file.write(pr_measure.line + CommonString.line_feed)
                 has_found = True
             else:
-                if has_found == True:
+                if has_found is True:
                     break
 
     def get_folders(self):
@@ -1273,6 +1303,12 @@ class Application(object):
             self.measure_type_csv_file = open(self.measure_type_csv_filepath, "w+")
             self.measure_type_csv_file.write('"measure_type_id","description"' + CommonString.line_feed)
 
+            # Additional code CSV extract filename
+            self.additional_code_csv_filename = self.measure_csv_filename.replace("measures", "additional_code")
+            self.additional_code_csv_filepath = os.path.join(self.csv_folder, self.additional_code_csv_filename)
+            self.additional_code_csv_file = open(self.additional_code_csv_filepath, "w+")
+            self.additional_code_csv_file.write('"additional code","description","start date","end date","type description"' + CommonString.line_feed)
+
     def close_extract(self):
         self.icl_vme_file.close()
         self.measure_csv_file.close()
@@ -1285,6 +1321,7 @@ class Application(object):
             self.quota_csv_file.close()
             self.geography_csv_file.close()
             self.measure_type_csv_file.close()
+            self.additional_code_csv_file.close()
 
     def create_email_message(self):
         self.send_mail = int(os.getenv('SEND_MAIL'))
@@ -1303,14 +1340,14 @@ class Application(object):
             </tr>
             <tr>
                 <td style="padding:3px 0px">Commodity changes</td>
-                <td style="padding:3px 3px">{19}</td>
+                <td style="padding:3px 3px">{1}</td>
             </tr>
             <tr>
                 <td style="padding:3px 0px">Measure changes</td>
-                <td style="padding:3px 3px">{20}</td>
+                <td style="padding:3px 3px">{2}</td>
             </tr>
         </table>
-        
+
         <p style="color:#000">Two additional files are attached to this email, as follows:</p>
         <ul>
             <li>Documentation on the attached CSV formats</li>
@@ -1325,42 +1362,42 @@ class Application(object):
             </tr>
             <tr>
                 <td style="padding:3px 0px">Electronic Tariff File (ICL VME format)</td>
-                <td style="padding:3px 3px">{10}</td>
+                <td style="padding:3px 3px">{3}</td>
             </tr>
             <tr>
                 <td style="padding:3px 0px">Measures, as applied to commodity codes (CSV)</td>
-                <td style="padding:3px 3px">{11}</td>
+                <td style="padding:3px 3px">{4}</td>
             </tr>
             <tr>
                 <td style="padding:3px 0px">Commodities</td>
-                <td style="padding:3px 3px">{12}</td>
+                <td style="padding:3px 3px">{5}</td>
             </tr>
             <tr>
                 <td style="padding:3px 0px">Footnotes</td>
-                <td style="padding:3px 3px">{13}</td>
+                <td style="padding:3px 3px">{6}</td>
             </tr>
             <tr>
                 <td style="padding:3px 0px">Certificates</td>
-                <td style="padding:3px 3px">{14}</td>
+                <td style="padding:3px 3px">{7}</td>
             </tr>
             <tr>
                 <td style="padding:3px 0px">Quotas</td>
-                <td style="padding:3px 3px">{15}</td>
+                <td style="padding:3px 3px">{8}</td>
             </tr>
             <tr>
                 <td style="padding:3px 0px">Geographical areas</td>
-                <td style="padding:3px 3px">{16}</td>
+                <td style="padding:3px 3px">{9}</td>
             </tr>
             <tr>
                 <td style="padding:3px 0px">Measure types</td>
-                <td style="padding:3px 3px">{17}</td>
+                <td style="padding:3px 3px">{10}</td>
             </tr>
-            <!--<tr>
-                <td style="padding:3px 0px">MFN duties</td>
-                <td style="padding:3px 3px">{18}</td>
-            </tr>//-->
+            <tr>
+                <td style="padding:3px 0px">Additional codes</td>
+                <td style="padding:3px 3px">{11}</td>
+            </tr>
         </table>
-        
+
         <br><br><p style="color:#000"><b>Files compressed using 7z compression</b>:</p>
         <table cellspacing="0">
             <tr>
@@ -1369,56 +1406,47 @@ class Application(object):
             </tr>
             <tr>
                 <td style="padding:3px 0px">Electronic Tariff File (ICL VME format)</td>
-                <td style="padding:3px 3px">{1}</td>
+                <td style="padding:3px 3px">{12}</td>
             </tr>
             <tr>
                 <td style="padding:3px 0px">Measures, as applied to commodity codes (CSV)</td>
-                <td style="padding:3px 3px">{2}</td>
+                <td style="padding:3px 3px">{13}</td>
             </tr>
             <tr>
                 <td style="padding:3px 0px">Commodities</td>
-                <td style="padding:3px 3px">{3}</td>
+                <td style="padding:3px 3px">{14}</td>
             </tr>
             <tr>
                 <td style="padding:3px 0px">Footnotes</td>
-                <td style="padding:3px 3px">{4}</td>
+                <td style="padding:3px 3px">{15}</td>
             </tr>
             <tr>
                 <td style="padding:3px 0px">Certificates</td>
-                <td style="padding:3px 3px">{5}</td>
+                <td style="padding:3px 3px">{16}</td>
             </tr>
             <tr>
                 <td style="padding:3px 0px">Quotas</td>
-                <td style="padding:3px 3px">{6}</td>
+                <td style="padding:3px 3px">{17}</td>
             </tr>
             <tr>
                 <td style="padding:3px 0px">Geographical areas</td>
-                <td style="padding:3px 3px">{7}</td>
+                <td style="padding:3px 3px">{18}</td>
             </tr>
             <tr>
                 <td style="padding:3px 0px">Measure types</td>
-                <td style="padding:3px 3px">{8}</td>
+                <td style="padding:3px 3px">{19}</td>
             </tr>
-            <!--<tr>
-                <td style="padding:3px 0px">Third-country duties</td>
-                <td style="padding:3px 3px">{9}</td>
-            </tr>//-->
+            <tr>
+                <td style="padding:3px 0px">Additional codes</td>
+                <td style="padding:3px 3px">{20}</td>
+            </tr>
         </table>
-        
 
-        
         <p style="color:#000">Thank you,</p>
         <p style="color:#000">The Online Tariff Team.</p>""".format(
             self.SNAPSHOT_DATE,
-            self.bucket_url + self.aws_path_icl_vme_tuple[0],
-            self.bucket_url + self.aws_path_measures_csv_tuple[0],
-            self.bucket_url + self.aws_path_commodities_csv_tuple[0],
-            self.bucket_url + self.aws_path_footnotes_csv_tuple[0],
-            self.bucket_url + self.aws_path_certificates_csv_tuple[0],
-            self.bucket_url + self.aws_path_quotas_csv_tuple[0],
-            self.bucket_url + self.aws_path_geographical_areas_csv_tuple[0],
-            self.bucket_url + self.aws_path_measure_types_csv_tuple[0],
-            self.bucket_url + self.aws_path_mfn_csv_tuple[0],
+            self.bucket_url + self.aws_path_commodities_delta_tuple[1],
+            self.bucket_url + self.aws_path_measures_delta_tuple[1],
             self.bucket_url + self.aws_path_icl_vme_tuple[1],
             self.bucket_url + self.aws_path_measures_csv_tuple[1],
             self.bucket_url + self.aws_path_commodities_csv_tuple[1],
@@ -1427,9 +1455,16 @@ class Application(object):
             self.bucket_url + self.aws_path_quotas_csv_tuple[1],
             self.bucket_url + self.aws_path_geographical_areas_csv_tuple[1],
             self.bucket_url + self.aws_path_measure_types_csv_tuple[1],
-            self.bucket_url + self.aws_path_mfn_csv_tuple[1],
-            self.bucket_url + self.aws_path_commodities_delta_tuple[1],
-            self.bucket_url + self.aws_path_measures_delta_tuple[1]
+            self.bucket_url + self.aws_path_additional_codes_csv_tuple[1],
+            self.bucket_url + self.aws_path_icl_vme_tuple[0],
+            self.bucket_url + self.aws_path_measures_csv_tuple[0],
+            self.bucket_url + self.aws_path_commodities_csv_tuple[0],
+            self.bucket_url + self.aws_path_footnotes_csv_tuple[0],
+            self.bucket_url + self.aws_path_certificates_csv_tuple[0],
+            self.bucket_url + self.aws_path_quotas_csv_tuple[0],
+            self.bucket_url + self.aws_path_geographical_areas_csv_tuple[0],
+            self.bucket_url + self.aws_path_measure_types_csv_tuple[0],
+            self.bucket_url + self.aws_path_additional_codes_csv_tuple[0]
         )
 
     def send_email_message(self):
@@ -1455,12 +1490,14 @@ class Application(object):
             self.aws_path_quotas_csv_tuple = Zipper(self.quota_csv_filepath, self.scope, "csv", "Quotas CSV").compress()
             self.aws_path_geographical_areas_csv_tuple = Zipper(self.geography_csv_filepath, self.scope, "csv", "Geographical areas CSV").compress()
             self.aws_path_measure_types_csv_tuple = Zipper(self.measure_type_csv_filepath, self.scope, "csv", "Geographical areas CSV").compress()
+            self.aws_path_additional_codes_csv_tuple = Zipper(self.additional_code_csv_filepath, self.scope, "csv", "Additional codes CSV").compress()
         else:
             self.aws_path_footnotes_csv_tuple = ("n/a", "n/a")
             self.aws_path_certificates_csv_tuple = ("n/a", "n/a")
             self.aws_path_quotas_csv_tuple = ("n/a", "n/a")
             self.aws_path_geographical_areas_csv_tuple = ("n/a", "n/a")
             self.aws_path_measure_types_csv_tuple = ("n/a", "n/a")
+            self.aws_path_additional_codes_csv_tuple = ("n/a", "n/a")
 
         # Delta description files
         self.aws_path_commodities_delta_tuple = Zipper(self.delta.commodities_filename, self.scope, "delta", "Changes to commodity codes").compress()
@@ -1471,10 +1508,10 @@ class Application(object):
         self.commodity_footnotes = []
         self.commodities_with_footnotes = []
         sql = """select gn.goods_nomenclature_item_id, gn.goods_nomenclature_sid,
-        fagn.footnote_type as footnote_type_id, fagn.footnote_id 
-        from  footnote_association_goods_nomenclatures fagn, goods_nomenclatures gn 
-        where  fagn.goods_nomenclature_sid = gn.goods_nomenclature_sid 
-        and fagn.validity_end_date is null 
+        fagn.footnote_type as footnote_type_id, fagn.footnote_id
+        from  footnote_association_goods_nomenclatures fagn, goods_nomenclatures gn
+        where  fagn.goods_nomenclature_sid = gn.goods_nomenclature_sid
+        and fagn.validity_end_date is null
         and gn.validity_end_date is null
         order by gn.goods_nomenclature_item_id, fagn.footnote_type, fagn.footnote_id;"""
         d = Database()
@@ -1520,8 +1557,8 @@ class Application(object):
         sql = """SELECT f1.footnote_type_id,
         f1.footnote_id, fd1.description,
         f1.validity_start_date, f1.validity_end_date
-        FROM footnote_descriptions fd1, footnotes f1, footnote_types ft 
-        where f1.footnote_type_id = ft.footnote_type_id 
+        FROM footnote_descriptions fd1, footnotes f1, footnote_types ft
+        where f1.footnote_type_id = ft.footnote_type_id
         and ft.application_code in (1, 2)
         and f1.validity_end_date is null
         and fd1.footnote_id::text = f1.footnote_id::text AND fd1.footnote_type_id::text = f1.footnote_type_id::text AND (fd1.footnote_description_period_sid IN ( SELECT max(ft2.footnote_description_period_sid) AS max
@@ -1713,10 +1750,10 @@ class Application(object):
                     self.measure_types.append(measure_type)
 
     def get_measure_types_friendly(self):
-        sql = """select mt.measure_type_id, mtd.description 
-        from measure_types mt, measure_type_descriptions mtd 
-        where mt.measure_type_id = mtd.measure_type_id 
-        and mt.validity_end_date is null 
+        sql = """select mt.measure_type_id, mtd.description
+        from measure_types mt, measure_type_descriptions mtd
+        where mt.measure_type_id = mtd.measure_type_id
+        and mt.validity_end_date is null
         order by 1
         """
         self.measure_types_friendly = {}
@@ -1807,7 +1844,7 @@ class Application(object):
             for row in csv_reader:
                 supplementary_unit = SupplementaryUnit(row[0], row[1], row[2])
                 self.supplementary_units.append(supplementary_unit)
-                self.supplementary_unit_dict[row[0]+row[1]] = row[2]
+                self.supplementary_unit_dict[row[0] + row[1]] = row[2]
 
     def get_geographical_areas(self):
         print("Getting geographical areas")

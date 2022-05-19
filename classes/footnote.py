@@ -1,5 +1,5 @@
 class Footnote(object):
-    def __init__(self, line = ""):
+    def __init__(self, line=""):
         if line != "":
             self.line = line
             self.parse()

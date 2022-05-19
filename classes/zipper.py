@@ -20,17 +20,17 @@ class Zipper(object):
         self.password = os.getenv('PASSWORD')
         self.override_debug_protection = int(os.getenv('OVERRIDE_DEBUG_PROTECTION'))
         self.DEBUG_OVERRIDE = int(os.getenv('DEBUG_OVERRIDE'))
-        
+
         self.compress_level = 9
         self.scope = scope
         self.source_filename = source_filename
         self.remote_folder = remote_folder
         self.message = message
-        
+
         # Only ever write the file to AWS if it is a full file
         # To avoid debug files being deployed accidentally
         # Unless debug protection is switched off
-        
+
         if self.override_debug_protection == 1:
             self.write_to_aws = int(os.getenv('WRITE_TO_AWS'))
         else:
@@ -42,16 +42,16 @@ class Zipper(object):
     def compress(self):
         ret_7z = None
         ret_zip = None
-        
-        # If we have set the DEBUG OVERRIDE switch in .env, 
+
+        # If we have set the DEBUG OVERRIDE switch in .env,
         # then we will never create compressed archives.
         if self.DEBUG_OVERRIDE == 0:
             if self.create_7z:
                 ret_7z = self.create_7z_archive()
-                
+
             if self.create_zip:
                 ret_zip = self.create_zip_archive()
-            
+
         return ret_7z, ret_zip
 
     def create_7z_archive(self):
@@ -62,7 +62,7 @@ class Zipper(object):
         self.archive_base_filename = os.path.basename(self.archive)
         try:
             os.remove(self.archive)
-        except:
+        except Exception as e:
             pass
         if self.use_password == 1:
             with py7zr.SevenZipFile(self.archive, 'w', password=self.password) as archive:
@@ -71,7 +71,7 @@ class Zipper(object):
         else:
             with py7zr.SevenZipFile(self.archive, 'w') as archive:
                 archive.write(self.source_filename, self.base_filename)
-                
+
         self.aws_path = os.path.join(self.scope, self.remote_folder, self.archive_base_filename)
         self.load_to_aws("Loading {0} (7z) to AWS bucket".format(self.message), self.archive, self.aws_path)
         return self.aws_path
@@ -82,12 +82,12 @@ class Zipper(object):
         self.archive = self.archive.replace(".csv", ".zip")
         self.base_filename = os.path.basename(self.source_filename)
         self.archive_base_filename = os.path.basename(self.archive)
-        
+
         try:
             os.remove(self.archive)
-        except:
+        except Exception as e:
             pass
-        
+
         if self.use_password == 1:
             pyminizip.compress(self.source_filename, None, self.archive, self.password, self.compress_level)
 

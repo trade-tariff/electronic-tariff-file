@@ -1,6 +1,7 @@
 from classes.functions import functions as f
 from classes.enums import CommonString
 
+
 class Footnote(object):
     def __init__(self):
         self.RECORD_TYPE = "FN"
@@ -19,11 +20,11 @@ class Footnote(object):
         self.FOOTNOTE_TEXT = f.format_string(self.FOOTNOTE_TEXT).strip()
         self.FOOTNOTE_LENGTH = str(len(self.FOOTNOTE_TEXT)).zfill(4)
         self.create_extract_line()
-        
+
     def get_footnote_number(self):
-        if self.footnote_type_id == "NC": # add 800
+        if self.footnote_type_id == "NC":  # add 800
             self.FOOTNOTE_NUMBER = str(int(self.footnote_id) + 800)
-        elif self.footnote_type_id == "PN": # add 900
+        elif self.footnote_type_id == "PN":  # add 900
             self.FOOTNOTE_NUMBER = str(int(self.footnote_id) + 900)
         else:
             self.FOOTNOTE_NUMBER = self.footnote_id
@@ -46,7 +47,7 @@ class Footnote(object):
         s += CommonString.quote_char + self.description + CommonString.quote_char + CommonString.comma
         s += CommonString.quote_char + self.validity_start_date.strftime("%Y-%m-%d") + CommonString.quote_char + CommonString.comma
         if self.validity_end_date is None:
-            s +=  CommonString.comma
+            s += CommonString.comma
         else:
             s += CommonString.quote_char + self.validity_end_date.strftime("%Y-%m-%d") + CommonString.quote_char + CommonString.comma
         s += CommonString.quote_char + self.footnote_class + CommonString.quote_char + CommonString.line_feed
