@@ -4,6 +4,7 @@ import sys
 import csv
 import time
 import py7zr
+import ssl
 from zipfile import ZipFile
 from pathlib2 import Path
 
@@ -71,6 +72,10 @@ class Application(object):
         self.get_folders()
         self.get_process_scope()
         self.message_string = ""
+        self.create_ssl_unverified_context()
+
+    def create_ssl_unverified_context(self):
+        ssl._create_default_https_context = ssl._create_unverified_context
 
     def create_icl_vme(self):
         self.get_reference_data()
