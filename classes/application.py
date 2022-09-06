@@ -77,7 +77,13 @@ class Application(object):
     def create_ssl_unverified_context(self):
         ssl._create_default_https_context = ssl._create_unverified_context
 
+    def get_excluded_sids(self):
+        load_dotenv('.env')
+        self.excluded_sids = os.getenv('EXCLUDED_SIDS')
+        a = 1
+
     def create_icl_vme(self):
+        self.get_excluded_sids()
         self.get_reference_data()
         self.get_footnotes()
         self.get_commodity_footnotes()
@@ -227,7 +233,7 @@ class Application(object):
             validity_start_date, validity_end_date, description, number_indents, chapter, node,
             leaf, significant_digits
             from utils.goods_nomenclature_export_new(%s, %s)
-            where goods_nomenclature_item_id not in ('3824780000', '3827680091', '7019390083', '7019400083')
+            where goods_nomenclature_sid not in (""" + self.excluded_sids + """)
             order by 2, 3"""
 
             d = Database()
