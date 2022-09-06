@@ -1,4 +1,5 @@
 import sys
+import re
 import classes.globals as g
 from classes_gen.database import Database
 from classes.functions import functions as f
@@ -48,6 +49,9 @@ class GeographicalArea2(object):
     def format_description_for_csv(self):
         if self.description is None:
             self.description = ""
+        # Normalise hyphens
+        self.description = re.sub(r'[‐᠆﹣－⁃−]+','-',self.description)
+
         self.description = self.description.replace('"', "'")
         self.description = self.description.replace('\n', " ")
         self.description = self.description.replace('\r', " ")
