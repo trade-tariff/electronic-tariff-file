@@ -15,8 +15,9 @@
 `python3 parse.py`
 
 ### To create a new file in ICL VME format
-`python3 create.py uk`
-`python3 create.py uk 4 5` 
+
+- `python3 create.py uk`
+- `python3 create.py uk 4 5` 
 
 - argument 1 is the scope [uk|xi],
 - argument 2 is the start index (1st digit of comm code)
@@ -31,7 +32,7 @@
 
 ### To delete files from AWS
 
-`python3 aws_delete.py [pattern]`
+- `python3 aws_delete.py [pattern]`
 
 ### Rough numbers of commodities
 
