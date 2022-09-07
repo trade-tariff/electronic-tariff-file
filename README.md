@@ -5,6 +5,7 @@
 - Create and activate a virtual environment, e.g.
 
   `python3 -m venv venv/`
+
   `source venv/bin/activate`
 
 - Install necessary Python modules via `pip3 install -r requirements.txt`
@@ -16,8 +17,9 @@
 
 ### To create a new file in ICL VME format
 
-- `python3 create.py uk`
-- `python3 create.py uk 4 5` 
+`python3 create.py uk`
+
+`python3 create.py uk 4 5` 
 
 #### Arguments
 - argument 1 is the scope [uk|xi],
@@ -34,7 +36,7 @@
 
 ### To delete files from AWS
 
-- `python3 aws_delete.py [pattern]`
+`python3 aws_delete.py [pattern]`
 
 ### Rough numbers of commodities
 
