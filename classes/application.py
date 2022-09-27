@@ -141,12 +141,9 @@ class Application(object):
 
         path = Path(self.filepath_icl_vme)
         text = path.read_text()
-        text = text.replace("ME_RECORD_COUNT", str(
-            self.measure_count).rjust(7, "0"))
-        text = text.replace("MX_RECORD_COUNT", str(
-            self.measure_exception_count).rjust(7, "0"))
-        text = text.replace("TOTAL_RECORD_COUNT", str(
-            self.TOTAL_RECORD_COUNT).rjust(11, "0"))
+        text = text.replace("ME_RECORD_COUNT", str(self.measure_count).rjust(7, "0"))
+        text = text.replace("MX_RECORD_COUNT", str(self.measure_exception_count).rjust(7, "0"))
+        text = text.replace("TOTAL_RECORD_COUNT", str(self.TOTAL_RECORD_COUNT).rjust(11, "0"))
         path.write_text(text)
 
         self.end_timer("Counting measures and updating counts in ICL VME file")
@@ -1189,11 +1186,13 @@ class Application(object):
                     if measure.extract_line_csv != "":
                         if measure.measure_sid not in measure_sids:
                             s = measure.extract_line_csv
+                            s = s.replace("COMMODITY_SID_PLACEHOLDER", str(commodity.goods_nomenclature_sid))
                             s = s.replace("COMMODITY_CODE_PLACEHOLDER", commodity.COMMODITY_CODE)
                             self.measure_csv_file.write(s)
 
                             if measure.measure_type_id in ("103", "105"):
                                 s = measure.extract_line_mfn_csv
+                                s = s.replace("COMMODITY_SID_PLACEHOLDER", str(commodity.goods_nomenclature_sid))
                                 s = s.replace("COMMODITY_CODE_PLACEHOLDER", commodity.COMMODITY_CODE)
                                 s = s.replace("COMMODITY_CODE_DESCRIPTION", self.commodities_dict[commodity.COMMODITY_CODE])
 

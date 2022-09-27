@@ -395,7 +395,8 @@ class Measure(object):
         self.measure__reduction_indicator = ""
 
         self.extract_line_csv = ""
-        self.extract_line_csv += str(self.goods_nomenclature_sid) + CommonString.comma
+        # self.extract_line_csv += str(self.goods_nomenclature_sid) + CommonString.comma
+        self.extract_line_csv += "COMMODITY_SID_PLACEHOLDER" + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + "COMMODITY_CODE_PLACEHOLDER" + CommonString.quote_char + CommonString.comma
         self.extract_line_csv += str(self.measure_sid) + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + self.measure_type_id + CommonString.quote_char + CommonString.comma
@@ -429,7 +430,8 @@ class Measure(object):
         # "measure__effective_end_date"' + CommonString.line_feed)
 
         self.extract_line_mfn_csv = ""
-        self.extract_line_mfn_csv += str(self.goods_nomenclature_sid) + CommonString.comma
+        # self.extract_line_mfn_csv += str(self.goods_nomenclature_sid) + CommonString.comma
+        self.extract_line_mfn_csv += "COMMODITY_SID_PLACEHOLDER" + CommonString.comma
         self.extract_line_mfn_csv += CommonString.quote_char + "COMMODITY_CODE_PLACEHOLDER" + CommonString.quote_char + CommonString.comma
         self.extract_line_mfn_csv += CommonString.quote_char + "COMMODITY_CODE_DESCRIPTION" + CommonString.quote_char + CommonString.comma
         self.extract_line_mfn_csv += str(self.measure_sid) + CommonString.comma
