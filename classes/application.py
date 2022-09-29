@@ -42,6 +42,7 @@ from classes_gen.simplified_procedure_value import SimplifiedProcedureValue
 from classes_gen.measure_excluded_geographical_area import MeasureExcludedGeographicalArea
 from classes_gen.footnote_association_measure import FootnoteAssociationMeasure
 from classes_gen.pr_measure import PrMeasure
+from classes_gen.spv.spv_handler import SPVHandler
 
 
 class Application(object):
@@ -269,10 +270,6 @@ class Application(object):
 
             self.start_timer("Applying inheritance etc.")
             f = open("comm_codes.txt", "w")
-            # for commodity in self.commodities:
-            #     f.write(commodity.COMM_CODE + "\n")
-            # f.close()
-            # sys.exit()
             for commodity in self.commodities:
                 commodity.apply_commodity_inheritance()
                 commodity.sort_inherited_measures()
@@ -1839,6 +1836,7 @@ class Application(object):
 
     def get_spvs(self):
         print("Getting SPVs")
+        # spv_handler = SPVHandler(self.SNAPSHOT_DATE)
         self.spvs = []
         filename = os.path.join(self.reference_folder, "spvs.csv")
         with open(filename) as csv_file:
