@@ -1100,6 +1100,7 @@ class Application(object):
                     break
             commodity.hierarchy.reverse()
             commodity.build_hierarchy_string()
+            commodity.build_csv_hierarchy_string()
         self.end_timer("Building commodity hierarchy")
 
     def write_commodities(self):
@@ -1120,7 +1121,10 @@ class Application(object):
             commodity_string += CommonString.quote_char + commodity.description_csv + CommonString.quote_char + ","
             commodity_string += str(commodity.number_indents_csv) + ","
             commodity_string += CommonString.quote_char + commodity.entity_type + CommonString.quote_char + ","
-            commodity_string += CommonString.quote_char + f.YN(commodity.leaf) + CommonString.quote_char
+            commodity_string += CommonString.quote_char + f.YN(commodity.leaf) + CommonString.quote_char + ","
+            commodity_string += CommonString.quote_char + commodity.COMMODITY_CODE + "-" + commodity.productline_suffix + CommonString.quote_char + ","
+            commodity_string += CommonString.quote_char + commodity.hierarchy_sid_string + CommonString.quote_char + ","
+            commodity_string += CommonString.quote_char + commodity.hierarchy_id_string + CommonString.quote_char
 
             self.commodity_csv_file.write(commodity_string + CommonString.line_feed)
 
@@ -1279,7 +1283,7 @@ class Application(object):
         self.commodity_csv_filename = self.measure_csv_filename.replace("measures", "commodities")
         self.commodity_csv_filepath = os.path.join(self.csv_folder, self.commodity_csv_filename)
         self.commodity_csv_file = open(self.commodity_csv_filepath, "w+")
-        self.commodity_csv_file.write('"commodity__sid","commodity__code","productline__suffix","start__date","end__date","description","indents","entity__type","end__line"' + CommonString.line_feed)
+        self.commodity_csv_file.write('"commodity__sid","commodity__code","productline__suffix","start__date","end__date","description","indents","entity__type","end__line","commodity__code__pls","hierarchy__of__sids","hierarchy__of__ids"' + CommonString.line_feed)
 
         if self.WRITE_ANCILLARY_FILES:
             # Footnotes CSV extract filename

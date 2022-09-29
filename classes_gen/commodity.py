@@ -255,6 +255,19 @@ class Commodity(object):
             for footnote in self.footnotes:
                 self.description += "<" + footnote.FOOTNOTE_NUMBER + ">"
 
+    def build_csv_hierarchy_string(self):
+        tmp = self.hierarchy
+        self.hierarchy_sids = []
+        self.hierarchy_ids = []
+        for item in self.hierarchy:
+            if item.goods_nomenclature_sid != self.goods_nomenclature_sid:
+                self.hierarchy_sids.append(item.goods_nomenclature_sid)
+                self.hierarchy_ids.append(item.COMMODITY_CODE + "-" + item.productline_suffix)
+        a = 1
+        self.hierarchy_sid_string = ",".join(str(sid) for sid in self.hierarchy_sids)
+        self.hierarchy_id_string = ",".join(self.hierarchy_ids)
+        a = 1
+
     def build_hierarchy_string(self):
         token = ""
         taric_token_count = 0
