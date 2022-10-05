@@ -32,11 +32,82 @@
 # Retaliatory
 695,DR,105,A20,Additional duties (retaliatory)
 
-# Prohibitions and restrictions - original CHIEF list (national measures)
-# have all now been removed
+# Import prohibitions and restrictions
+350,PR,AHC,   ,Animal Health Certificate
+351,PR,AIL,   ,Health and Safety Executive Import Licensing Firearms and Ammunition
+352,PR,ATT,   ,Attestation Document (horticulture and potatoes)
+355,PR,CON,   ,Certificate of Conformity
+358,PR,HOP,   ,Home Office pre-cursor chemical authorisation
+359,PR,HSE,   ,Health and Safety Executive (imports)
+360,PR,PHC,   ,Phytosanitary Certificate (import)
+361,PR,HOP,   ,Home Office Pre-cursor chemicals
+362,PR,CHM,   ,Home Office Controlled Drugs (import)
+363,PR,QRC,   ,Quarantine Release Certificate
+410,PR,CVD,   ,Common Veterinary Entry Document (CVED)
+475|L116,PR,KIM,   ,(FCO) Kimberley Diamond Process Certificate
+710,PR,ICP,   ,Import control - CITES
+719|C673,PR,TFC,   ,Toothfish ??
+719|C641,PR,TFC,   ,Toothfish ??
+746,PR,SFS,   ,Import control on seal products
+755,PR,IWP,   ,Import control - waste
 
-# Prohibitions and restrictions - national measures, converted onto TAP
-# have all now been removed
+# Import measures that are not explicitly mentioned above
+x350,PR,350,   ,Animal Health Certificate
+x351,PR,351,   ,Health and Safety Executive Import Licensing Firearms and Ammunition
+x352,PR,352,   ,Attestation Document (horticulture and potatoes)
+x358,PR,358,   ,Home Office pre-cursor chemical authorisation
+x359,PR,359,   ,Health and Safety Executive (imports)
+x360,PR,360,   ,Phytosanitary Certificate (import)
+x362,PR,362,   ,Home Office Controlled Drugs (import)
+x363,PR,363,   ,Quarantine Release Certificate
+x410,PR,410,   ,Veterinary control
+465,PR,465,   ,Restriction on entry into free circulation
+475,PR,475,   ,Restriction on entry into free circulation
+705,PR,705,   ,Import prohibition on goods for torture and repression
+707,PR,707,   ,Import control
+x710,PR,710,   ,Import control - CITES
+711,PR,711,   ,Import control on restricted goods and technologies
+712,PR,712,   ,Import control - IAS
+714,PR,714,   ,Import control
+722,PR,722,   ,Entry into free circulation (restriction - feed and food)
+724,PR,724,   ,Import control of fluorinated greenhouse gases
+728,PR,728,   ,Import control on luxury goods
+730,PR,730,   ,Compliance with the pre-export checks requirements
+745,PR,745,   ,Import control on cat and dog fur
+x746,PR,746,   ,Import control on seal products
+747,PR,747,   ,Import control of timber and timber products subject to the FLEGT licensing scheme
+748,PR,748,   ,Import control of mercury
+750,PR,750,   ,Import control of organic products
+x755,PR,755,   ,Import control - waste
+760,PR,760,   ,Import control
 
-# Prohibitions and restrictions - previously EU measures
-# have all now been removed
+# Export prohibitions and restrictions
+353,PR,CEX,   ,(DCMS) Open General Export licence
+354,PR,ECM,   ,Home Office Controlled Drugs (export)
+357,PR,EQC,   ,Certificate of conformity (fruit & veg)
+361,PR,PRE,   ,Home Office Pre-cursor chemicals
+473|9104,PR,OIE,   ,Firearms: Open individual licence or Specific individual licence. Nuclear materials open individual licence or specific individual licence
+473|9105,PR,OIE,   ,Standard individual Export Licence: radio active sources. Open individual Export Licence: radio active sources. Open general Export Licence: radio active sources
+715,PR,ECP,   ,Export control - CITES
+751,PR,EWP,   ,Export control - Waste
+
+# Export measures that are not explicitly mentioned above
+x353,PR,353,   ,DCMS Open General Export Licence
+x354,PR,354,   ,Home Office Controlled Drugs (export)
+x357,PR,357,   ,Certificate of Conformity
+x361,PR,361,   ,Home Office Pre-cursor chemicals
+467,PR,467,   ,Restriction on export
+473,PR,473,   ,Export authorization
+476,PR,476,   ,Restriction on export
+x478,PR,478,   ,Export authorization (Dual use)
+x708,PR,708,   ,Goods for torture and repression, export restriction
+715,PR,715,   ,Export control - CITES
+717,PR,717,   ,Export control on restricted goods and technologies
+735,PR,735,   ,Export control on cultural goods
+740,PR,740,   ,Export control on cat and dog fur
+749,PR,749,   ,Export control of mercury
+x751,PR,751,   ,Export control - Waste
+766,PR,766,   ,Export control
+
+
+x719,PR,719,   ,Control on illegal, unreported and unregulated fishing

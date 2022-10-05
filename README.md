@@ -50,3 +50,7 @@
 - 7 = 2486
 - 8 = 4398
 - 9 = 1149
+
+# New
+
+`python3 generate_code_list.py uk`

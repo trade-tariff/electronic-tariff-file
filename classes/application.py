@@ -81,7 +81,6 @@ class Application(object):
     def get_excluded_sids(self):
         load_dotenv('.env')
         self.excluded_sids = os.getenv('EXCLUDED_SIDS')
-        a = 1
 
     def create_icl_vme(self):
         self.get_excluded_sids()
@@ -1204,6 +1203,7 @@ class Application(object):
         self.end_timer("Writing commodities")
 
     def pipe_pr_measures_into_icl_vme_file(self, commodity):
+        return
         has_found = False
         for pr_measure in self.pr_measures:
             if pr_measure.commodity == commodity:
@@ -1223,7 +1223,7 @@ class Application(object):
         self.export_folder = os.path.join(self.current_folder, "_export")
         self.documentation_folder = os.path.join(self.current_folder, "documentation")
         self.documentation_file = os.path.join(self.documentation_folder, "Documentation on tariff CSV data files.docx")
-        self.correlation_file = os.path.join(self.documentation_folder, "Ascii file and CDS measure type correlation table 1.0.docx")
+        self.correlation_file = os.path.join(self.documentation_folder, "Ascii file and CDS measure type correlation table 1.1.docx")
 
         # Make the date-specific folder
         date_time_obj = datetime.strptime(self.SNAPSHOT_DATE, '%Y-%m-%d')
@@ -1808,7 +1808,7 @@ class Application(object):
         rows = d.run_query(sql)
         for row in rows:
             description = f.null_to_string(row[2]).replace(",", "")
-            self.geographical_areas_friendly[row[1]] = description
+            self.geographical_areas_friendly[row[1]] = description.replace("–", "-")
 
     def get_seasonal_rates(self):
         # Read the seasonal rates from the reference CSV and load to a global list
@@ -1874,3 +1874,6 @@ class Application(object):
         self.change_date = self.SNAPSHOT_DATE
         self.change_period = "week"
         self.delta = Delta()
+
+    def create_new_tariff(self):
+        self.tariff = Tariff()

@@ -1,9 +1,8 @@
-import sys
 import re
-import classes.globals as g
-from classes_gen.database import Database
-from classes.functions import functions as f
-from classes.enums import CommonString
+import classes_next_gen.globals as g
+from classes_next_gen.database import Database
+from classes_next_gen.functions import functions as f
+from classes_next_gen.enums import CommonString
 
 
 class GeographicalArea(object):
@@ -22,8 +21,8 @@ class GeographicalArea(object):
             where ga_parent.geographical_area_sid = gam.geographical_area_group_sid
             and ga_child.geographical_area_sid = gam.geographical_area_sid
             and ga_parent.geographical_area_id = '""" + self.taric_area + """'
-            and gam.validity_start_date < '""" + g.app.SNAPSHOT_DATE + """'
-            and (gam.validity_end_date is null or gam.validity_end_date > '""" + g.app.SNAPSHOT_DATE + """')
+            and gam.validity_start_date < '""" + g.SNAPSHOT_DATE + """'
+            and (gam.validity_end_date is null or gam.validity_end_date > '""" + g.SNAPSHOT_DATE + """')
             and ga_child.geographical_area_id != 'EU'
             order by 1;
             """
@@ -51,6 +50,7 @@ class GeographicalArea2(object):
             self.description = ""
         # Normalise hyphens
         self.description = re.sub(r'[‐᠆﹣－⁃−]+', '-', self.description)
+        self.description = self.description.replace("–", "-")
 
         self.description = self.description.replace('"', "'")
         self.description = self.description.replace('\n', " ")

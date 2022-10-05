@@ -5,7 +5,7 @@ import psycopg2
 import psycopg2.extras
 from dotenv import load_dotenv
 
-import classes.globals as g
+import classes_next_gen.globals as g
 
 
 class Database:
@@ -15,7 +15,7 @@ class Database:
         load_dotenv('.env')
         # self.database_url = os.getenv('DATABASE_UK')
         if scope is None:
-            self.database_url = g.app.DATABASE
+            self.database_url = g.DATABASE
         else:
             if scope == "xi":
                 self.database_url = os.getenv('DATABASE_EU')

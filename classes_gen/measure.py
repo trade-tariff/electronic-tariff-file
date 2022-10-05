@@ -409,7 +409,7 @@ class Measure(object):
         self.extract_line_csv += self.measure__reduction_indicator + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + self.footnote_string + CommonString.quote_char + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + self.conditions_string + CommonString.quote_char + CommonString.comma
-        self.extract_line_csv += CommonString.quote_char + str(self.geographical_area_sid) + CommonString.quote_char + CommonString.comma
+        self.extract_line_csv += str(self.geographical_area_sid) + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + self.geographical_area_id + CommonString.quote_char + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + g.app.geographical_areas_friendly[self.geographical_area_id] + CommonString.quote_char + CommonString.comma
         self.extract_line_csv += CommonString.quote_char + self.exclusion_string + CommonString.quote_char + CommonString.comma
