@@ -27,6 +27,7 @@
 - and argument 3 is the end index  (1st digit of comm code); arguments 2 and 3 are optional.
 
 `python3 create.py uk 0 10 2022-07-21 ` where
+`python3 create.py uk 0 10 2022-10-06` where
 
 #### Arguments
 - argument 1 is the scope [uk|xi],

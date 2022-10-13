@@ -1,8 +1,33 @@
+from os import system, name
 import os
 import re
+import inquirer
+from colorama import init, Fore, Back, Style
 
 
 class functions(object):
+
+    @staticmethod
+    def yesno_question(message, question):
+        if message != "" and message is not None:
+            print(Style.NORMAL + Fore.LIGHTGREEN_EX + message)
+            print(Style.NORMAL + Fore.WHITE)
+        question = Style.NORMAL + Fore.WHITE + question + Fore.WHITE
+        questions = [
+            inquirer.Confirm("question", message=question, default=True),
+        ]
+        answers = inquirer.prompt(questions)
+        a = 1
+        return answers["question"]
+
+    @staticmethod
+    def clear():
+        # for windows
+        if name == 'nt':
+            _ = system('cls')
+        else:
+            _ = system("printf '\33c\e[3J'")
+
     @staticmethod
     def get_config_key(key, data_type, default):
         try:

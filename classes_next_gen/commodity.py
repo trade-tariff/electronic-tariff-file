@@ -221,8 +221,8 @@ class Commodity(object):
     def get_static_fields(self):
         self.record_type = "CM"
         self.WAREHOUSE_COMMODITY_IND = "N"
-        self.COMMODITY_AMEND_IND = "A"
-        # self.COMMODITY_AMEND_IND = " "
+        # self.COMMODITY_AMEND_IND = "A"
+        self.COMMODITY_AMEND_IND = " "
         self.END_OF_SEASON_DATE = "000000"
         self.START_OF_SEASON_DATE = "000000"
         self.COMMODITY_TYPE = "0"

@@ -6,7 +6,7 @@ import pyminizip
 from dotenv import load_dotenv
 from classes_next_gen.aws_bucket import AwsBucket
 
-import classes.globals as g
+import classes_next_gen.globals as g
 from classes_next_gen.functions import functions as f
 
 
@@ -36,7 +36,7 @@ class Zipper(object):
             if self.override_debug_protection == 1:
                 self.write_to_aws = f.get_config_key('WRITE_TO_AWS', "int", 0)
             else:
-                if g.app.start != 0 or g.app.end != 10:
+                if g.complete_tariff is False:
                     self.write_to_aws = False
                 else:
                     self.write_to_aws = f.get_config_key('WRITE_TO_AWS', "int", 0)

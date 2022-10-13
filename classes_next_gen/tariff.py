@@ -6,6 +6,7 @@ import ssl
 import json
 from datetime import datetime, timedelta, date
 import csv
+import inquirer
 
 from classes_next_gen.enums import CommonString
 from classes_next_gen.database import Database
@@ -34,6 +35,7 @@ from classes_next_gen.functions import functions as f
 
 class Tariff(object):
     def __init__(self):
+        f.clear()
         self.message_string = ""
         self.create_ssl_unverified_context()
         self.get_config()
@@ -77,6 +79,7 @@ class Tariff(object):
                 g.commodities_dict[c].sort_measures()
 
         self.write_icl_vme_file()
+        self.list_measure_types_not_found()
         self.write_commodities_csv()
         if self.WRITE_ANCILLARY_FILES:
             self.get_all_footnotes()
@@ -90,6 +93,10 @@ class Tariff(object):
         self.zip_and_upload()
         self.create_email_message()
         self.send_email_message()
+
+    def list_measure_types_not_found(self):
+        measure_types = ", ".join(g.measure_types_not_found)
+        print("\nMeasure types not found: {measure_types}\n\n".format(measure_types=measure_types))
 
     def create_ssl_unverified_context(self):
         ssl._create_default_https_context = ssl._create_unverified_context
@@ -141,6 +148,11 @@ class Tariff(object):
         load_dotenv('.env')
         self.min_code = os.getenv('MIN_CODE')
         self.max_code = os.getenv('MAX_CODE')
+        if self.min_code != "0000000000" or self.max_code != "9999999999":
+            g.complete_tariff = False
+        else:
+            g.complete_tariff = True
+
         self.BUCKET_NAME = os.getenv('BUCKET_NAME')
         self.bucket_url = "https://" + self.BUCKET_NAME + ".s3.amazonaws.com/"
         self.INCLUDE_ADDITIONAL_SUPPLEMENTARY_UNITS = int(os.getenv('INCLUDE_ADDITIONAL_SUPPLEMENTARY_UNITS'))
@@ -151,10 +163,53 @@ class Tariff(object):
         self.DEBUG_OVERRIDE = int(os.getenv('DEBUG_OVERRIDE'))
         self.PLACEHOLDER_FOR_EMPTY_DESCRIPTIONS = os.getenv('PLACEHOLDER_FOR_EMPTY_DESCRIPTIONS')
         self.VSCODE_DEBUG_MODE = os.getenv('VSCODE_DEBUG_MODE')
+
+        # There is only any point in writing to AWS & sending a mail
+        # if both ZIP variables are set
         self.CREATE_7Z = f.get_config_key('CREATE_7Z', "int", 0)
         self.CREATE_ZIP = f.get_config_key('CREATE_ZIP', "int", 0)
-        self.SEND_MAIL = f.get_config_key('SEND_MAIL', "int", 0)
-        self.WRITE_TO_AWS = f.get_config_key('WRITE_TO_AWS', "int", 0)
+        if self.CREATE_7Z == 0 or self.CREATE_ZIP == 0:
+            self.WRITE_TO_AWS = 0
+            self.SEND_MAIL = 0
+        else:
+            # We will only ever send the email if write to AWS is set to true
+            self.WRITE_TO_AWS = f.get_config_key('WRITE_TO_AWS', "int", 0)
+            self.SEND_MAIL = f.get_config_key('SEND_MAIL', "int", 0)
+            if self.WRITE_TO_AWS == 0:
+                self.SEND_MAIL = 0
+
+        # Put in protection in case the min / max codes are accidentally set to
+        # values other than 0000000000 and 9999999999. If you do proceed, then the application will not
+        # load any data to AWS or send the email.
+        if not g.complete_tariff:
+            self.SEND_MAIL = False
+            self.WRITE_TO_AWS = False
+            message = "The lowest code that this will be run against is {min_code} and the highest is {max_code}\n\n".format(
+                min_code=self.min_code,
+                max_code=self.max_code
+            )
+            message += "If you choose to continue, then:\n\n- no files will be uploaded to AWS\n- no email will be sent.\n\n"
+            question = "Are you sure you want to continue?\n\n"
+            if f.yesno_question(message, question) is False:
+                sys.exit()
+        else:
+            # Check that we want to proceed even if the variables to load
+            # to AWS and / or to senf an email are not set
+            if self.SEND_MAIL == 0 or self.WRITE_TO_AWS == 0:
+                msg = ""
+                if self.WRITE_TO_AWS == 0:
+                    msg += "The WRITE_TO_AWS flag is set to 0\n"
+                if self.SEND_MAIL == 0:
+                    msg += "The SEND_MAIL flag is set to 0\n"
+                print(msg)
+                msg = "Are you sure you want to continue?\n\n"
+
+                questions = [
+                    inquirer.Confirm("proceed_with_messaging_status", message=msg, default=True),
+                ]
+                answers = inquirer.prompt(questions)
+                if answers["proceed_with_messaging_status"] is False:
+                    sys.exit()
 
     def get_folders(self):
         self.current_folder = os.getcwd()
@@ -244,7 +299,7 @@ class Tariff(object):
             self.additional_code_csv_filepath = os.path.join(self.csv_folder, self.additional_code_csv_filename)
 
     def get_geographical_areas_lookup(self):
-        print("Getting geographical areas")
+        self.start_timer("Getting geographical areas")
         g.geographical_areas = []
         filename = os.path.join(self.reference_folder, "geographical_areas.csv")
         with open(filename) as csv_file:
@@ -254,9 +309,10 @@ class Tariff(object):
                     geographical_area = GeographicalArea(row[0], row[1], row[2])
                     g.geographical_areas.append(geographical_area)
 
+        self.end_timer("Getting geographical areas")
+
     def get_measure_types_lookup(self):
-        print("Getting measure types")
-        # self.measure_types = []
+        self.start_timer("Getting measure types")
         g.measure_types = {}
         filename = os.path.join(self.reference_folder, "measure_types.csv")
         with open(filename) as csv_file:
@@ -265,9 +321,10 @@ class Tariff(object):
                 if len(row) >= 4:
                     measure_type = MeasureType(row[0], row[1], row[2], row[3])
                     g.measure_types[row[0]] = measure_type
+        self.end_timer("Getting measure types")
 
     def get_supplementary_units_reference(self):
-        print("Getting supplementary units")
+        self.start_timer("Getting supplementary units")
         g.supplementary_unit_dict = {}
         filename = os.path.join(self.reference_folder, "supplementary_units.csv")
         with open(filename) as csv_file:
@@ -275,6 +332,7 @@ class Tariff(object):
             for row in csv_reader:
                 supplementary_unit = SupplementaryUnit(row[0], row[1], row[2])
                 g.supplementary_unit_dict[row[0] + row[1]] = row[2]
+        self.end_timer("Getting supplementary units")
 
     def get_footnotes(self):
         # Gets ONLY commodity code related footnotes, not measure-related ones
@@ -288,7 +346,7 @@ class Tariff(object):
         # Any footnotes beginning with TN - as-is
         # This gets round the possible duplication on the three digits:
 
-        print("Getting footnotes")
+        self.start_timer("Getting footnotes")
         g.footnotes = []
         sql = """SELECT f1.footnote_type_id,
         f1.footnote_id, fd1.description,
@@ -315,9 +373,11 @@ class Tariff(object):
             footnote.format_text()
             g.footnotes.append(footnote)
 
+        self.end_timer("Getting footnotes")
+
     def get_commodity_footnotes(self):
         # Gets the association of footnotes to commodities
-        print("Getting commodity-level footnote associations")
+        self.start_timer("Getting commodity-level footnote associations")
         g.commodity_footnotes = []
         g.commodities_with_footnotes = []
         sql = """select gn.goods_nomenclature_item_id, gn.goods_nomenclature_sid,
@@ -341,9 +401,11 @@ class Tariff(object):
 
         g.commodities_with_footnotes = set(g.commodities_with_footnotes)
 
+        self.end_timer("Getting commodity-level footnote associations")
+
     def get_measure_footnotes(self):
         # Gets the association of footnotes to measures
-        print("Getting measure-level footnote associations")
+        self.start_timer("Getting measure-level footnote associations")
         g.measure_footnotes = []
         sql = """
         select measure_sid, footnote
@@ -367,10 +429,10 @@ class Tariff(object):
             g.measure_footnotes.append(footnote)
             try:
                 self.measures_dict[footnote.measure_sid].footnotes.append(footnote.footnote)
-                # print("Success")
             except Exception as e:
-                # print("Failed attempt at associating footnote", str(footnote.measure_sid))
                 pass
+
+        self.end_timer("Getting measure-level footnote associations")
 
     def get_measure_excluded_geographical_areas(self):
         # Get measure geographical area exclusions
@@ -420,7 +482,7 @@ class Tariff(object):
 
     def get_seasonal_rates(self):
         # Read the seasonal rates from the reference CSV and load to a global list
-        print("Getting seasonal rates")
+        self.start_timer("Getting seasonal rates")
         g.seasonal_rates = []
         filename = os.path.join(self.reference_folder, "seasonal_rates.csv")
         with open(filename) as csv_file:
@@ -436,8 +498,10 @@ class Tariff(object):
                     rate.goods_nomenclature_sid = commodity.goods_nomenclature_sid
                     break
 
+        self.end_timer("Getting seasonal rates")
+
     def get_spvs(self):
-        print("Getting SPVs")
+        self.start_timer("Getting SPVs")
         g.spvs = []
         filename = os.path.join(self.reference_folder, "spvs.csv")
         with open(filename) as csv_file:
@@ -446,8 +510,10 @@ class Tariff(object):
                 spv = SimplifiedProcedureValue(row[0], row[1])
                 g.spvs.append(spv)
 
+        self.end_timer("Getting SPVs")
+
     def get_codes(self):
-        print("Getting commodity codes")
+        self.start_timer("Getting commodity codes")
         sql = """
         with cer as (
             select distinct on (goods_nomenclature_sid)
@@ -490,12 +556,14 @@ class Tariff(object):
             commodity = Commodity(row)
             self.commodities.append(commodity)
 
+        self.end_timer("Getting commodity codes")
+
     def get_measures(self):
         measure_compound_keys = []
-        print("Getting measures")
+        self.start_timer("Getting measures ... lengthy process")
         sql = """
-        select measure_sid, goods_nomenclature_item_id, geographical_area_id,
-        m.measure_type_id, ordernumber, additional_code, goods_nomenclature_sid,
+        select measure_sid, m.goods_nomenclature_item_id, geographical_area_id,
+        m.measure_type_id, ordernumber, additional_code, m.goods_nomenclature_sid,
         m.validity_start_date, m.validity_end_date,
         case
             when m.measure_type_id in ('103', '105') then 1
@@ -509,12 +577,15 @@ class Tariff(object):
             else  99
         end as measure_priority, mt.measure_component_applicable_code, mt.trade_movement_code,
         mtd.description as measure_type_description, m.reduction_indicator,
-        m.geographical_area_sid
-        from utils.measures_real_end_dates m, measure_types mt, measure_type_descriptions mtd
+        m.geographical_area_sid, m.operation_date
+        from utils.materialized_measures_real_end_dates m, measure_types mt, measure_type_descriptions mtd, goods_nomenclatures gn
         where m.measure_type_id = mt.measure_type_id
+        and m.goods_nomenclature_sid = gn.goods_nomenclature_sid
         and m.measure_type_id = mtd.measure_type_id
         and m.validity_start_date <= %s
         and (m.validity_end_date >= %s or m.validity_end_date is null)
+        and gn.validity_start_date <= %s
+        and (gn.validity_end_date >= %s or gn.validity_end_date is null)
         and m.goods_nomenclature_item_id >= %s
         and m.goods_nomenclature_item_id <= %s
         order by m.goods_nomenclature_item_id, measure_priority, m.measure_type_id
@@ -523,22 +594,38 @@ class Tariff(object):
         params = [
             g.SNAPSHOT_DATE,
             g.SNAPSHOT_DATE,
+            g.SNAPSHOT_DATE,
+            g.SNAPSHOT_DATE,
             self.min_code,
             self.max_code
         ]
         rows = d.run_query(sql, params)
         self.measures_dict = {}
+        if len(rows) == 0:
+            print("Data error - check 'get_measures' SQL")
+            sys.exit()
         for row in rows:
             m = Measure(row)
             if m.is_trade_remedy:
                 if m.compound_key in measure_compound_keys:
                     m.is_duplicate = True
-                measure_compound_keys.append(m.compound_key)
+                else:
+                    measure_compound_keys.append(m.compound_key)
 
             self.measures_dict[m.measure_sid] = m
 
+        for item in self.measures_dict:
+            m = self.measures_dict[item]
+            if m.geographical_area_id == "US":
+                if m.goods_nomenclature_item_id == "1516209821":
+                    a = 1
+                    if m.is_duplicate is False:
+                        a = 1
+
+        self.end_timer("Getting measures")
+
     def get_measure_components(self):
-        print("Getting measure components")
+        self.start_timer("Getting measure components")
         sql = """
         select mc.measure_sid, mc.duty_expression_id, mc.duty_amount, mc.monetary_unit_code,
         mc.measurement_unit_code, mc.measurement_unit_qualifier_code
@@ -563,8 +650,10 @@ class Tariff(object):
             mc = MeasureComponent(row)
             self.measure_components.append(mc)
 
+        self.end_timer("Getting measure components")
+
     def get_measure_conditions(self):
-        print("Getting measure conditions")
+        self.start_timer("Getting measure conditions ... lengthy process")
         sql = """
         select mc.measure_sid, mc.measure_condition_sid, mc.condition_code, mc.component_sequence_number,
         mc.condition_duty_amount, mc.condition_monetary_unit_code, mc.condition_measurement_unit_code,
@@ -590,14 +679,20 @@ class Tariff(object):
             mc = MeasureCondition(row)
             self.measure_conditions.append(mc)
 
+        self.end_timer("Getting measure conditions")
+
     def assign_measure_conditions(self):
-        print("Assigning measure conditions to measures")
+        self.start_timer("Assigning measure conditions to measures")
         for mc in self.measure_conditions:
-            self.measures_dict[mc.measure_sid].measure_conditions.append(mc)
             if mc.certificate != "":
-                self.measures_dict[mc.measure_sid].certificates.append(mc.certificate)
+                try:
+                    self.measures_dict[mc.measure_sid].measure_conditions.append(mc)
+                    self.measures_dict[mc.measure_sid].certificates.append(mc.certificate)
+                except Exception as e:
+                    pass
 
         self.get_ex_head()
+        self.end_timer("Assigning measure conditions to measures")
 
     def get_measure_groups(self):
         for m in self.measures_dict:
@@ -611,9 +706,12 @@ class Tariff(object):
             self.measures_dict[m].get_ex_head()
 
     def assign_measure_components(self):
-        print("Assigning measure components to measures")
+        self.start_timer("Assigning measure components to measures")
         for mc in self.measure_components:
-            self.measures_dict[mc.measure_sid].measure_components.append(mc)
+            try:
+                self.measures_dict[mc.measure_sid].measure_components.append(mc)
+            except Exception as e:
+                pass
 
         # Create the duty fields on the ICL VME export
         for m in self.measures_dict:
@@ -623,6 +721,7 @@ class Tariff(object):
                 self.measures_dict[m].duty_records[index] = mc.cts_component_definition
 
             self.measures_dict[m].get_duty_type()
+        self.end_timer("Assigning measure components to measures")
 
     def create_commodity_dict(self):
         for c in self.commodities:
@@ -630,7 +729,7 @@ class Tariff(object):
 
     def assign_measures(self):
         # Assign the measures to the commodities
-        print("Assign the measures to the commodities")
+        self.start_timer("Assign the measures to the commodities")
         for m in self.measures_dict:
             try:
                 measure_sid = self.measures_dict[m].measure_sid
@@ -645,7 +744,9 @@ class Tariff(object):
                 print("Failure on", str(self.measures_dict[m].goods_nomenclature_sid))
 
         # Inherit the measures to the end lines that share them
-        print("Inherit the measures to the end lines that share them")
+        self.end_timer("Assign the measures to the commodities")
+
+        self.start_timer("Inherit the measures to the end lines that share them")
         for c in g.commodities_dict:
             if g.commodities_dict[c].writable:
                 if len(g.commodities_dict[c].ancestors) > 0:
@@ -655,7 +756,7 @@ class Tariff(object):
                                 g.commodities_dict[c].measure_sids.append(m.measure_sid)
                                 g.commodities_dict[c].measures.append(m)
                         # g.commodities_dict[c].measures += g.commodities_dict[ancestor].measures
-        a = 1
+        self.end_timer("Inherit the measures to the end lines that share them")
 
     def print_commodities(self):
         for c in self.commodities:
@@ -732,7 +833,7 @@ class Tariff(object):
         self.commodity_control_record += str(self.TOTAL_RECORD_COUNT).zfill(11)
 
     def write_icl_vme_file(self):
-        print("Writing commodities")
+        self.start_timer("Writing commodities")
         f = open(self.filepath_icl_vme, "w")
         measure_file_header_row = '"commodity__sid","commodity__code","measure__sid","measure__type__id","measure__type__description","measure__additional_code__code","measure__additional_code__description","measure__duty_expression","measure__effective_start_date","measure__effective_end_date","measure__reduction_indicator","measure__footnotes","measure__conditions","measure__geographical_area__sid","measure__geographical_area__id","measure__geographical_area__description","measure__excluded_geographical_areas__ids","measure__excluded_geographical_areas__descriptions","measure__quota__order_number","trade__direction"' + CommonString.line_feed
 
@@ -759,10 +860,6 @@ class Tariff(object):
 
         # Write the commodities
         for c in g.commodities_dict:
-            if c == 92034:
-                for m in g.commodities_dict[c].measures:
-                    print(m.measure_sid)
-                a = 1
             g.commodities_dict[c].get_commodity_record()
             if g.commodities_dict[c].writable:
                 self.CM_RECORD_COUNT += 1
@@ -794,14 +891,21 @@ class Tariff(object):
                                 for member in m.members:
                                     self.ME_RECORD_COUNT += 1
                                     tmp = m.measure_record.replace("EXPAND", member + "    ")
+                                    if tmp == "":
+                                        a = 1
                                     f.write(tmp + "\n")
                             else:
                                 self.ME_RECORD_COUNT += 1
+                                if m.measure_record == "":
+                                    a = 1
                                 f.write(m.measure_record + "\n")
                                 if len(m.measure_excluded_geographical_areas) > 0:
                                     for mega in m.measure_excluded_geographical_areas:
                                         self.MX_RECORD_COUNT += 1
-                                        f.write(m.measure_template.replace("$$", mega.excluded_geographical_area) + "\n")
+                                        if m.measure_template == "":
+                                            a = 1
+                                        if m.measure_template != "":
+                                            f.write(m.measure_template.replace("$$", mega.excluded_geographical_area) + "\n")
 
         self.update_commodity_control_record()
         f.write(self.commodity_control_record + "\n")
@@ -824,6 +928,7 @@ class Tariff(object):
 
         # Close the file
         f.close()
+        self.end_timer("Writing commodities")
 
     def get_footnote_header(self):
         # HF2020121500000021001

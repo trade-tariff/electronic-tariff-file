@@ -23,13 +23,14 @@ class Measure(object):
         self.measure_type_description = row[12]
         self.reduction_indicator = str(row[13]) if row[13] is not None else ""
         self.geographical_area_sid = row[14]
+        self.operation_date = row[15]
         self.measure_components = []
         self.measure_conditions = []
         self.footnotes = []
         self.certificates = []
         self.measure_excluded_geographical_areas = []
         self.measure_record = ""
-        self.compound_key = self.goods_nomenclature_item_id + "_" + self.measure_type_id
+        self.compound_key = self.goods_nomenclature_item_id + "_" + self.measure_type_id + "_" + self.geographical_area_id
         self.is_duplicate = False
         self.duty_records = []
         self.measure_component_string = ""
@@ -173,9 +174,12 @@ class Measure(object):
                                 self.TAX_TYPE_CODE = g.measure_types[measure_type].tax_type_code
                                 found = True
                                 break
-                    a = 1
+
                 if not found:
-                    print("error", str(self.measure_sid))
+                    if self.measure_type_id not in g.measure_types_not_found:
+                        g.measure_types_not_found.append(self.measure_type_id)
+
+                    print("Measure type not found: SID / Measure type ", str(self.measure_sid), str(self.measure_type_id))
                     self.MEASURE_GROUP_CODE = ""
                     self.MEASURE_TYPE_CODE = ""
                     self.TAX_TYPE_CODE = ""
@@ -304,7 +308,11 @@ class Measure(object):
             self.DESTINATION_ADD_CH_TYPE = "0"
 
     def get_measure_record(self):
-        self.is_duplicate = False
+        self.get_amendment_indicator()
+        # suppressed records are just those applied to 1006 (Canada re-imports)
+        if self.measure_sid == 20041909:
+            a = 1
+        # self.is_duplicate = False
         if self.MEASURE_GROUP_CODE != "" and self.is_suppressed is False and self.is_duplicate is False:
             self.measure_record = "ME" + self.divider
             self.measure_record += self.MEASURE_GROUP_CODE + self.divider
@@ -328,7 +336,7 @@ class Measure(object):
             self.measure_record += self.ordernumber + self.divider
             self.measure_record += "0000" + self.divider
             self.measure_record += "000" + self.divider
-            self.measure_record += "A" + self.divider
+            self.measure_record += self.MEASURE_AMENDMENT_IND + self.divider
             # self.measure_record += " " + self.divider
             if self.ORIGIN_COUNTRY_GROUP_CODE != "    ":
                 self.measure_template = "MX" + self.measure_record[2:38] + "$$" + self.measure_record[40:185]
@@ -338,6 +346,21 @@ class Measure(object):
             self.measure_record = ""
 
         self.get_measure_record_for_csv()
+
+    def get_amendment_indicator(self):
+        if self.operation_date is None:
+            self.MEASURE_AMENDMENT_IND = " "
+        else:
+            if self.operation_date > g.COMPARISON_DATE.date():
+                try:
+                    if self.validity_start_date > g.COMPARISON_DATE.date():
+                        self.MEASURE_AMENDMENT_IND = "N"
+                    else:
+                        self.MEASURE_AMENDMENT_IND = "A"
+                except Exception as e:
+                    self.MEASURE_AMENDMENT_IND = " "
+            else:
+                self.MEASURE_AMENDMENT_IND = " "
 
     def get_excluded_area_string(self):
         self.excluded_area_string = ""

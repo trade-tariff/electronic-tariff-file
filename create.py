@@ -1,3 +1,4 @@
-import classes.globals as g
+from classes_next_gen.tariff import Tariff
 
-g.app.create_icl_vme()
+
+tariff = Tariff()
