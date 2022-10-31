@@ -337,7 +337,6 @@ class Measure(object):
             self.measure_record += "0000" + self.divider
             self.measure_record += "000" + self.divider
             self.measure_record += self.MEASURE_AMENDMENT_IND + self.divider
-            # self.measure_record += " " + self.divider
             if self.ORIGIN_COUNTRY_GROUP_CODE != "    ":
                 self.measure_template = "MX" + self.measure_record[2:38] + "$$" + self.measure_record[40:185]
             else:

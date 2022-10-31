@@ -7,6 +7,7 @@ import json
 from datetime import datetime, timedelta, date
 import csv
 import inquirer
+from pathlib2 import Path
 
 from classes_next_gen.enums import CommonString
 from classes_next_gen.database import Database
@@ -829,8 +830,8 @@ class Tariff(object):
         self.commodity_control_record += str(self.CA_RECORD_COUNT).zfill(7)
         self.commodity_control_record += str(self.ME_RECORD_COUNT).zfill(7)
         self.commodity_control_record += str(self.MD_RECORD_COUNT).zfill(7)
-        self.commodity_control_record += str(self.MX_RECORD_COUNT).zfill(7)
-        self.commodity_control_record += str(self.TOTAL_RECORD_COUNT).zfill(11)
+        self.commodity_control_record += "MXCOUNT"  # str(self.MX_RECORD_COUNT).zfill(7)
+        self.commodity_control_record += "TOTAL_COUNT"  # str(self.TOTAL_RECORD_COUNT).zfill(11)
 
     def write_icl_vme_file(self):
         self.start_timer("Writing commodities")
@@ -929,6 +930,59 @@ class Tariff(object):
         # Close the file
         f.close()
         self.end_timer("Writing commodities")
+        self.update_counts()
+
+    def update_counts(self):
+        file1 = open(self.filepath_icl_vme, 'r')
+        count = 0
+        self.CM_RECORD_COUNT = 0
+        self.CA_RECORD_COUNT = 0
+        self.ME_RECORD_COUNT = 0
+        self.MD_RECORD_COUNT = 0
+        self.MX_RECORD_COUNT = 0
+        self.TOTAL_RECORD_COUNT = 0
+
+        while True:
+            count += 1
+
+            # Get next line from file
+            line = file1.readline()
+
+            # if line is empty
+            # end of file is reached
+            if not line:
+                break
+            line_length = len(line)
+            if len(line) < 2:
+                print("Short line on {line}".format(line=str(count)))
+                break
+
+            if line[0:2] == "CM":
+                self.CM_RECORD_COUNT += 1
+            elif line[0:2] == "CA":
+                self.CA_RECORD_COUNT += 1
+            elif line[0:2] == "ME":
+                self.ME_RECORD_COUNT += 1
+            elif line[0:2] == "MX":
+                self.MX_RECORD_COUNT += 1
+            elif line[0:2] == "MD":
+                self.MD_RECORD_COUNT += 1
+
+        self.TOTAL_RECORD_COUNT = self.CM_RECORD_COUNT + self.CA_RECORD_COUNT + self.ME_RECORD_COUNT + self.MX_RECORD_COUNT + self.MD_RECORD_COUNT
+
+        file1.close()
+        print(str(count))
+        print("Commodity records = {x}".format(x=str(self.CM_RECORD_COUNT)))
+        print("Add code records = {x}".format(x=str(self.CA_RECORD_COUNT)))
+        print("Measure records = {x}".format(x=str(self.ME_RECORD_COUNT)))
+        print("Exception records = {x}".format(x=str(self.MX_RECORD_COUNT)))
+        print("Total records = {x}".format(x=str(self.TOTAL_RECORD_COUNT)))
+
+        path = Path(self.filepath_icl_vme)
+        text = path.read_text()
+        text = text.replace("MXCOUNT", str(self.MX_RECORD_COUNT).zfill(7))
+        text = text.replace("TOTAL_COUNT", str(self.TOTAL_RECORD_COUNT).zfill(11))
+        path.write_text(text)
 
     def get_footnote_header(self):
         # HF2020121500000021001
