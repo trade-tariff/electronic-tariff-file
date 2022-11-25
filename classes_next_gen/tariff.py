@@ -532,6 +532,7 @@ class Tariff(object):
             and description_end_date >= %s
             and goods_nomenclature_item_id >= %s
             and goods_nomenclature_item_id <= %s
+            and left(goods_nomenclature_item_id, 2) != '98'
             order by goods_nomenclature_sid, description_start_date desc, indent_start_date desc
         ) select * from cer
         where cer.goods_nomenclature_item_id not in (select goods_nomenclature_item_id from hidden_goods_nomenclatures)
