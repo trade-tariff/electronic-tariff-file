@@ -218,7 +218,7 @@ class Tariff(object):
         self.reference_folder = os.path.join(self.data_folder, "reference")
         self.data_in_folder = os.path.join(self.data_folder, "in")
         self.data_out_folder = os.path.join(self.data_folder, "out")
-        self.export_folder = os.path.join(self.current_folder, "_export2")
+        self.export_folder = os.path.join(self.current_folder, "_export")
         self.documentation_folder = os.path.join(self.current_folder, "documentation")
         self.documentation_file = os.path.join(self.documentation_folder, "Documentation on tariff CSV data files.docx")
         self.correlation_file = os.path.join(self.documentation_folder, "Ascii file and CDS measure type correlation table 1.1.docx")

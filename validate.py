@@ -1,7 +1,7 @@
 import sys
 
 
-file = "/Users/MLavis.Admin/sites and projects/1. Online Tariff/04. electronic-tariff-file/_export2/2022-10-06/uk/icl_vme/hmrc-tariff-ascii-2022-10-06.txt"
+file = "/Users/MLavis.Admin/sites and projects/1. Online Tariff/04. electronic-tariff-file/_export/2022-10-06/uk/icl_vme/hmrc-tariff-ascii-2022-10-06.txt"
 file1 = open(file, 'r')
 lines = file1.readlines()
 count = 0

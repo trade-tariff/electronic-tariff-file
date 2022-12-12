@@ -1,7 +1,7 @@
 import os
 
 
-my_path = "/Users/MLavis.Admin/sites and projects/1. Online Tariff/04. electronic-tariff-file/_export2/2022-10-31/uk/icl_vme/hmrc-tariff-ascii-2022-10-31.txt"
+my_path = "/Users/MLavis.Admin/sites and projects/1. Online Tariff/04. electronic-tariff-file/_export/2022-10-31/uk/icl_vme/hmrc-tariff-ascii-2022-10-31.txt"
 file1 = open(my_path, 'r')
 count = 0
 CM_RECORD_COUNT = 0
