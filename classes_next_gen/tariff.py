@@ -661,7 +661,7 @@ class Tariff(object):
         mc.condition_duty_amount, mc.condition_monetary_unit_code, mc.condition_measurement_unit_code,
         mc.condition_measurement_unit_qualifier_code, mc.action_code, mc.certificate_type_code,
         mc.certificate_code
-        from measure_conditions mc, utils.measures_real_end_dates m
+        from measure_conditions mc, utils.materialized_measures_real_end_dates m
         where m.measure_sid = mc.measure_sid
         and m.validity_start_date <= %s
         and (m.validity_end_date >= %s or m.validity_end_date is null)
@@ -1180,7 +1180,7 @@ class Tariff(object):
         from utils.additional_codes ac, utils.materialized_measures_real_end_dates m, additional_code_type_descriptions acd
         where ac.additional_code_type_id = m.additional_code_type_id
         and ac.additional_code = m.additional_code_id
-        and (m.validity_end_date is null or m.validity_end_date::date > current_date)
+        -- and (m.validity_end_date is null or m.validity_end_date::date > current_date)
         and ac.additional_code_type_id = acd.additional_code_type_id
         order by 1;
         """
