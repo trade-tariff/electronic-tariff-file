@@ -242,6 +242,9 @@ class Application(object):
             for row in rows:
                 commodity = Commodity()
                 commodity.COMMODITY_CODE = row[1]
+
+                if commodity.COMMODITY_CODE == "2901000000":
+                    a = 1
                 if commodity.COMMODITY_CODE[0:2] not in ('98', '99'):
                     commodity.goods_nomenclature_sid = row[0]
                     commodity.productline_suffix = row[2]
@@ -257,7 +260,10 @@ class Application(object):
                     commodity.determine_commodity_type()
                     commodity.get_amendment_status()
                     commodity.cleanse_description()
-                    self.commodities.append(commodity)
+                    if commodity.productline_suffix == "10" and commodity.number_indents == 0:
+                        pass
+                    else:
+                        self.commodities.append(commodity)
 
                     if commodity.productline_suffix == "80":
                         self.commodities_dict[commodity.COMMODITY_CODE] = commodity.description
@@ -1280,7 +1286,8 @@ class Application(object):
         self.commodity_csv_filename = self.measure_csv_filename.replace("measures", "commodities")
         self.commodity_csv_filepath = os.path.join(self.csv_folder, self.commodity_csv_filename)
         self.commodity_csv_file = open(self.commodity_csv_filepath, "w+")
-        self.commodity_csv_file.write('"commodity__sid","commodity__code","productline__suffix","start__date","end__date","description","indents","entity__type","end__line","commodity__code__pls","hierarchy__of__sids","hierarchy__of__ids"' + CommonString.line_feed)
+        self.commodity_csv_file.write(
+            '"commodity__sid","commodity__code","productline__suffix","start__date","end__date","description","indents","entity__type","end__line","commodity__code__pls","hierarchy__of__sids","hierarchy__of__ids"' + CommonString.line_feed)
 
         if self.WRITE_ANCILLARY_FILES:
             # Footnotes CSV extract filename
@@ -1874,6 +1881,3 @@ class Application(object):
         self.change_date = self.SNAPSHOT_DATE
         self.change_period = "week"
         self.delta = Delta()
-
-    def create_new_tariff(self):
-        self.tariff = Tariff()
