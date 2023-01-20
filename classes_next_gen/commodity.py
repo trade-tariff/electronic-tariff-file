@@ -83,7 +83,7 @@ class Commodity(object):
 
     def get_supp_units(self):
         if self.export_umbrella:
-            a = 1
+            pass
         else:
             for m in self.measures:
                 if m.measure_type_id in ("109", "110"):
@@ -206,8 +206,6 @@ class Commodity(object):
         self.ancestry_string_length = str(len(self.ancestry_string)).zfill(4)
 
     def check_export_umbrella(self):
-        if self.goods_nomenclature_sid == 93798:
-            a = 1
         self.export_umbrella = False
         if self.productline_suffix == "80" and self.end_line is False:
             if self.significant_digits == 8:
@@ -240,13 +238,16 @@ class Commodity(object):
             m.get_measure_record()
 
     def check_writable(self):
-        if self.end_line:
-            self.writable = True
+        if self.productline_suffix != "80" and self.number_indents <= 1:
+            self.writable = False
         else:
-            if self.export_umbrella:
+            if self.end_line:
                 self.writable = True
             else:
-                self.writable = False
+                if self.export_umbrella:
+                    self.writable = True
+                else:
+                    self.writable = False
 
     def append_footnotes_to_description(self):
         if len(self.footnotes) > 0:
