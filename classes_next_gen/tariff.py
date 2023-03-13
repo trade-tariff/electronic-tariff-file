@@ -1411,6 +1411,7 @@ class Tariff(object):
 
     def zip_and_upload(self):
         if self.CREATE_ZIP or self.CREATE_7Z:
+            print("Zipping file")
             self.aws_path_icl_vme_tuple = Zipper(self.filepath_icl_vme, self.scope, "icl_vme", "ICL VME file").compress()
             self.aws_path_measures_csv_tuple = Zipper(self.measure_csv_filepath, self.scope, "csv", "Measures CSV").compress()
             self.aws_path_commodities_csv_tuple = Zipper(self.commodity_csv_filepath, self.scope, "csv", "Commodities CSV").compress()
@@ -1440,6 +1441,7 @@ class Tariff(object):
         # Delta description files
         self.aws_path_commodities_delta_tuple = Zipper(self.delta.commodities_filename, self.scope, "delta", "Changes to commodity codes").compress()
         self.aws_path_measures_delta_tuple = Zipper(self.delta.measures_filename, self.scope, "delta", "Changes to measures").compress()
+        print("Zipping complete")
 
     def create_email_message(self):
         if self.SEND_MAIL == 0 or self.CREATE_7Z == 0 or self.CREATE_ZIP == 0 or self.WRITE_TO_AWS == 0:
@@ -1514,11 +1516,11 @@ class Tariff(object):
                 <td style="padding:2px 5px;border:1px #CCC solid;color:#000;">{additional_codes_zip}</td>
             </tr>
             <tr valign="top">
-                <td style="padding:2px 5px;border:1px #CCC solid;background-color:#fafafa;color:#000;"><b>NEW</b> - MFN rates only</td>
+                <td style="padding:2px 5px;border:1px #CCC solid;background-color:#fafafa;color:#000;"> MFN rates only</td>
                 <td style="padding:2px 5px;border:1px #CCC solid;color:#000;">{mfns_zip}</td>
             </tr>
             <tr valign="top">
-                <td style="padding:2px 5px;border:1px #CCC solid;background-color:#fafafa;color:#000;"><b>NEW</b> - Supplementary units only</td>
+                <td style="padding:2px 5px;border:1px #CCC solid;background-color:#fafafa;color:#000;">Supplementary units only</td>
                 <td style="padding:2px 5px;border:1px #CCC solid;color:#000;">{supplementary_units_zip}</td>
             </tr>
         </table>
@@ -1569,11 +1571,11 @@ class Tariff(object):
                 <td style="padding:2px 5px;border:1px #CCC solid;color:#000;">{additional_codes_7z}</td>
             </tr>
             <tr valign="top">
-                <td style="padding:2px 5px;border:1px #CCC solid;background-color:#fafafa;color:#000;"><b>NEW</b> - MFN rates only</td>
+                <td style="padding:2px 5px;border:1px #CCC solid;background-color:#fafafa;color:#000;">MFN rates only</td>
                 <td style="padding:2px 5px;border:1px #CCC solid;color:#000;">{mfns_7z}</td>
             </tr>
             <tr valign="top">
-                <td style="padding:2px 5px;border:1px #CCC solid;background-color:#fafafa;color:#000;"><b>NEW</b> - Supplementary units only</td>
+                <td style="padding:2px 5px;border:1px #CCC solid;background-color:#fafafa;color:#000;">Supplementary units only</td>
                 <td style="padding:2px 5px;border:1px #CCC solid;color:#000;">{supplementary_units_7z}</td>
             </tr>
         </table>
@@ -1620,6 +1622,8 @@ class Tariff(object):
         s.send()
 
     def create_delta(self):
+        print("Creating delta")
         g.change_date = g.SNAPSHOT_DATE
         g.change_period = "week"
         self.delta = Delta()
+        print("Delta complete")
