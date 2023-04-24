@@ -1,5 +1,5 @@
-from classes.functions import functions as f
-from classes.enums import CommonString
+from classes_next_gen.functions import functions as f
+from classes_next_gen.enums import CommonString
 
 
 class MeasureType(object):
@@ -17,6 +17,7 @@ class MeasureType(object):
             tmp = self.taric_measure_type.split("|")
             self.taric_measure_type = tmp[0]
             self.certificate_code = tmp[1]
+
 
 class MeasureType2(object):
     def get_csv_string(self):

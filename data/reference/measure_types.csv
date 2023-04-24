@@ -4,7 +4,7 @@
 
 # Preferences
 142,DS,PRF,A00,MEASURE-TYPE-CODE is 100 for FTA, 101 for GSP - Preferential tariff
-145,DS,PRF,A00,MEASURE-TYPE-CODE is 100 for FTA, 101 for GSP -  Preference under end use
+145,DS,PRF,A00,MEASURE-TYPE-CODE is 100 for FTA, 101 for GSP - Preference under end use
 
 # Quotas
 122,DQ,100,A00
@@ -53,20 +53,10 @@
 755,PR,IWP,   ,Import control - waste
 
 # Import measures that are not explicitly mentioned above
-x350,PR,350,   ,Animal Health Certificate
-x351,PR,351,   ,Health and Safety Executive Import Licensing Firearms and Ammunition
-x352,PR,352,   ,Attestation Document (horticulture and potatoes)
-x358,PR,358,   ,Home Office pre-cursor chemical authorisation
-x359,PR,359,   ,Health and Safety Executive (imports)
-x360,PR,360,   ,Phytosanitary Certificate (import)
-x362,PR,362,   ,Home Office Controlled Drugs (import)
-x363,PR,363,   ,Quarantine Release Certificate
-x410,PR,410,   ,Veterinary control
 465,PR,465,   ,Restriction on entry into free circulation
 475,PR,475,   ,Restriction on entry into free circulation
 705,PR,705,   ,Import prohibition on goods for torture and repression
 707,PR,707,   ,Import control
-x710,PR,710,   ,Import control - CITES
 711,PR,711,   ,Import control on restricted goods and technologies
 712,PR,712,   ,Import control - IAS
 714,PR,714,   ,Import control
@@ -75,11 +65,9 @@ x710,PR,710,   ,Import control - CITES
 728,PR,728,   ,Import control on luxury goods
 730,PR,730,   ,Compliance with the pre-export checks requirements
 745,PR,745,   ,Import control on cat and dog fur
-x746,PR,746,   ,Import control on seal products
 747,PR,747,   ,Import control of timber and timber products subject to the FLEGT licensing scheme
 748,PR,748,   ,Import control of mercury
 750,PR,750,   ,Import control of organic products
-x755,PR,755,   ,Import control - waste
 760,PR,760,   ,Import control
 
 # Export prohibitions and restrictions
@@ -93,22 +81,13 @@ x755,PR,755,   ,Import control - waste
 751,PR,EWP,   ,Export control - Waste
 
 # Export measures that are not explicitly mentioned above
-x353,PR,353,   ,DCMS Open General Export Licence
-x354,PR,354,   ,Home Office Controlled Drugs (export)
-x357,PR,357,   ,Certificate of Conformity
-x361,PR,361,   ,Home Office Pre-cursor chemicals
 467,PR,467,   ,Restriction on export
 473,PR,473,   ,Export authorization
 476,PR,476,   ,Restriction on export
-x478,PR,478,   ,Export authorization (Dual use)
-x708,PR,708,   ,Goods for torture and repression, export restriction
 715,PR,715,   ,Export control - CITES
 717,PR,717,   ,Export control on restricted goods and technologies
 735,PR,735,   ,Export control on cultural goods
 740,PR,740,   ,Export control on cat and dog fur
 749,PR,749,   ,Export control of mercury
-x751,PR,751,   ,Export control - Waste
 766,PR,766,   ,Export control
 
-
-x719,PR,719,   ,Control on illegal, unreported and unregulated fishing

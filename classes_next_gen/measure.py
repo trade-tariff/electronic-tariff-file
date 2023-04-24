@@ -1,5 +1,3 @@
-from re import S
-import sys
 import classes_next_gen.globals as g
 
 
@@ -44,10 +42,6 @@ class Measure(object):
         self.check_for_erga_omnes()
         self.check_suppressed_geo_areas()
         self.get_additional_code_parts()
-        # self.get_measure_group_code()
-        # self.get_geographical_area_codes()
-        # self.determine_origin_add_charge()
-        # self.determine_destination_country_groups()
         self.create_empty_duty_records()
         self.check_for_supplementary_unit()
         self.get_additional_code_description()
@@ -211,16 +205,16 @@ class Measure(object):
         self.MEASURE_GROUP_CODE = "EX"
         if self.additional_code == "X99A":
             self.MEASURE_TYPE_CODE = "EXA"
-            self.TAX_TYPE_CODE = "990"
+            self.TAX_TYPE_CODE = "99A"
         elif self.additional_code == "X99B":
             self.MEASURE_TYPE_CODE = "EXB"
-            self.TAX_TYPE_CODE = "990"
+            self.TAX_TYPE_CODE = "99B"
         elif self.additional_code == "X99C":
             self.MEASURE_TYPE_CODE = "EXC"
-            self.TAX_TYPE_CODE = "990"
+            self.TAX_TYPE_CODE = "99C"
         elif self.additional_code == "X99D":
             self.MEASURE_TYPE_CODE = "EXD"
-            self.TAX_TYPE_CODE = "990"
+            self.TAX_TYPE_CODE = "99D"
         else:
             self.MEASURE_TYPE_CODE = "600"
             self.TAX_TYPE_CODE = self.additional_code.replace("X", "")

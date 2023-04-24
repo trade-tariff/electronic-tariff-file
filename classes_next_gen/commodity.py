@@ -2,7 +2,7 @@ import re
 from unidecode import unidecode
 
 import classes_next_gen.globals as g
-from classes.functions import functions as f
+from classes_next_gen.functions import functions as f
 
 
 class Commodity(object):
