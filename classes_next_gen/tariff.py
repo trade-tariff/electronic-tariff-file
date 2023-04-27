@@ -590,7 +590,7 @@ class Tariff(object):
         and (gn.validity_end_date >= %s or gn.validity_end_date is null)
         and m.goods_nomenclature_item_id >= %s
         and m.goods_nomenclature_item_id <= %s
-        order by m.goods_nomenclature_item_id, measure_priority, m.measure_type_id
+        order by m.goods_nomenclature_item_id, measure_priority, m.measure_type_id, m.additional_code, m.ordernumber
         """
         d = Database()
         params = [

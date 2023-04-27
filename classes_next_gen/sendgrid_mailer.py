@@ -1,5 +1,3 @@
-# using SendGrid's Python Library
-# https://github.com/sendgrid/sendgrid-python
 import os
 import base64
 import platform
@@ -88,8 +86,7 @@ class SendgridMailer(object):
         attachment = Attachment(
             FileContent(encoded_file),
             FileName(actual_filename),
-            FileType(
-                'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
+            FileType('application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
             Disposition('attachment')
         )
         return attachment

@@ -3,7 +3,6 @@ from datetime import datetime
 
 class SeasonalRate(object):
     def __init__(self, goods_nomenclature_item_id, from_date, to_date, seasonal_rate, prose=None):
-        # self.goods_nomenclature_item_id = goods_nomenclature_item_id.ljust(10, "0")
         self.goods_nomenclature_item_id = goods_nomenclature_item_id.ljust(10, "0")
         self.goods_nomenclature_sid = None
 
