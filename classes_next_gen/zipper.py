@@ -1,4 +1,5 @@
 import os
+import sys
 import py7zr
 import zipfile
 import zlib
@@ -76,7 +77,17 @@ class Zipper(object):
             with py7zr.SevenZipFile(self.archive, 'w') as archive:
                 archive.write(self.source_filename, self.base_filename)
 
-        self.aws_path = os.path.join(self.scope, self.remote_folder, self.archive_base_filename)
+        self.aws_path = os.path.join(self.scope, "electronic_tariff_file", self.remote_folder, self.archive_base_filename)
+        self.aws_path = os.path.join(
+            self.scope,
+            "reporting",
+            g.SNAPSHOT_YEAR,
+            g.SNAPSHOT_MONTH,
+            g.SNAPSHOT_DAY,
+            "electronic_tariff_file",
+            self.remote_folder,
+            self.archive_base_filename
+        )
         self.load_to_aws("Loading {0} (7z) to AWS bucket".format(self.message), self.archive, self.aws_path)
         return self.aws_path
 
@@ -100,7 +111,17 @@ class Zipper(object):
             zipObj.write(self.source_filename, arcname=self.base_filename, compress_type=compression)
             zipObj.close()
 
-        self.aws_path = os.path.join(self.scope, self.remote_folder, self.archive_base_filename)
+        self.aws_path = os.path.join(self.scope, "electronic_tariff_file", self.remote_folder, self.archive_base_filename)
+        self.aws_path = os.path.join(
+            self.scope,
+            "reporting",
+            g.SNAPSHOT_YEAR,
+            g.SNAPSHOT_MONTH,
+            g.SNAPSHOT_DAY,
+            "electronic_tariff_file",
+            self.remote_folder,
+            self.archive_base_filename
+        )
         self.load_to_aws("Loading {0} (ZIP) to AWS bucket".format(self.message), self.archive, self.aws_path)
         return self.aws_path
 

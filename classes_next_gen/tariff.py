@@ -110,6 +110,11 @@ class Tariff(object):
                 datetime.strptime(d, date_format)
                 g.SNAPSHOT_DATE = d
                 g.COMPARISON_DATE = datetime.strptime(d, '%Y-%m-%d') - timedelta(days=7)
+                d2 = datetime.strptime(d, '%Y-%m-%d')
+                g.SNAPSHOT_DAY = d2.strftime('%d')
+                g.SNAPSHOT_MONTH = d2.strftime('%m')
+                g.SNAPSHOT_YEAR = d2.strftime('%Y')
+
             except ValueError:
                 print("This is the incorrect date string format. It should be YYYY-MM-DD")
                 sys.exit()
@@ -117,6 +122,10 @@ class Tariff(object):
             d = datetime.now()
             g.SNAPSHOT_DATE = d.strftime('%Y-%m-%d')
             g.COMPARISON_DATE = d - timedelta(days=7)
+
+            g.SNAPSHOT_DAY = d.strftime('%d')
+            g.SNAPSHOT_MONTH = d.strftime('%m')
+            g.SNAPSHOT_YEAR = d.strftime('%Y')
 
     def get_scope(self):
         # Takes arguments from the command line to identify
@@ -156,6 +165,8 @@ class Tariff(object):
 
         self.BUCKET_NAME = os.getenv('BUCKET_NAME')
         self.bucket_url = "https://" + self.BUCKET_NAME + ".s3.amazonaws.com/"
+        self.bucket_url = "https://reporting.trade-tariff.service.gov.uk/"
+
         self.INCLUDE_ADDITIONAL_SUPPLEMENTARY_UNITS = int(os.getenv('INCLUDE_ADDITIONAL_SUPPLEMENTARY_UNITS'))
         self.WRITE_MEASURES = int(os.getenv('WRITE_MEASURES'))
         self.WRITE_ADDITIONAL_CODES = int(os.getenv('WRITE_ADDITIONAL_CODES'))

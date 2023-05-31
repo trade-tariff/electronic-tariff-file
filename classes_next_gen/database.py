@@ -44,7 +44,7 @@ class Database:
             self.open_connection()
             with self.conn.cursor() as cur:
                 # with self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
-                if 'SELECT' in query.upper():
+                if "SELECT" in query.upper():
                     records = []
                     if params is None:
                         cur.execute(query)

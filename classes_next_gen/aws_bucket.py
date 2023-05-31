@@ -22,7 +22,8 @@ class AwsBucket(object):
 
     def upload_file(self, source, destination):
         response = self.s3_client.upload_file(source, self.BUCKET_NAME, destination)
-        self.url = "https://" + self.BUCKET_NAME + ".s3.amazonaws.com/" + destination
+        # self.url = "https://" + self.BUCKET_NAME + ".s3.amazonaws.com/" + destination
+        self.url = "https://reporting.trade-tariff.service.gov.uk/" + destination
         a = 1
 
     def delete_by_pattern(self, pattern):
