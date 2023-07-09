@@ -61,7 +61,7 @@ class Zipper(object):
         self.archive = self.archive.replace(".csv", ".7z")
         self.base_filename = os.path.basename(self.source_filename)
         self.archive_base_filename = os.path.basename(self.archive)
-        if os.exists(self.archive):
+        if os.path.exists(self.archive):
             os.remove(self.archive)
 
         with py7zr.SevenZipFile(self.archive, 'w') as archive:
@@ -87,7 +87,7 @@ class Zipper(object):
         self.archive = self.archive.replace(".csv", ".zip")
         self.base_filename = os.path.basename(self.source_filename)
         self.archive_base_filename = os.path.basename(self.archive)
-        if os.exists(self.archive):
+        if os.path.exists(self.archive):
             os.remove(self.archive)
 
         zipObj = zipfile.ZipFile(self.archive, 'w')
