@@ -1,4 +1,4 @@
-from classes_next_gen.tariff import Tariff
+from classes.tariff import Tariff
 
 
 tariff = Tariff()

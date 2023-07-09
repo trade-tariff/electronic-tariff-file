@@ -9,29 +9,29 @@ import csv
 import inquirer
 from pathlib2 import Path
 
-from classes_next_gen.enums import CommonString
-from classes_next_gen.database import Database
-from classes_next_gen.commodity import Commodity
-from classes_next_gen.measure import Measure
-from classes_next_gen.measure_type import MeasureType, MeasureType2
-from classes_next_gen.additional_code import AdditionalCode
-from classes_next_gen.geographical_area import GeographicalArea, GeographicalArea2
-from classes_next_gen.certificate import Certificate
-from classes_next_gen.measure_component import MeasureComponent
-from classes_next_gen.measure_condition import MeasureCondition
-from classes_next_gen.measure_excluded_geographical_area import MeasureExcludedGeographicalArea
-from classes_next_gen.footnote import Footnote
-from classes_next_gen.commodity_footnote import CommodityFootnote
-from classes_next_gen.measure_footnote import MeasureFootnote
-from classes_next_gen.seasonal_rate import SeasonalRate
-from classes_next_gen.supplementary_unit import SupplementaryUnit
-from classes_next_gen.simplified_procedure_value import SimplifiedProcedureValue
-from classes_next_gen.quota_definition import QuotaDefinition, QuotaExclusion, QuotaCommodity
-from classes_next_gen.sendgrid_mailer import SendgridMailer
-from classes_next_gen.zipper import Zipper
-from classes_next_gen.delta import Delta
-import classes_next_gen.globals as g
-from classes_next_gen.functions import functions as f
+from classes.enums import CommonString
+from classes.database import Database
+from classes.commodity import Commodity
+from classes.measure import Measure
+from classes.measure_type import MeasureType, MeasureType2
+from classes.additional_code import AdditionalCode
+from classes.geographical_area import GeographicalArea, GeographicalArea2
+from classes.certificate import Certificate
+from classes.measure_component import MeasureComponent
+from classes.measure_condition import MeasureCondition
+from classes.measure_excluded_geographical_area import MeasureExcludedGeographicalArea
+from classes.footnote import Footnote
+from classes.commodity_footnote import CommodityFootnote
+from classes.measure_footnote import MeasureFootnote
+from classes.seasonal_rate import SeasonalRate
+from classes.supplementary_unit import SupplementaryUnit
+from classes.simplified_procedure_value import SimplifiedProcedureValue
+from classes.quota_definition import QuotaDefinition, QuotaExclusion, QuotaCommodity
+from classes.sendgrid_mailer import SendgridMailer
+from classes.zipper import Zipper
+from classes.delta import Delta
+import classes.globals as g
+from classes.functions import functions as f
 
 
 class Tariff(object):

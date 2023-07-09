@@ -3,10 +3,10 @@ import os
 from datetime import datetime, timedelta
 from monthdelta import monthdelta
 
-from classes_next_gen.database import Database
-from classes_next_gen.delta_commodity import DeltaCommodity
-from classes_next_gen.delta_measure import DeltaMeasure
-import classes_next_gen.globals as g
+from classes.database import Database
+from classes.delta_commodity import DeltaCommodity
+from classes.delta_measure import DeltaMeasure
+import classes.globals as g
 
 
 class Delta(object):

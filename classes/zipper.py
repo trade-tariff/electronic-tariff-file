@@ -2,10 +2,10 @@ import os
 import py7zr
 import zipfile
 from dotenv import load_dotenv
-from classes_next_gen.aws_bucket import AwsBucket
+from classes.aws_bucket import AwsBucket
 
-import classes_next_gen.globals as g
-from classes_next_gen.functions import functions as f
+import classes.globals as g
+from classes.functions import functions as f
 
 
 class Zipper(object):

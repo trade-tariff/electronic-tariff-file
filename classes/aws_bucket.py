@@ -2,8 +2,8 @@ import boto3
 import os
 from dotenv import load_dotenv
 
-from classes_next_gen.enums import CommonString
-from classes_next_gen.sendgrid_mailer import SendgridMailer
+from classes.enums import CommonString
+from classes.sendgrid_mailer import SendgridMailer
 
 
 class AwsBucket(object):

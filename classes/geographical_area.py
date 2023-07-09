@@ -1,8 +1,8 @@
 import re
-import classes_next_gen.globals as g
-from classes_next_gen.database import Database
-from classes_next_gen.functions import functions as f
-from classes_next_gen.enums import CommonString
+import classes.globals as g
+from classes.database import Database
+from classes.functions import functions as f
+from classes.enums import CommonString
 
 
 class GeographicalArea(object):

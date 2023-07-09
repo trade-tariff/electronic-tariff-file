@@ -1,5 +1,5 @@
-from classes_next_gen.functions import functions as f
-from classes_next_gen.enums import CommonString
+from classes.functions import functions as f
+from classes.enums import CommonString
 
 
 class Footnote(object):

@@ -4,7 +4,7 @@ import platform
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import (Mail, Attachment, FileContent, FileName, FileType, Disposition)
 
-from classes_next_gen.functions import functions as f
+from classes.functions import functions as f
 
 
 class SendgridMailer(object):

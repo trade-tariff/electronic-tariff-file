@@ -1,4 +1,4 @@
-import classes_next_gen.globals as g
+import classes.globals as g
 
 
 class Measure(object):
