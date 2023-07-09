@@ -49,7 +49,7 @@ class Commodity(object):
         self.get_spv()
         self.get_static_fields()
 
-    def get_supplementary_units(self, include_additional=False):
+    def get_supplementary_units(self):
         # Set the default: 1st is always kilogram, 2nd and 3rd are initially empty
         self.supplementary_units = [
             "1023",
@@ -57,29 +57,18 @@ class Commodity(object):
             "0000"
         ]
 
-        if include_additional:
-            try:
-                item = g.additional_supplememtary_units[self.goods_nomenclature_item_id]
-                found_chief_units = True
-                self.supplementary_units[0] = item["unit1"]
-                self.supplementary_units[1] = item["unit2"]
-                self.supplementary_units[2] = item["unit3"]
-            except Exception as e:
-                found_chief_units = False
+        supplementary_units_list = []
+        for m in self.measures:
+            if m.is_supplementary_unit:
+                supplementary_units_list.append(m.measure_components[0].UNIT_OF_QUANTITY_CODE)
 
-        if not include_additional or found_chief_units is False:
-            supplementary_units_list = []
-            for m in self.measures:
-                if m.is_supplementary_unit:
-                    supplementary_units_list.append(m.measure_components[0].UNIT_OF_QUANTITY_CODE)
+        supplementary_units_list = list(set(supplementary_units_list))
 
-            supplementary_units_list = list(set(supplementary_units_list))
-
-            if len(supplementary_units_list) > 0:
-                index = 0
-                for supplementary_unit in supplementary_units_list:
-                    index += 1
-                    self.supplementary_units[index] = str(index + 1) + supplementary_unit
+        if len(supplementary_units_list) > 0:
+            index = 0
+            for supplementary_unit in supplementary_units_list:
+                index += 1
+                self.supplementary_units[index] = str(index + 1) + supplementary_unit
 
     def get_supp_units(self):
         if self.export_umbrella:
