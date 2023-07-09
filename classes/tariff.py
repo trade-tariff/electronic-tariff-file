@@ -3,7 +3,6 @@ from dotenv import load_dotenv
 import time
 import os
 import ssl
-import json
 from datetime import datetime, timedelta, date
 import csv
 import inquirer
@@ -24,7 +23,6 @@ from classes.footnote import Footnote
 from classes.commodity_footnote import CommodityFootnote
 from classes.measure_footnote import MeasureFootnote
 from classes.seasonal_rate import SeasonalRate
-from classes.supplementary_unit import SupplementaryUnit
 from classes.simplified_procedure_value import SimplifiedProcedureValue
 from classes.quota_definition import QuotaDefinition, QuotaExclusion, QuotaCommodity
 from classes.sendgrid_mailer import SendgridMailer
@@ -335,7 +333,6 @@ class Tariff(object):
         with open(filename) as csv_file:
             csv_reader = csv.reader(csv_file, delimiter=',')
             for row in csv_reader:
-                supplementary_unit = SupplementaryUnit(row[0], row[1], row[2])
                 g.supplementary_unit_dict[row[0] + row[1]] = row[2]
         self.end_timer("Getting supplementary units")
 
@@ -385,15 +382,30 @@ class Tariff(object):
         self.start_timer("Getting commodity-level footnote associations")
         g.commodity_footnotes = []
         g.commodities_with_footnotes = []
-        sql = """select gn.goods_nomenclature_item_id, gn.goods_nomenclature_sid,
-        fagn.footnote_type as footnote_type_id, fagn.footnote_id
-        from footnote_association_goods_nomenclatures fagn, goods_nomenclatures gn
-        where fagn.goods_nomenclature_sid = gn.goods_nomenclature_sid
-        and fagn.validity_end_date is null
-        and gn.validity_end_date is null
-        order by gn.goods_nomenclature_item_id, fagn.footnote_type, fagn.footnote_id;"""
+        sql = """
+        with cer as (
+            select gn.goods_nomenclature_item_id, gn.goods_nomenclature_sid,
+            fagn.footnote_type as footnote_type_id, fagn.footnote_id
+            from footnote_association_goods_nomenclatures fagn, goods_nomenclatures gn
+            where fagn.goods_nomenclature_sid = gn.goods_nomenclature_sid
+            and fagn.validity_end_date is null
+            and gn.validity_end_date is null
+            and gn.validity_start_date <= %s
+            and (gn.validity_end_date >= %s or gn.validity_end_date is null)
+            and fagn.validity_start_date <= %s
+            and (fagn.validity_end_date >= %s or fagn.validity_end_date is null)
+            order by gn.goods_nomenclature_item_id, fagn.footnote_type, fagn.footnote_id
+        ) select * from cer
+        where cer.goods_nomenclature_item_id not in (select goods_nomenclature_item_id from hidden_goods_nomenclatures);
+        """
+        params = [
+            g.SNAPSHOT_DATE,
+            g.SNAPSHOT_DATE,
+            g.SNAPSHOT_DATE,
+            g.SNAPSHOT_DATE
+        ]
         d = Database()
-        rows = d.run_query(sql)
+        rows = d.run_query(sql, params)
         for row in rows:
             footnote = CommodityFootnote()
             footnote.goods_nomenclature_item_id = row[0]
@@ -413,15 +425,22 @@ class Tariff(object):
         self.start_timer("Getting measure-level footnote associations")
         g.measure_footnotes = []
         sql = """
-        select measure_sid, footnote
-        from utils.materialized_measure_footnotes f
-        where (validity_end_date is null or validity_end_date::date > %s)
-        and goods_nomenclature_item_id >= %s
-        and goods_nomenclature_item_id <= %s
-        order by measure_sid
+        select mf.measure_sid, mf.footnote
+        from utils.materialized_measure_footnotes mf, goods_nomenclatures gn
+        where (mf.validity_end_date is null or mf.validity_end_date::date > %s)
+        and (gn.validity_end_date is null or gn.validity_end_date::date > %s)
+        and mf.validity_start_date <= %s
+        and gn.validity_start_date <= %s
+        and mf.goods_nomenclature_item_id >= %s
+        and mf.goods_nomenclature_item_id <= %s
+        and mf.goods_nomenclature_sid = gn.goods_nomenclature_sid
+        order by mf.measure_sid
         """
         d = Database()
         params = [
+            g.SNAPSHOT_DATE,
+            g.SNAPSHOT_DATE,
+            g.SNAPSHOT_DATE,
             g.SNAPSHOT_DATE,
             self.min_code,
             self.max_code
@@ -432,10 +451,7 @@ class Tariff(object):
             footnote.measure_sid = row[0]
             footnote.footnote = row[1]
             g.measure_footnotes.append(footnote)
-            try:
-                self.measures_dict[footnote.measure_sid].footnotes.append(footnote.footnote)
-            except Exception as e:
-                pass
+            self.measures_dict[footnote.measure_sid].footnotes.append(footnote.footnote)
 
         self.end_timer("Getting measure-level footnote associations")
 
@@ -444,14 +460,20 @@ class Tariff(object):
         self.start_timer("Getting measure excluded geographical areas")
         self.measure_excluded_geographical_areas = []
         sql = """select mega.measure_sid, mega.excluded_geographical_area, mega.geographical_area_sid
-        from measure_excluded_geographical_areas mega, utils.materialized_measures_real_end_dates m
+        from measure_excluded_geographical_areas mega, utils.materialized_measures_real_end_dates m,
+        goods_nomenclatures gn
         where m.measure_sid = mega.measure_sid
+        and m.goods_nomenclature_sid = gn.goods_nomenclature_sid
         and m.validity_start_date <= %s
         and (m.validity_end_date is null or m.validity_end_date > %s)
+        and gn.validity_start_date <= %s
+        and (gn.validity_end_date is null or gn.validity_end_date > %s)
         and mega.excluded_geographical_area != 'EU'
         order by mega.measure_sid, mega.excluded_geographical_area;"""
         d = Database()
         params = [
+            g.SNAPSHOT_DATE,
+            g.SNAPSHOT_DATE,
             g.SNAPSHOT_DATE,
             g.SNAPSHOT_DATE
         ]
@@ -466,19 +488,14 @@ class Tariff(object):
 
         # Assign the exclusions to the measures
         for mega in self.measure_excluded_geographical_areas:
-            try:
-                self.measures_dict[mega.measure_sid].measure_excluded_geographical_areas.append(mega)
-            except Exception as e:
-                pass
+            self.measures_dict[mega.measure_sid].measure_excluded_geographical_areas.append(mega)
+
         self.end_timer("Getting measure excluded geographical areas")
 
     def assign_commodity_footnotes(self):
         self.start_timer("Assigning footnotes to commodities")
         for footnote_association in g.commodity_footnotes:
-            try:
-                g.commodities_dict[footnote_association.goods_nomenclature_sid].footnotes.append(footnote_association)
-            except Exception as e:
-                pass
+            g.commodities_dict[footnote_association.goods_nomenclature_sid].footnotes.append(footnote_association)
 
         for commodity in self.commodities:
             commodity.append_footnotes_to_description()
@@ -536,7 +553,6 @@ class Tariff(object):
             and description_end_date >= %s
             and goods_nomenclature_item_id >= %s
             and goods_nomenclature_item_id <= %s
-            and left(goods_nomenclature_item_id, 2) != '98'
             order by goods_nomenclature_sid, description_start_date desc, indent_start_date desc
         ) select * from cer
         where cer.goods_nomenclature_item_id not in (select goods_nomenclature_item_id from hidden_goods_nomenclatures)
@@ -620,14 +636,6 @@ class Tariff(object):
 
             self.measures_dict[m.measure_sid] = m
 
-        for item in self.measures_dict:
-            m = self.measures_dict[item]
-            if m.geographical_area_id == "US":
-                if m.goods_nomenclature_item_id == "1516209821":
-                    a = 1
-                    if m.is_duplicate is False:
-                        a = 1
-
         self.end_timer("Getting measures")
 
     def get_measure_components(self):
@@ -635,16 +643,23 @@ class Tariff(object):
         sql = """
         select mc.measure_sid, mc.duty_expression_id, mc.duty_amount, mc.monetary_unit_code,
         mc.measurement_unit_code, mc.measurement_unit_qualifier_code
-        from measure_components mc, utils.materialized_measures_real_end_dates m
+        from measure_components mc, utils.materialized_measures_real_end_dates m, goods_nomenclatures gn
         where m.measure_sid = mc.measure_sid
+        and m.goods_nomenclature_sid = gn.goods_nomenclature_sid
         and m.validity_start_date <= %s
-        and (m.validity_end_date >=  %s or m.validity_end_date is null)
+        and (m.validity_end_date >= %s or m.validity_end_date is null)
+        and (gn.validity_end_date >= %s or gn.validity_end_date is null)
+        and gn.validity_start_date <= %s
         and m.goods_nomenclature_item_id >= %s
         and m.goods_nomenclature_item_id <= %s
+        and m.goods_nomenclature_item_id not in
+        (select goods_nomenclature_item_id from hidden_goods_nomenclatures)
         order by m.goods_nomenclature_sid, m.measure_sid, mc.duty_expression_id
         """
         d = Database()
         params = [
+            g.SNAPSHOT_DATE,
+            g.SNAPSHOT_DATE,
             g.SNAPSHOT_DATE,
             g.SNAPSHOT_DATE,
             self.min_code,
@@ -665,15 +680,22 @@ class Tariff(object):
         mc.condition_duty_amount, mc.condition_monetary_unit_code, mc.condition_measurement_unit_code,
         mc.condition_measurement_unit_qualifier_code, mc.action_code, mc.certificate_type_code,
         mc.certificate_code
-        from measure_conditions mc, utils.materialized_measures_real_end_dates m
+        from measure_conditions mc, utils.materialized_measures_real_end_dates m, goods_nomenclatures gn
         where m.measure_sid = mc.measure_sid
+        and m.goods_nomenclature_sid = gn.goods_nomenclature_sid
         and m.validity_start_date <= %s
         and (m.validity_end_date >= %s or m.validity_end_date is null)
+        and gn.validity_start_date <= %s
+        and (gn.validity_end_date >= %s or gn.validity_end_date is null)
         and m.goods_nomenclature_item_id >= %s
         and m.goods_nomenclature_item_id <= %s
+        and m.goods_nomenclature_item_id not in
+        (select goods_nomenclature_item_id from hidden_goods_nomenclatures)
         """
         d = Database()
         params = [
+            g.SNAPSHOT_DATE,
+            g.SNAPSHOT_DATE,
             g.SNAPSHOT_DATE,
             g.SNAPSHOT_DATE,
             self.min_code,
@@ -691,11 +713,8 @@ class Tariff(object):
         self.start_timer("Assigning measure conditions to measures")
         for mc in self.measure_conditions:
             if mc.certificate != "":
-                try:
-                    self.measures_dict[mc.measure_sid].measure_conditions.append(mc)
-                    self.measures_dict[mc.measure_sid].certificates.append(mc.certificate)
-                except Exception as e:
-                    pass
+                self.measures_dict[mc.measure_sid].measure_conditions.append(mc)
+                self.measures_dict[mc.measure_sid].certificates.append(mc.certificate)
 
         self.get_ex_head()
         self.end_timer("Assigning measure conditions to measures")
@@ -714,10 +733,7 @@ class Tariff(object):
     def assign_measure_components(self):
         self.start_timer("Assigning measure components to measures")
         for mc in self.measure_components:
-            try:
-                self.measures_dict[mc.measure_sid].measure_components.append(mc)
-            except Exception as e:
-                pass
+            self.measures_dict[mc.measure_sid].measure_components.append(mc)
 
         # Create the duty fields on the ICL VME export
         for m in self.measures_dict:
@@ -737,17 +753,10 @@ class Tariff(object):
         # Assign the measures to the commodities
         self.start_timer("Assign the measures to the commodities")
         for m in self.measures_dict:
-            try:
-                measure_sid = self.measures_dict[m].measure_sid
-                if measure_sid not in g.commodities_dict[self.measures_dict[m].goods_nomenclature_sid].measure_sids:
-                    g.commodities_dict[self.measures_dict[m].goods_nomenclature_sid].measures.append(self.measures_dict[m])
-                    g.commodities_dict[self.measures_dict[m].goods_nomenclature_sid].measure_sids.append(self.measures_dict[m].measure_sid)
-                    a = 1
-                else:
-                    a = 1  # if c == 92034:
-
-            except Exception as e:
-                print("Failure on", str(self.measures_dict[m].goods_nomenclature_sid))
+            measure_sid = self.measures_dict[m].measure_sid
+            if measure_sid not in g.commodities_dict[self.measures_dict[m].goods_nomenclature_sid].measure_sids:
+                g.commodities_dict[self.measures_dict[m].goods_nomenclature_sid].measures.append(self.measures_dict[m])
+                g.commodities_dict[self.measures_dict[m].goods_nomenclature_sid].measure_sids.append(self.measures_dict[m].measure_sid)
 
         # Inherit the measures to the end lines that share them
         self.end_timer("Assign the measures to the commodities")
@@ -841,7 +850,10 @@ class Tariff(object):
     def write_icl_vme_file(self):
         self.start_timer("Writing commodities")
         f = open(self.filepath_icl_vme, "w")
-        measure_file_header_row = '"commodity__sid","commodity__code","measure__sid","measure__type__id","measure__type__description","measure__additional_code__code","measure__additional_code__description","measure__duty_expression","measure__effective_start_date","measure__effective_end_date","measure__reduction_indicator","measure__footnotes","measure__conditions","measure__geographical_area__sid","measure__geographical_area__id","measure__geographical_area__description","measure__excluded_geographical_areas__ids","measure__excluded_geographical_areas__descriptions","measure__quota__order_number","trade__direction"' + CommonString.line_feed
+        field_names = ["commodity__sid", "commodity__code", "measure__sid", "measure__type__id", "measure__type__description", "measure__additional_code__code", "measure__additional_code__description", "measure__duty_expression",
+                       "measure__effective_start_date", "measure__effective_end_date", "measure__reduction_indicator", "measure__footnotes", "measure__conditions", "measure__geographical_area__sid", "measure__geographical_area__id",
+                       "measure__geographical_area__description", "measure__excluded_geographical_areas__ids", "measure__excluded_geographical_areas__descriptions", "measure__quota__order_number", "trade__direction"]
+        measure_file_header_row = ",".join(field_names) + CommonString.line_feed
 
         measure_csv_file = open(self.measure_csv_filepath, "w+")
         measure_csv_file.write(measure_file_header_row)
@@ -897,19 +909,13 @@ class Tariff(object):
                                 for member in m.members:
                                     self.ME_RECORD_COUNT += 1
                                     tmp = m.measure_record.replace("EXPAND", member + "    ")
-                                    if tmp == "":
-                                        a = 1
                                     f.write(tmp + "\n")
                             else:
                                 self.ME_RECORD_COUNT += 1
-                                if m.measure_record == "":
-                                    a = 1
                                 f.write(m.measure_record + "\n")
                                 if len(m.measure_excluded_geographical_areas) > 0:
                                     for mega in m.measure_excluded_geographical_areas:
                                         self.MX_RECORD_COUNT += 1
-                                        if m.measure_template == "":
-                                            a = 1
                                         if m.measure_template != "":
                                             f.write(m.measure_template.replace("$$", mega.excluded_geographical_area) + "\n")
 
@@ -957,7 +963,6 @@ class Tariff(object):
             # end of file is reached
             if not line:
                 break
-            line_length = len(line)
             if len(line) < 2:
                 print("Short line on {line}".format(line=str(count)))
                 break
@@ -1221,7 +1226,9 @@ class Tariff(object):
     def get_all_quotas(self):
         self.start_timer("Getting and writing all quota definitions for CSV export")
         self.quota_csv_file = open(self.quota_csv_filepath, "w+")
-        self.quota_csv_file.write('"quota__order__number__id","definition__start__date","definition__end__date","initial__volume","unit","critical__state","critical__threshold","quota__type","origins","origin__exclusions","commodities"' + CommonString.line_feed)
+        self.quota_csv_file.write(
+            '"quota__order__number__id","definition__start__date","definition__end__date","initial__volume","unit","critical__state","critical__threshold","quota__type","origins","origin__exclusions","commodities"' + CommonString.line_feed
+        )
         self.quota_commodities = []
         sql = """
         select ordernumber, string_agg(distinct goods_nomenclature_item_id, '|' order by m.goods_nomenclature_item_id)
@@ -1406,7 +1413,9 @@ class Tariff(object):
 
     def write_commodities_csv(self):
         self.commodity_csv_file = open(self.commodity_csv_filepath, "w+")
-        self.commodity_csv_file.write('"commodity__sid","commodity__code","productline__suffix","start__date","end__date","description","indents","entity__type","end__line","commodity__code__pls","hierarchy__of__sids","hierarchy__of__ids"\n')
+        self.commodity_csv_file.write(
+            '"commodity__sid","commodity__code","productline__suffix","start__date","end__date","description","indents","entity__type","end__line","commodity__code__pls","hierarchy__of__sids","hierarchy__of__ids"\n'
+        )
         for c in g.commodities_dict:
             commodity = g.commodities_dict[c]
             self.commodity_csv_file.write(commodity.commodity_record_for_csv + "\n")
@@ -1612,7 +1621,6 @@ class Tariff(object):
             supplementary_units_zip=self.bucket_url + self.aws_path_supplementary_units_csv_tuple[1],
             supplementary_units_7z=self.bucket_url + self.aws_path_supplementary_units_csv_tuple[0]
         )
-        a = 1
 
     def send_email_message(self):
         if self.SEND_MAIL == 0 or self.CREATE_7Z == 0 or self.CREATE_ZIP == 0 or self.WRITE_TO_AWS == 0:

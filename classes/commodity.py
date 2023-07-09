@@ -2,7 +2,6 @@ import re
 from unidecode import unidecode
 
 import classes.globals as g
-from classes.functions import functions as f
 
 
 class Commodity(object):
@@ -76,7 +75,6 @@ class Commodity(object):
         else:
             for m in self.measures:
                 if m.measure_type_id in ("109", "110"):
-                    a = 1
                     s = "2" + m.measure_components[0].measurement_unit_code
                     self.supplementary_units[1] = s
 
@@ -255,12 +253,10 @@ class Commodity(object):
                     self.additional_codes_import.append(m.additional_code)
                 if m.is_export:
                     self.additional_codes_export.append(m.additional_code)
-                a = 1
 
         if len(self.additional_codes) > 0:
             self.additional_codes = sorted(self.additional_codes)
             self.additional_code_string = "CA" + str(len(self.additional_codes)).zfill(4) + "".join(self.additional_codes)
-            a = 1
         else:
             self.additional_code_string = ""
         self.get_additional_code_indicator()
@@ -331,4 +327,3 @@ class Commodity(object):
         s += Q + ",".join(ancestors_commodity__code__pls) + Q
 
         self.commodity_record_for_csv = s
-        a = 1
