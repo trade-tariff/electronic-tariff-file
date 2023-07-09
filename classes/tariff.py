@@ -236,6 +236,9 @@ class Tariff(object):
 
         self.filename = "hmrc-tariff-ascii-" + g.SNAPSHOT_DATE + ".txt"
 
+        # Make the export folder
+        os.makedirs(self.export_folder, exist_ok=True)
+
         # Make the date-specific folder
         date_time_obj = datetime.strptime(g.SNAPSHOT_DATE, '%Y-%m-%d')
         self.year = date_time_obj.strftime("%Y")
