@@ -1,9 +1,6 @@
 import os
-import sys
 import py7zr
 import zipfile
-import zlib
-import pyminizip
 from dotenv import load_dotenv
 from classes_next_gen.aws_bucket import AwsBucket
 
@@ -18,7 +15,6 @@ class Zipper(object):
         load_dotenv('.env')
         self.create_7z = f.get_config_key('CREATE_7Z', "int", 0)
         self.create_zip = f.get_config_key('CREATE_ZIP', "int", 0)
-        self.use_password = f.get_config_key('USE_PASSWORD', "int", 0)
         self.password = f.get_config_key('PASSWORD', "str", "")
         self.override_debug_protection = f.get_config_key('OVERRIDE_DEBUG_PROTECTION', "int", 0)
         self.DEBUG_OVERRIDE = f.get_config_key('DEBUG_OVERRIDE', "int", 0)
@@ -65,17 +61,11 @@ class Zipper(object):
         self.archive = self.archive.replace(".csv", ".7z")
         self.base_filename = os.path.basename(self.source_filename)
         self.archive_base_filename = os.path.basename(self.archive)
-        try:
+        if os.exists(self.archive):
             os.remove(self.archive)
-        except Exception as e:
-            pass
-        if self.use_password == 1:
-            with py7zr.SevenZipFile(self.archive, 'w', password=self.password) as archive:
-                archive.write(self.source_filename, self.base_filename)
 
-        else:
-            with py7zr.SevenZipFile(self.archive, 'w') as archive:
-                archive.write(self.source_filename, self.base_filename)
+        with py7zr.SevenZipFile(self.archive, 'w') as archive:
+            archive.write(self.source_filename, self.base_filename)
 
         self.aws_path = os.path.join(self.scope, "electronic_tariff_file", self.remote_folder, self.archive_base_filename)
         self.aws_path = os.path.join(
@@ -97,19 +87,13 @@ class Zipper(object):
         self.archive = self.archive.replace(".csv", ".zip")
         self.base_filename = os.path.basename(self.source_filename)
         self.archive_base_filename = os.path.basename(self.archive)
-        try:
+        if os.exists(self.archive):
             os.remove(self.archive)
-        except Exception as e:
-            pass
 
-        if self.use_password == 1:
-            pyminizip.compress(self.source_filename, None, self.archive, self.password, self.compress_level)
-
-        else:
-            zipObj = zipfile.ZipFile(self.archive, 'w')
-            compression = zipfile.ZIP_DEFLATED
-            zipObj.write(self.source_filename, arcname=self.base_filename, compress_type=compression)
-            zipObj.close()
+        zipObj = zipfile.ZipFile(self.archive, 'w')
+        compression = zipfile.ZIP_DEFLATED
+        zipObj.write(self.source_filename, arcname=self.base_filename, compress_type=compression)
+        zipObj.close()
 
         self.aws_path = os.path.join(self.scope, "electronic_tariff_file", self.remote_folder, self.archive_base_filename)
         self.aws_path = os.path.join(
