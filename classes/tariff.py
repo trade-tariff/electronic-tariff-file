@@ -30,6 +30,7 @@ from classes.zipper import Zipper
 from classes.delta import Delta
 import classes.globals as g
 from classes.functions import functions as f
+from classes.sql_query import SqlQuery
 
 
 class Tariff(object):
@@ -42,15 +43,17 @@ class Tariff(object):
         self.get_date()
         self.get_folders()
 
+        # self.get_all_quotas()
         self.get_all_additional_codes()
         self.get_all_geographies()
+        self.get_measure_types()
         self.get_measure_types_lookup()
         self.get_geographical_areas_lookup()
         self.get_supplementary_units_reference()
         self.get_footnotes()
         self.get_commodity_footnotes()
         self.get_spvs()
-        self.get_codes()
+        self.get_commodity_codes()
         self.get_ancestry()
         self.get_seasonal_rates()
         self.get_measures()
@@ -83,9 +86,9 @@ class Tariff(object):
             self.get_all_footnotes()
             self.get_all_certificates()
             self.get_all_quotas()
-            self.get_all_measure_types()
             self.write_all_geographies()
             self.write_all_additional_codes()
+            self.write_measure_types()
 
         self.create_delta()
         self.zip_and_upload()
@@ -145,6 +148,7 @@ class Tariff(object):
 
     def get_config(self):
         load_dotenv('.env')
+        self.use_materialized_views = int(os.getenv('USE_MATERIALIZED_VIEWS'))
         self.min_code = os.getenv('MIN_CODE')
         self.max_code = os.getenv('MAX_CODE')
         if self.min_code != "0000000000" or self.max_code != "9999999999":
@@ -424,18 +428,10 @@ class Tariff(object):
         # Gets the association of footnotes to measures
         self.start_timer("Getting measure-level footnote associations")
         g.measure_footnotes = []
-        sql = """
-        select mf.measure_sid, mf.footnote
-        from utils.materialized_measure_footnotes mf, goods_nomenclatures gn
-        where (mf.validity_end_date is null or mf.validity_end_date::date > %s)
-        and (gn.validity_end_date is null or gn.validity_end_date::date > %s)
-        and mf.validity_start_date <= %s
-        and gn.validity_start_date <= %s
-        and mf.goods_nomenclature_item_id >= %s
-        and mf.goods_nomenclature_item_id <= %s
-        and mf.goods_nomenclature_sid = gn.goods_nomenclature_sid
-        order by mf.measure_sid
-        """
+        if self.use_materialized_views:
+            sql = SqlQuery("measure_footnotes", "get_measure_footnotes_mv.sql").sql
+        else:
+            sql = SqlQuery("measure_footnotes", "get_measure_footnotes.sql").sql
         d = Database()
         params = [
             g.SNAPSHOT_DATE,
@@ -459,17 +455,10 @@ class Tariff(object):
         # Get measure geographical area exclusions
         self.start_timer("Getting measure excluded geographical areas")
         self.measure_excluded_geographical_areas = []
-        sql = """select mega.measure_sid, mega.excluded_geographical_area, mega.geographical_area_sid
-        from measure_excluded_geographical_areas mega, utils.materialized_measures_real_end_dates m,
-        goods_nomenclatures gn
-        where m.measure_sid = mega.measure_sid
-        and m.goods_nomenclature_sid = gn.goods_nomenclature_sid
-        and m.validity_start_date <= %s
-        and (m.validity_end_date is null or m.validity_end_date > %s)
-        and gn.validity_start_date <= %s
-        and (gn.validity_end_date is null or gn.validity_end_date > %s)
-        and mega.excluded_geographical_area != 'EU'
-        order by mega.measure_sid, mega.excluded_geographical_area;"""
+        if self.use_materialized_views:
+            sql = SqlQuery("excluded_geographical_areas", "get_measure_excluded_geographical_areas_mv.sql").sql
+        else:
+            sql = SqlQuery("excluded_geographical_areas", "get_measure_excluded_geographical_areas.sql").sql
         d = Database()
         params = [
             g.SNAPSHOT_DATE,
@@ -534,30 +523,12 @@ class Tariff(object):
 
         self.end_timer("Getting SPVs")
 
-    def get_codes(self):
+    def get_commodity_codes(self):
         self.start_timer("Getting commodity codes")
-        sql = """
-        with cer as (
-            select distinct on (goods_nomenclature_sid)
-            goods_nomenclature_sid, goods_nomenclature_item_id, productline_suffix,
-            number_indents, description,
-            validity_start_date, validity_end_date,
-            description_start_date, description_end_date,
-            indent_start_date, indent_end_date
-            from utils.materialized_commodities_new
-            where validity_start_date <= %s
-            and validity_end_date >= %s
-            and indent_start_date <= %s
-            and indent_end_date >= %s
-            and description_start_date <= %s
-            and description_end_date >= %s
-            and goods_nomenclature_item_id >= %s
-            and goods_nomenclature_item_id <= %s
-            order by goods_nomenclature_sid, description_start_date desc, indent_start_date desc
-        ) select * from cer
-        where cer.goods_nomenclature_item_id not in (select goods_nomenclature_item_id from hidden_goods_nomenclatures)
-        order by goods_nomenclature_item_id, productline_suffix
-        """
+        if self.use_materialized_views:
+            sql = SqlQuery("commodity_codes", "get_commodity_codes_mv.sql").sql
+        else:
+            sql = SqlQuery("commodity_codes", "get_commodity_codes.sql").sql
         d = Database()
         params = [
             g.SNAPSHOT_DATE,
@@ -582,36 +553,11 @@ class Tariff(object):
 
     def get_measures(self):
         measure_compound_keys = []
-        self.start_timer("Getting measures ... lengthy process")
-        sql = """
-        select measure_sid, m.goods_nomenclature_item_id, geographical_area_id,
-        m.measure_type_id, ordernumber, additional_code, m.goods_nomenclature_sid,
-        m.validity_start_date, m.validity_end_date,
-        case
-            when m.measure_type_id in ('103', '105') then 1
-            when m.measure_type_id in ('305') then 2
-            when m.measure_type_id in ('306') then 3
-            when m.measure_type_id in ('142', '145') then 4
-            when m.measure_type_id in ('122', '123', '143', '146') then 5
-            when m.measure_type_id in ('112', '115', '117', '119') then 6
-            when m.measure_type_id in ('551', '552', '553', '554') then 7
-            when m.measure_type_id in ('109', '110') then 8
-            else  99
-        end as measure_priority, mt.measure_component_applicable_code, mt.trade_movement_code,
-        mtd.description as measure_type_description, m.reduction_indicator,
-        m.geographical_area_sid, m.operation_date
-        from utils.materialized_measures_real_end_dates m, measure_types mt, measure_type_descriptions mtd, goods_nomenclatures gn
-        where m.measure_type_id = mt.measure_type_id
-        and m.goods_nomenclature_sid = gn.goods_nomenclature_sid
-        and m.measure_type_id = mtd.measure_type_id
-        and m.validity_start_date <= %s
-        and (m.validity_end_date >= %s or m.validity_end_date is null)
-        and gn.validity_start_date <= %s
-        and (gn.validity_end_date >= %s or gn.validity_end_date is null)
-        and m.goods_nomenclature_item_id >= %s
-        and m.goods_nomenclature_item_id <= %s
-        order by m.goods_nomenclature_item_id, measure_priority, m.measure_type_id, m.additional_code, m.ordernumber
-        """
+        self.start_timer("Getting measures")
+        if self.use_materialized_views:
+            sql = SqlQuery("measures", "get_measures_mv.sql").sql
+        else:
+            sql = SqlQuery("measures", "get_measures.sql").sql
         d = Database()
         params = [
             g.SNAPSHOT_DATE,
@@ -640,22 +586,10 @@ class Tariff(object):
 
     def get_measure_components(self):
         self.start_timer("Getting measure components")
-        sql = """
-        select mc.measure_sid, mc.duty_expression_id, mc.duty_amount, mc.monetary_unit_code,
-        mc.measurement_unit_code, mc.measurement_unit_qualifier_code
-        from measure_components mc, utils.materialized_measures_real_end_dates m, goods_nomenclatures gn
-        where m.measure_sid = mc.measure_sid
-        and m.goods_nomenclature_sid = gn.goods_nomenclature_sid
-        and m.validity_start_date <= %s
-        and (m.validity_end_date >= %s or m.validity_end_date is null)
-        and (gn.validity_end_date >= %s or gn.validity_end_date is null)
-        and gn.validity_start_date <= %s
-        and m.goods_nomenclature_item_id >= %s
-        and m.goods_nomenclature_item_id <= %s
-        and m.goods_nomenclature_item_id not in
-        (select goods_nomenclature_item_id from hidden_goods_nomenclatures)
-        order by m.goods_nomenclature_sid, m.measure_sid, mc.duty_expression_id
-        """
+        if self.use_materialized_views:
+            sql = SqlQuery("measure_components", "get_measure_components_mv.sql").sql
+        else:
+            sql = SqlQuery("measure_components", "get_measure_components.sql").sql
         d = Database()
         params = [
             g.SNAPSHOT_DATE,
@@ -674,24 +608,11 @@ class Tariff(object):
         self.end_timer("Getting measure components")
 
     def get_measure_conditions(self):
-        self.start_timer("Getting measure conditions ... lengthy process")
-        sql = """
-        select mc.measure_sid, mc.measure_condition_sid, mc.condition_code, mc.component_sequence_number,
-        mc.condition_duty_amount, mc.condition_monetary_unit_code, mc.condition_measurement_unit_code,
-        mc.condition_measurement_unit_qualifier_code, mc.action_code, mc.certificate_type_code,
-        mc.certificate_code
-        from measure_conditions mc, utils.materialized_measures_real_end_dates m, goods_nomenclatures gn
-        where m.measure_sid = mc.measure_sid
-        and m.goods_nomenclature_sid = gn.goods_nomenclature_sid
-        and m.validity_start_date <= %s
-        and (m.validity_end_date >= %s or m.validity_end_date is null)
-        and gn.validity_start_date <= %s
-        and (gn.validity_end_date >= %s or gn.validity_end_date is null)
-        and m.goods_nomenclature_item_id >= %s
-        and m.goods_nomenclature_item_id <= %s
-        and m.goods_nomenclature_item_id not in
-        (select goods_nomenclature_item_id from hidden_goods_nomenclatures)
-        """
+        self.start_timer("Getting measure conditions")
+        if self.use_materialized_views:
+            sql = SqlQuery("measure_conditions", "get_measure_conditions_mv.sql").sql
+        else:
+            sql = SqlQuery("measure_conditions", "get_measure_conditions.sql").sql
         d = Database()
         params = [
             g.SNAPSHOT_DATE,
@@ -1046,46 +967,19 @@ class Tariff(object):
         self.footnote_csv_file.write('"footnote__id","footnote__description","start__date","end__date","footnote__type"' + CommonString.line_feed)
         self.start_timer("Getting and writing all footnotes for CSV export")
         self.measures = []
-        sql = """
-        with footnotes_cte as (
-        SELECT fd1.footnote_type_id,
-        fd1.footnote_id,
-        fd1.footnote_type_id || fd1.footnote_id as code,
-        fd1.description,
-        f1.validity_start_date,
-        f1.validity_end_date
-        FROM footnote_descriptions fd1,
-        footnotes f1
-        WHERE fd1.footnote_id = f1.footnote_id
-        AND fd1.footnote_type_id = f1.footnote_type_id
-        AND (fd1.footnote_description_period_sid IN ( SELECT max(ft2.footnote_description_period_sid) AS max
-        FROM footnote_descriptions ft2
-        WHERE fd1.footnote_type_id = ft2.footnote_type_id AND fd1.footnote_id = ft2.footnote_id))
-        )
-        select distinct f.code, f.description, f.validity_start_date, f.validity_end_date, 'measure' as footnote_class
-        from footnotes_cte f, footnote_association_measures fam, utils.materialized_measures_real_end_dates m
-        where f.footnote_id = fam.footnote_id
-        and f.footnote_type_id = fam.footnote_type_id
-        and fam.measure_sid = m.measure_sid
-        and (m.validity_end_date is null or m.validity_end_date >= %s)
-        and m.validity_start_date <= %s
-        and f.validity_end_date is null
-
-        union
-
-        select distinct f.code, f.description, f.validity_start_date, f.validity_end_date, 'commodity' as footnote_class
-        from footnotes_cte f, footnote_association_goods_nomenclatures fagn, goods_nomenclatures gn
-        where f.footnote_id = fagn.footnote_id
-        and f.footnote_type_id = fagn.footnote_type
-        and fagn.goods_nomenclature_sid = gn.goods_nomenclature_sid
-        and (gn.validity_end_date is null or gn.validity_end_date >= %s)
-        and gn.validity_start_date <= %s
-        and f.validity_end_date is null
-        order by 1;
-        """
+        if self.use_materialized_views:
+            sql = SqlQuery("footnotes_all", "get_footnotes_mv.sql").sql
+        else:
+            sql = SqlQuery("footnotes_all", "get_footnotes.sql").sql
 
         d = Database()
         params = [
+            g.SNAPSHOT_DATE,
+            g.SNAPSHOT_DATE,
+            g.SNAPSHOT_DATE,
+            g.SNAPSHOT_DATE,
+            g.SNAPSHOT_DATE,
+            g.SNAPSHOT_DATE,
             g.SNAPSHOT_DATE,
             g.SNAPSHOT_DATE,
             g.SNAPSHOT_DATE,
@@ -1113,32 +1007,21 @@ class Tariff(object):
         self.certificate_csv_file = open(self.certificate_csv_filepath, "w+")
         self.certificate_csv_file.write('"certificate__id","certificate__description","start__date","end__date"' + CommonString.line_feed)
         self.measures = []
-        sql = """
-        with certificate_cte as (
-        SELECT cd1.certificate_type_code,
-        cd1.certificate_code,
-        cd1.certificate_type_code || cd1.certificate_code AS code,
-        cd1.description,
-        c.validity_start_date,
-        c.validity_end_date
-        FROM certificate_descriptions cd1,
-        certificates c
-        WHERE c.certificate_code = cd1.certificate_code AND c.certificate_type_code = cd1.certificate_type_code AND (cd1.oid IN ( SELECT max(cd2.oid) AS max
-        FROM certificate_descriptions cd2
-        WHERE cd1.certificate_type_code = cd2.certificate_type_code AND cd1.certificate_code = cd2.certificate_code))
-        )
-        select distinct c.code, c.description, c.validity_start_date, c.validity_end_date
-        from measure_conditions mc, utils.materialized_measures_real_end_dates m, certificate_cte c
-        where m.measure_sid = mc.measure_sid
-        and m.validity_start_date <= '""" + g.SNAPSHOT_DATE + """'
-        and mc.certificate_type_code = c.certificate_type_code
-        and mc.certificate_code = c.certificate_code
-        and (m.validity_end_date is null or m.validity_end_date > '""" + g.SNAPSHOT_DATE + """')
-        and (c.validity_end_date is null or c.validity_end_date > '""" + g.SNAPSHOT_DATE + """')
-        order by 1
-        """
+        if self.use_materialized_views:
+            sql = SqlQuery("certificates", "get_certificates_mv.sql").sql
+        else:
+            sql = SqlQuery("certificates", "get_certificates.sql").sql
+
         d = Database()
-        rows = d.run_query(sql)
+        params = [
+            g.SNAPSHOT_DATE,
+            g.SNAPSHOT_DATE,
+            g.SNAPSHOT_DATE,
+            g.SNAPSHOT_DATE,
+            g.SNAPSHOT_DATE,
+            g.SNAPSHOT_DATE
+        ]
+        rows = d.run_query(sql, params)
         self.all_certificates = []
         for row in rows:
             certificate = Certificate()
@@ -1154,47 +1037,66 @@ class Tariff(object):
         self.end_timer("Getting and writing all certificates for CSV export")
         self.certificate_csv_file.close()
 
-    def get_all_measure_types(self):
-        self.start_timer("Getting and writing all measure types for CSV export")
+    def get_measure_types(self):
+        self.start_timer("Getting all measure types for CSV export")
         self.measure_type_csv_file = open(self.measure_type_csv_filepath, "w+")
         self.measure_type_csv_file.write('"measure_type_id","description"' + CommonString.line_feed)
-        sql = """
-        select mtd.measure_type_id, mtd.description, count(m.*)
-        from measure_types mt, measure_type_descriptions mtd, utils.materialized_measures_real_end_dates m
-        where mt.measure_type_id = mtd.measure_type_id
-        and m.measure_type_id = mt.measure_type_id
-        and m.validity_end_date is null
-        group by mtd.measure_type_id, mtd.description
-        order by measure_type_id
-        """
+        if self.use_materialized_views:
+            sql = SqlQuery("measure_types", "get_measure_types_mv.sql").sql
+        else:
+            sql = SqlQuery("measure_types", "get_measure_types.sql").sql
         d = Database()
-        rows = d.run_query(sql)
-        self.all_measure_types = []
+        params = [
+            g.SNAPSHOT_DATE,
+            g.SNAPSHOT_DATE
+        ]
+        rows = d.run_query(sql, params)
+        self.measure_types = []
         for row in rows:
             measure_type = MeasureType2()
             measure_type.measure_type_id = row[0]
             measure_type.description = row[1]
             measure_type.get_csv_string()
 
-            self.all_measure_types.append(measure_type)
+            self.measure_types.append(measure_type)
+
+        self.end_timer("Getting all measure types for CSV export")
+        self.measure_type_csv_file.close()
+
+    def write_measure_types(self):
+        self.start_timer("Writing measure types for CSV export")
+        self.measure_type_csv_file = open(self.measure_type_csv_filepath, "w+")
+        self.measure_type_csv_file.write('"measure_type_id","description"' + CommonString.line_feed)
+
+        for measure_type in self.measure_types:
             self.measure_type_csv_file.write(measure_type.csv_string)
 
-        self.end_timer("Getting and writing all measure types for CSV export")
+        self.end_timer("Writing measure types for CSV export")
         self.measure_type_csv_file.close()
+
+    def write_all_additional_codes(self):
+        self.start_timer("Writing all additional codes for CSV export")
+        self.additional_code_csv_file = open(self.additional_code_csv_filepath, "w+")
+        self.additional_code_csv_file.write('"additional code","description","start date","end date","type description"' + CommonString.line_feed)
+
+        for additional_code in self.all_additional_codes:
+            self.additional_code_csv_file.write(additional_code.csv_string)
+
+        self.end_timer("Writing all additional codes for CSV export")
+        self.additional_code_csv_file.close()
 
     def get_all_additional_codes(self):
         self.start_timer("Getting all additional codes for CSV export")
-        sql = """
-        select distinct ac.code, ac.description, ac.validity_start_date, ac.validity_end_date, acd.description as additional_code_description
-        from utils.additional_codes ac, utils.materialized_measures_real_end_dates m, additional_code_type_descriptions acd
-        where ac.additional_code_type_id = m.additional_code_type_id
-        and ac.additional_code = m.additional_code_id
-        -- and (m.validity_end_date is null or m.validity_end_date::date > current_date)
-        and ac.additional_code_type_id = acd.additional_code_type_id
-        order by 1;
-        """
+        if self.use_materialized_views:
+            sql = SqlQuery("additional_codes", "get_additional_codes_mv.sql").sql
+        else:
+            sql = SqlQuery("additional_codes", "get_additional_codes.sql").sql
         d = Database()
-        rows = d.run_query(sql)
+        params = [
+            g.SNAPSHOT_DATE,
+            g.SNAPSHOT_DATE
+        ]
+        rows = d.run_query(sql, params)
         self.all_additional_codes = []
         g.all_additional_codes_dict = {}
         for row in rows:
@@ -1212,35 +1114,32 @@ class Tariff(object):
 
         self.end_timer("Getting all additional codes for CSV export")
 
-    def write_all_additional_codes(self):
-        self.start_timer("Writing all additional codes for CSV export")
-        self.additional_code_csv_file = open(self.additional_code_csv_filepath, "w+")
-        self.additional_code_csv_file.write('"additional code","description","start date","end date","type description"' + CommonString.line_feed)
-
-        for additional_code in self.all_additional_codes:
-            self.additional_code_csv_file.write(additional_code.csv_string)
-
-        self.end_timer("Writing all additional codes for CSV export")
-        self.additional_code_csv_file.close()
-
     def get_all_quotas(self):
+        if self.scope == "xi":
+            quota_order_number_range = "09"
+        else:
+            quota_order_number_range = "05"
+        quota_order_number_range_licenced = quota_order_number_range + "4"
         self.start_timer("Getting and writing all quota definitions for CSV export")
         self.quota_csv_file = open(self.quota_csv_filepath, "w+")
         self.quota_csv_file.write(
             '"quota__order__number__id","definition__start__date","definition__end__date","initial__volume","unit","critical__state","critical__threshold","quota__type","origins","origin__exclusions","commodities"' + CommonString.line_feed
         )
         self.quota_commodities = []
-        sql = """
-        select ordernumber, string_agg(distinct goods_nomenclature_item_id, '|' order by m.goods_nomenclature_item_id)
-        from utils.materialized_measures_real_end_dates m
-        where ordernumber like '05%'
-        and m.validity_start_date <= '""" + g.SNAPSHOT_DATE + """'
-        and (m.validity_end_date is null or m.validity_end_date > '""" + g.SNAPSHOT_DATE + """')
-        group by ordernumber
-        order by ordernumber
-        """
+
+        if self.use_materialized_views:
+            sql = SqlQuery("quota_commodities", "get_quota_commodities_mv.sql").sql
+        else:
+            sql = SqlQuery("quota_commodities", "get_quota_commodities.sql").sql
         d = Database()
-        rows = d.run_query(sql)
+        params = [
+            quota_order_number_range,
+            g.SNAPSHOT_DATE,
+            g.SNAPSHOT_DATE,
+            g.SNAPSHOT_DATE,
+            g.SNAPSHOT_DATE
+        ]
+        rows = d.run_query(sql, params)
         for row in rows:
             quota_commodity = QuotaCommodity()
             quota_commodity.quota_order_number_id = row[0]
@@ -1274,41 +1173,22 @@ class Tariff(object):
         # Get quota definitions
         self.all_quota_definitions = []
 
-        sql = """
-        select qon.quota_order_number_sid, qon.quota_order_number_id, qd.validity_start_date::text, qd.validity_end_date::text,
-        qd.initial_volume,
-        qd.measurement_unit_code || ' ' || coalesce(qd.measurement_unit_qualifier_code, '') as unit,
-        qd.critical_state, qd.critical_threshold, 'First Come First Served' as quota_type,
-        string_agg(distinct qono.geographical_area_id, '|' order by qono.geographical_area_id) as origins
-        from quota_order_numbers qon, quota_definitions qd, quota_order_number_origins qono
-        where qd.quota_order_number_sid = qon.quota_order_number_sid
-        and qon.quota_order_number_sid = qono.quota_order_number_sid
-        and qon.validity_start_date <= '""" + g.SNAPSHOT_DATE + """'
-        and (qon.validity_end_date is null or qon.validity_end_date > '""" + g.SNAPSHOT_DATE + """')
-        and qd.validity_start_date <= '""" + g.SNAPSHOT_DATE + """'
-        and (qd.validity_end_date is null or qd.validity_end_date > '""" + g.SNAPSHOT_DATE + """')
-        and qon.quota_order_number_id like '05%'
-        group by qon.quota_order_number_sid, qon.quota_order_number_id, qd.validity_start_date, qd.validity_end_date,
-        qd.initial_volume, qd.measurement_unit_code, qd.measurement_unit_qualifier_code,
-        qd.critical_state, qd.critical_threshold
-
-        union
-
-        select Null as quota_order_number_sid, m.ordernumber as quota_order_number_id,
-        m.validity_start_date::text, m.validity_end_date, Null as initial_volume,
-        Null as unit, Null as critical_state, Null as critical_threshold, 'Licensed' as quota_type,
-        string_agg(distinct m.geographical_area_id, '|' order by m.geographical_area_id) as origins
-        from utils.materialized_measures_real_end_dates m
-        where ordernumber like '054%'
-        and m.validity_start_date <= '""" + g.SNAPSHOT_DATE + """'
-        and (m.validity_end_date is null or m.validity_end_date > '""" + g.SNAPSHOT_DATE + """')
-        group by m.ordernumber, m.validity_start_date, m.validity_end_date
-
-        order by 2
-        """
-
+        if self.use_materialized_views:
+            sql = SqlQuery("quota_definitions", "get_quota_definitions_mv.sql").sql
+        else:
+            sql = SqlQuery("quota_definitions", "get_quota_definitions.sql").sql
         d = Database()
-        rows = d.run_query(sql)
+        params = [
+            quota_order_number_range,
+            g.SNAPSHOT_DATE,
+            g.SNAPSHOT_DATE,
+            g.SNAPSHOT_DATE,
+            g.SNAPSHOT_DATE,
+            quota_order_number_range_licenced,
+            g.SNAPSHOT_DATE,
+            g.SNAPSHOT_DATE
+        ]
+        rows = d.run_query(sql, params)
         self.all_quota_definitions = []
         for row in rows:
             quota_definition = QuotaDefinition()
@@ -1637,5 +1517,5 @@ class Tariff(object):
         print("Creating delta")
         g.change_date = g.SNAPSHOT_DATE
         g.change_period = "week"
-        self.delta = Delta()
+        self.delta = Delta(self.use_materialized_views)
         print("Delta complete")

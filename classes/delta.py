@@ -6,11 +6,13 @@ from monthdelta import monthdelta
 from classes.database import Database
 from classes.delta_commodity import DeltaCommodity
 from classes.delta_measure import DeltaMeasure
+from classes.sql_query import SqlQuery
 import classes.globals as g
 
 
 class Delta(object):
-    def __init__(self):
+    def __init__(self, use_materialized_views):
+        self.use_materialized_views = use_materialized_views
         self.get_periods()
 
         # Commodity changes
@@ -76,8 +78,8 @@ class Delta(object):
                 delta_measure.goods_nomenclature_item_id,
                 delta_measure.geographical_area_id,
                 delta_measure.measure_type_description,
-                delta_measure.validity_start_date,
-                delta_measure.validity_end_date
+                delta_measure.validity_start_date_string,
+                delta_measure.validity_end_date_string
             ])
 
     def close_delta_file(self):
@@ -121,7 +123,7 @@ class Delta(object):
         rows = d.run_query(sql, params)
         if len(rows) > 0:
             for row in rows:
-                delta_commodity = DeltaCommodity(row, "New")
+                delta_commodity = DeltaCommodity(row, "New", self.use_materialized_views)
                 self.delta_commodities.append(delta_commodity)
 
     def get_commodity_change_end(self):
@@ -151,25 +153,17 @@ class Delta(object):
                 self.delta_commodities.append(delta_commodity)
 
     def get_measure_change(self):
-        sql = """
-        select m.goods_nomenclature_item_id,
-        m.geographical_area_id, mtd.description as measure_type_description,
-        m.validity_start_date, m.validity_end_date
-        from utils.materialized_measures_real_end_dates m, measure_type_descriptions mtd
-        where m.measure_type_id = mtd.measure_type_id
-        and m.validity_start_date >= %s
-        and m.validity_start_date <= %s
-        order by m.measure_type_id, m.goods_nomenclature_item_id;
-        """
-
+        if self.use_materialized_views:
+            sql = SqlQuery("measure_changes", "get_measure_changes_mv.sql").sql
+        else:
+            sql = SqlQuery("measure_changes", "get_measure_changes.sql").sql
         params = [
             self.from_date_string,
             self.to_date_string
         ]
-
         d = Database()
         rows = d.run_query(sql, params)
         if len(rows) > 0:
             for row in rows:
-                delta_measure = DeltaMeasure(row, "New")
+                delta_measure = DeltaMeasure(row, "New", self.use_materialized_views)
                 self.delta_measures.append(delta_measure)

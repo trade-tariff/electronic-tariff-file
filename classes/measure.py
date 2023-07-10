@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import classes.globals as g
 
 
@@ -14,7 +16,7 @@ class Measure(object):
         self.additional_code = row[5] if row[5] is not None else ""
         self.goods_nomenclature_sid = row[6]
         self.validity_start_date = row[7]
-        self.validity_end_date = row[8] if row[8] is not None else ""
+        self.validity_end_date = row[8]
         self.measure_priority = row[9]
         self.measure_component_applicable_code = row[10]
         self.trade_movement_code = int(row[11])
@@ -84,7 +86,6 @@ class Measure(object):
         pro_forma = "00000000000000000000000"
         for i in range(0, 5):
             self.duty_records.append(pro_forma)
-        a = 1
 
     def get_geographical_area_codes(self):
         if len(self.geographical_area_id) == 2:
@@ -117,15 +118,22 @@ class Measure(object):
                 self.ORIGIN_COUNTRY_GROUP_CODE = "G012"
 
     def get_date_fields(self):
+        format = "%Y-%m-%d"
+        # Set defaults for time fields
         self.TARIFF_MEASURE_ETIME = "000000"
         self.TARIFF_MEASURE_LTIME = "000000"
-        self.TARIFF_MEASURE_EDATE = self.validity_start_date.replace("-", "")
-        self.validity_start_date_string = self.validity_start_date
-        if self.validity_end_date != "":
-            self.TARIFF_MEASURE_LDATE = self.validity_end_date.replace("-", "")
+
+        # Set the start (earliest) date field
+        self.validity_start_date_string = self.validity_start_date.strftime(format)
+        self.TARIFF_MEASURE_EDATE = self.validity_start_date_string.replace("-", "")
+
+        # Set the end (latest) date field
+        if self.validity_end_date is not None:
+            self.validity_end_date_string = self.validity_end_date.strftime(format)
+            self.TARIFF_MEASURE_LDATE = self.validity_end_date_string.replace("-", "")
         else:
+            self.validity_end_date_string = ""
             self.TARIFF_MEASURE_LDATE = "00000000"
-        a = 1
 
     def check_suppressed_geo_areas(self):
         suppressed_areas = ['1006']
@@ -237,8 +245,6 @@ class Measure(object):
                 self.FREE_CIRC_DOTI_REQD_IND = "Y"
 
     def get_duty_type(self):
-        if self.measure_sid == 20000000:
-            a = 1
         if len(self.measure_components) == 0:
             if self.measure_component_applicable_code == 1:
                 self.DUTY_TYPE = "30"  # No components, but of a type where they must be expressed in condition components
@@ -303,10 +309,6 @@ class Measure(object):
 
     def get_measure_record(self):
         self.get_amendment_indicator()
-        # suppressed records are just those applied to 1006 (Canada re-imports)
-        if self.measure_sid == 20041909:
-            a = 1
-        # self.is_duplicate = False
         if self.MEASURE_GROUP_CODE != "" and self.is_suppressed is False and self.is_duplicate is False:
             self.measure_record = "ME" + self.divider
             self.measure_record += self.MEASURE_GROUP_CODE + self.divider
@@ -364,12 +366,10 @@ class Measure(object):
             area_descriptions = []
             for area in self.measure_excluded_geographical_areas:
                 area.description = g.all_geographies_dict[area.geographical_area_sid].description
-                a = 1
                 area_ids.append(area.excluded_geographical_area)
                 area_descriptions.append(area.description)
             self.excluded_area_string = "|".join(area_ids)
             self.excluded_area_description_string = "|".join(area_descriptions)
-            a = 1
 
     def get_footnote_string(self):
         self.footnote_string = ""
@@ -411,8 +411,8 @@ class Measure(object):
         s += Q + self.additional_code + Q + ","
         s += Q + self.additional_code_description + Q + ","
         s += Q + self.measure_component_string + Q + ","
-        s += Q + self.validity_start_date + Q + ","
-        s += Q + self.validity_end_date + Q + ","
+        s += Q + self.validity_start_date_string + Q + ","
+        s += Q + self.validity_end_date_string + Q + ","
         s += self.reduction_indicator + ","
         s += Q + self.footnote_string + Q + ","
         s += Q + self.measure_condition_string + Q + ","
