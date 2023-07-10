@@ -141,6 +141,8 @@ class Measure(object):
 
     def check_for_gsp_membership(self):
         gsp_areas = ['2005', '2020', '2027']
+        dcts_areas = ['1060', '1061', '1062']
+        gsp_areas += dcts_areas
         self.is_gsp = True if self.geographical_area_id in gsp_areas else False
 
     def check_measure_type(self):
@@ -178,10 +180,11 @@ class Measure(object):
                                 break
 
                 if not found:
+                    # There is no record in the specification as to what the measure group code,
+                    # measure type code and tax code should be, so these are being left blank
                     if self.measure_type_id not in g.measure_types_not_found:
                         g.measure_types_not_found.append(self.measure_type_id)
 
-                    print("Measure type not found: SID / Measure type ", str(self.measure_sid), str(self.measure_type_id))
                     self.MEASURE_GROUP_CODE = ""
                     self.MEASURE_TYPE_CODE = ""
                     self.TAX_TYPE_CODE = ""
@@ -190,6 +193,8 @@ class Measure(object):
 
     def check_gsp_measure_type_code(self):
         # Check special rules on preferential duties for GSP countries
+        # GSP and DCTS countries should have a measure type code of 101
+        # All other countries countries should have a measure type code of 100
         if self.MEASURE_TYPE_CODE == "PRF":
             if self.is_gsp:
                 self.MEASURE_TYPE_CODE = "101"

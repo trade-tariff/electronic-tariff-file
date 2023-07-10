@@ -13,7 +13,6 @@
 1013,G125,N,European Union
 
 # Expanders: where we can't find a match between the CDS and CHIEF databases
-x1013,expand,N,EU (deprecated)
 1033,expand,N,CARIFORUM
 1034,expand,N,ESA (Eastern and Southern Africa)
 1035,expand,N,SADC EPA (South African Development Community)

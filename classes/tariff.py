@@ -80,7 +80,6 @@ class Tariff(object):
                 g.commodities_dict[c].sort_measures()
 
         self.write_icl_vme_file()
-        self.list_measure_types_not_found()
         self.write_commodities_csv()
         if self.WRITE_ANCILLARY_FILES:
             self.get_all_footnotes()
@@ -94,10 +93,6 @@ class Tariff(object):
         self.zip_and_upload()
         self.create_email_message()
         self.send_email_message()
-
-    def list_measure_types_not_found(self):
-        measure_types = ", ".join(g.measure_types_not_found)
-        print("\nMeasure types not found: {measure_types}\n\n".format(measure_types=measure_types))
 
     def create_ssl_unverified_context(self):
         ssl._create_default_https_context = ssl._create_unverified_context
@@ -902,12 +897,12 @@ class Tariff(object):
         self.TOTAL_RECORD_COUNT = self.CM_RECORD_COUNT + self.CA_RECORD_COUNT + self.ME_RECORD_COUNT + self.MX_RECORD_COUNT + self.MD_RECORD_COUNT
 
         file1.close()
-        print(str(count))
-        print("Commodity records = {x}".format(x=str(self.CM_RECORD_COUNT)))
-        print("Add code records = {x}".format(x=str(self.CA_RECORD_COUNT)))
-        print("Measure records = {x}".format(x=str(self.ME_RECORD_COUNT)))
-        print("Exception records = {x}".format(x=str(self.MX_RECORD_COUNT)))
-        print("Total records = {x}".format(x=str(self.TOTAL_RECORD_COUNT)))
+        print("TOTAL RECORDS")
+        print("- Commodity records = {x}".format(x=str(self.CM_RECORD_COUNT)))
+        print("- Add code records = {x}".format(x=str(self.CA_RECORD_COUNT)))
+        print("- Measure records = {x}".format(x=str(self.ME_RECORD_COUNT)))
+        print("- Exception records = {x}".format(x=str(self.MX_RECORD_COUNT)))
+        print("- Total records = {x}".format(x=str(self.TOTAL_RECORD_COUNT)))
 
         path = Path(self.filepath_icl_vme)
         text = path.read_text()
@@ -965,6 +960,7 @@ class Tariff(object):
     def get_all_footnotes(self):
         self.footnote_csv_file = open(self.footnote_csv_filepath, "w+")
         self.footnote_csv_file.write('"footnote__id","footnote__description","start__date","end__date","footnote__type"' + CommonString.line_feed)
+        print("\n")
         self.start_timer("Getting and writing all footnotes for CSV export")
         self.measures = []
         if self.use_materialized_views:
