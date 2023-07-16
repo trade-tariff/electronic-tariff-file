@@ -12,8 +12,14 @@ class DeltaMeasure(object):
         self.validity_end_date = row[4]
 
         format = "%Y-%m-%d"
-        self.validity_start_date_string = self.validity_start_date.strftime(format)
+        if isinstance(self.validity_start_date, str):
+            self.validity_start_date_string = self.validity_start_date
+        else:
+            self.validity_start_date_string = self.validity_start_date.strftime(format)
         if self.validity_end_date is not None:
-            self.validity_end_date_string = self.validity_end_date.strftime(format)
+            if isinstance(self.validity_end_date, str):
+                self.validity_end_date_string = self.validity_end_date
+            else:
+                self.validity_end_date_string = self.validity_end_date.strftime(format)
         else:
             self.validity_end_date_string = ""
