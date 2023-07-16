@@ -427,6 +427,10 @@ class Measure(object):
         s += Q + self.excluded_area_string + Q + ","
         s += Q + self.excluded_area_description_string + Q + ","
         s += Q + self.ordernumber + Q + "," if self.ordernumber != "000000" else Q + Q + ","
-        s += Q + self.trade_direction + Q
+        s += Q + self.trade_direction + Q + ","
+
+        s += Q + self.MEASURE_GROUP_CODE + Q + ","
+        s += Q + self.MEASURE_TYPE_CODE + Q + ","
+        s += Q + self.TAX_TYPE_CODE + Q
 
         self.measure_record_for_csv = s

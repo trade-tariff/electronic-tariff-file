@@ -766,9 +766,16 @@ class Tariff(object):
     def write_icl_vme_file(self):
         self.start_timer("Writing commodities")
         f = open(self.filepath_icl_vme, "w")
-        field_names = ["commodity__sid", "commodity__code", "measure__sid", "measure__type__id", "measure__type__description", "measure__additional_code__code", "measure__additional_code__description", "measure__duty_expression",
-                       "measure__effective_start_date", "measure__effective_end_date", "measure__reduction_indicator", "measure__footnotes", "measure__conditions", "measure__geographical_area__sid", "measure__geographical_area__id",
-                       "measure__geographical_area__description", "measure__excluded_geographical_areas__ids", "measure__excluded_geographical_areas__descriptions", "measure__quota__order_number", "trade__direction"]
+        field_names = ["commodity__sid", "commodity__code", "measure__sid", "measure__type__id",
+                       "measure__type__description", "measure__additional_code__code",
+                       "measure__additional_code__description", "measure__duty_expression",
+                       "measure__effective_start_date", "measure__effective_end_date",
+                       "measure__reduction_indicator", "measure__footnotes", "measure__conditions",
+                       "measure__geographical_area__sid", "measure__geographical_area__id",
+                       "measure__geographical_area__description", "measure__excluded_geographical_areas__ids",
+                       "measure__excluded_geographical_areas__descriptions", "measure__quota__order_number",
+                       "trade__direction", "measure_group_code", "measure_type_code", "tax_type_code"]
+
         measure_file_header_row = ",".join(field_names) + CommonString.line_feed
 
         measure_csv_file = open(self.measure_csv_filepath, "w+")
