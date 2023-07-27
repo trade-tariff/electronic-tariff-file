@@ -681,9 +681,6 @@ class Tariff(object):
         self.start_timer("Assign the measures to the commodities")
         for m in self.measures_dict:
             measure_sid = self.measures_dict[m].measure_sid
-            print(measure_sid)
-            if self.measures_dict[m].goods_nomenclature_sid == 103759:
-                a = 1
             if measure_sid not in g.commodities_dict[self.measures_dict[m].goods_nomenclature_sid].measure_sids:
                 g.commodities_dict[self.measures_dict[m].goods_nomenclature_sid].measures.append(self.measures_dict[m])
                 g.commodities_dict[self.measures_dict[m].goods_nomenclature_sid].measure_sids.append(self.measures_dict[m].measure_sid)
