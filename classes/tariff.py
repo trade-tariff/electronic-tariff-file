@@ -94,7 +94,6 @@ class Tariff(object):
         self.create_delta()
         self.zip_and_upload()
         self.create_email_message()
-        self.send_email_message()
 
     def create_ssl_unverified_context(self):
         ssl._create_default_https_context = ssl._create_unverified_context
@@ -170,56 +169,66 @@ class Tariff(object):
         self.WRITE_ADDITIONAL_CODES = int(os.getenv('WRITE_ADDITIONAL_CODES'))
         self.WRITE_FOOTNOTES = int(os.getenv('WRITE_FOOTNOTES'))
         self.WRITE_ANCILLARY_FILES = int(os.getenv('WRITE_ANCILLARY_FILES'))
-        self.DEBUG_OVERRIDE = int(os.getenv('DEBUG_OVERRIDE'))
+        self.DEBUG_MODE = f.get_config_key('DEBUG_MODE', "int", 0)
         self.PLACEHOLDER_FOR_EMPTY_DESCRIPTIONS = os.getenv('PLACEHOLDER_FOR_EMPTY_DESCRIPTIONS')
-        self.VSCODE_DEBUG_MODE = os.getenv('VSCODE_DEBUG_MODE')
 
         # There is only any point in writing to AWS & sending a mail
         # if both ZIP variables are set
         self.CREATE_7Z = f.get_config_key('CREATE_7Z', "int", 0)
         self.CREATE_ZIP = f.get_config_key('CREATE_ZIP', "int", 0)
-        if self.CREATE_7Z == 0 or self.CREATE_ZIP == 0:
+
+        if self.DEBUG_MODE:
             self.WRITE_TO_AWS = 0
             self.SEND_MAIL = 0
-        else:
-            # We will only ever send the email if write to AWS is set to true
-            self.WRITE_TO_AWS = f.get_config_key('WRITE_TO_AWS', "int", 0)
-            self.SEND_MAIL = f.get_config_key('SEND_MAIL', "int", 0)
-            if self.WRITE_TO_AWS == 0:
-                self.SEND_MAIL = 0
-
-        # Put in protection in case the min / max codes are accidentally set to
-        # values other than 0000000000 and 9999999999. If you do proceed, then the application will not
-        # load any data to AWS or send the email.
-        if not g.complete_tariff:
-            self.SEND_MAIL = False
-            self.WRITE_TO_AWS = False
-            message = "The lowest code that this will be run against is {min_code} and the highest is {max_code}\n\n".format(
-                min_code=self.min_code,
-                max_code=self.max_code
-            )
-            message += "If you choose to continue, then:\n\n- no files will be uploaded to AWS\n- no email will be sent.\n\n"
+            self.CREATE_7Z = 0
+            self.CREATE_ZIP = 0
+            message = "You are running in debug mode\n"
             question = "Are you sure you want to continue?\n\n"
             if f.yesno_question(message, question) is False:
                 sys.exit()
         else:
-            # Check that we want to proceed even if the variables to load
-            # to AWS and / or to senf an email are not set
-            if self.SEND_MAIL == 0 or self.WRITE_TO_AWS == 0:
-                msg = ""
+            if self.CREATE_7Z == 0 or self.CREATE_ZIP == 0:
+                self.WRITE_TO_AWS = 0
+                self.SEND_MAIL = 0
+            else:
+                # We will only ever send the email if write to AWS is set to true
+                self.WRITE_TO_AWS = f.get_config_key('WRITE_TO_AWS', "int", 0)
+                self.SEND_MAIL = f.get_config_key('SEND_MAIL', "int", 0)
                 if self.WRITE_TO_AWS == 0:
-                    msg += "The WRITE_TO_AWS flag is set to 0\n"
-                if self.SEND_MAIL == 0:
-                    msg += "The SEND_MAIL flag is set to 0\n"
-                print(msg)
-                msg = "Are you sure you want to continue?\n\n"
+                    self.SEND_MAIL = 0
 
-                questions = [
-                    inquirer.Confirm("proceed_with_messaging_status", message=msg, default=True),
-                ]
-                answers = inquirer.prompt(questions)
-                if answers["proceed_with_messaging_status"] is False:
+            # Put in protection in case the min / max codes are accidentally set to
+            # values other than 0000000000 and 9999999999. If you do proceed, then the application will not
+            # load any data to AWS or send the email.
+            if not g.complete_tariff:
+                self.SEND_MAIL = False
+                self.WRITE_TO_AWS = False
+                message = "The lowest code that this will be run against is {min_code} and the highest is {max_code}\n\n".format(
+                    min_code=self.min_code,
+                    max_code=self.max_code
+                )
+                message += "If you choose to continue, then:\n\n- no files will be uploaded to AWS\n- no email will be sent.\n\n"
+                question = "Are you sure you want to continue?\n\n"
+                if f.yesno_question(message, question) is False:
                     sys.exit()
+            else:
+                # Check that we want to proceed even if the variables to load
+                # to AWS and / or to senf an email are not set
+                if self.SEND_MAIL == 0 or self.WRITE_TO_AWS == 0:
+                    msg = ""
+                    if self.WRITE_TO_AWS == 0:
+                        msg += "The WRITE_TO_AWS flag is set to 0\n"
+                    if self.SEND_MAIL == 0:
+                        msg += "The SEND_MAIL flag is set to 0\n"
+                    print(msg)
+                    msg = "Are you sure you want to continue?\n\n"
+
+                    questions = [
+                        inquirer.Confirm("proceed_with_messaging_status", message=msg, default=True),
+                    ]
+                    answers = inquirer.prompt(questions)
+                    if answers["proceed_with_messaging_status"] is False:
+                        sys.exit()
 
     def get_folders(self):
         self.current_folder = os.getcwd()
@@ -1351,7 +1360,7 @@ class Tariff(object):
         print("Zipping complete")
 
     def create_email_message(self):
-        if self.SEND_MAIL == 0 or self.CREATE_7Z == 0 or self.CREATE_ZIP == 0 or self.WRITE_TO_AWS == 0:
+        if self.SEND_MAIL == 0 or self.CREATE_7Z == 0 or self.CREATE_ZIP == 0 or self.WRITE_TO_AWS == 0 or self.DEBUG_MODE:
             return
 
         self.html_content = """
@@ -1515,10 +1524,10 @@ class Tariff(object):
             supplementary_units_zip=self.bucket_url + self.aws_path_supplementary_units_csv_tuple[1],
             supplementary_units_7z=self.bucket_url + self.aws_path_supplementary_units_csv_tuple[0]
         )
+        # And now send the message
+        self.send_email_message()
 
     def send_email_message(self):
-        if self.SEND_MAIL == 0 or self.CREATE_7Z == 0 or self.CREATE_ZIP == 0 or self.WRITE_TO_AWS == 0:
-            return
         subject = "Issue of updated HMRC Electronic Tariff File for " + g.SNAPSHOT_DATE
         attachment_list = [
             self.documentation_file,

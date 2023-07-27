@@ -13,11 +13,14 @@ class Zipper(object):
         # Always compresses to the same place with the default
         # file extension for the compression type
         load_dotenv('.env')
-        self.create_7z = f.get_config_key('CREATE_7Z', "int", 0)
-        self.create_zip = f.get_config_key('CREATE_ZIP', "int", 0)
         self.password = f.get_config_key('PASSWORD', "str", "")
-        self.override_debug_protection = f.get_config_key('OVERRIDE_DEBUG_PROTECTION', "int", 0)
-        self.DEBUG_OVERRIDE = f.get_config_key('DEBUG_OVERRIDE', "int", 0)
+        self.DEBUG_MODE = f.get_config_key('DEBUG_MODE', "int", 0)
+        if self.DEBUG_MODE:
+            self.create_7z = False
+            self.create_zip = False
+        else:
+            self.create_7z = f.get_config_key('CREATE_7Z', "int", 0)
+            self.create_zip = f.get_config_key('CREATE_ZIP', "int", 0)
 
         self.compress_level = 9
         self.scope = scope
@@ -30,13 +33,10 @@ class Zipper(object):
         # Unless debug protection is switched off
 
         if self.create_7z and self.create_zip:
-            if self.override_debug_protection == 1:
-                self.write_to_aws = f.get_config_key('WRITE_TO_AWS', "int", 0)
+            if g.complete_tariff is False:
+                self.write_to_aws = False
             else:
-                if g.complete_tariff is False:
-                    self.write_to_aws = False
-                else:
-                    self.write_to_aws = f.get_config_key('WRITE_TO_AWS', "int", 0)
+                self.write_to_aws = f.get_config_key('WRITE_TO_AWS', "int", 0)
         else:
             self.write_to_aws = False
 
@@ -46,7 +46,7 @@ class Zipper(object):
 
         # If we have set the DEBUG OVERRIDE switch in .env,
         # then we will never create compressed archives.
-        if self.DEBUG_OVERRIDE == 0:
+        if self.DEBUG_MODE == 0:
             if self.create_7z:
                 ret_7z = self.create_7z_archive()
 
