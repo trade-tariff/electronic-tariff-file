@@ -1,4 +1,5 @@
 import sys
+import json
 from dotenv import load_dotenv
 import time
 import os
@@ -50,6 +51,7 @@ class Tariff(object):
         self.get_measure_types_lookup()
         self.get_geographical_areas_lookup()
         self.get_supplementary_units_reference()
+        self.get_additional_supplementary_units()
         self.get_footnotes()
         self.get_commodity_footnotes()
         self.get_spvs()
@@ -71,7 +73,7 @@ class Tariff(object):
         for c in g.commodities_dict:
             g.commodities_dict[c].get_commodity_type()
             if g.commodities_dict[c].writable:
-                g.commodities_dict[c].get_supplementary_units()
+                g.commodities_dict[c].get_supplementary_units(self.INCLUDE_ADDITIONAL_SUPPLEMENTARY_UNITS)
                 g.commodities_dict[c].get_seasonal_rate()
                 g.commodities_dict[c].check_end_use()
                 g.commodities_dict[c].get_ancestral_descriptions()
@@ -141,6 +143,14 @@ class Tariff(object):
         else:
             g.DATABASE = os.getenv('DATABASE_EU')
 
+    def get_additional_supplementary_units(self):
+        g.additional_supplememtary_units = {}
+        if self.INCLUDE_ADDITIONAL_SUPPLEMENTARY_UNITS is False:
+            return
+        json_file = os.path.join(self.reference_folder, "supp_units.json")
+        with open(json_file) as f:
+            g.additional_supplememtary_units = json.load(f)
+
     def get_config(self):
         load_dotenv('.env')
         self.use_materialized_views = int(os.getenv('USE_MATERIALIZED_VIEWS'))
@@ -155,6 +165,7 @@ class Tariff(object):
         self.bucket_url = "https://" + self.BUCKET_NAME + ".s3.amazonaws.com/"
         self.bucket_url = "https://reporting.trade-tariff.service.gov.uk/"
 
+        self.INCLUDE_ADDITIONAL_SUPPLEMENTARY_UNITS = int(os.getenv('INCLUDE_ADDITIONAL_SUPPLEMENTARY_UNITS'))
         self.WRITE_MEASURES = int(os.getenv('WRITE_MEASURES'))
         self.WRITE_ADDITIONAL_CODES = int(os.getenv('WRITE_ADDITIONAL_CODES'))
         self.WRITE_FOOTNOTES = int(os.getenv('WRITE_FOOTNOTES'))
@@ -670,6 +681,9 @@ class Tariff(object):
         self.start_timer("Assign the measures to the commodities")
         for m in self.measures_dict:
             measure_sid = self.measures_dict[m].measure_sid
+            print(measure_sid)
+            if self.measures_dict[m].goods_nomenclature_sid == 103759:
+                a = 1
             if measure_sid not in g.commodities_dict[self.measures_dict[m].goods_nomenclature_sid].measure_sids:
                 g.commodities_dict[self.measures_dict[m].goods_nomenclature_sid].measures.append(self.measures_dict[m])
                 g.commodities_dict[self.measures_dict[m].goods_nomenclature_sid].measure_sids.append(self.measures_dict[m].measure_sid)
