@@ -184,7 +184,7 @@ class Commodity(object):
         self.description = re.sub(r"[ ]{2,10}", " ", self.description)
         self.description = unidecode(self.description)
 
-        self.description_csv = self.description
+        self.description_csv = self.description.replace('"', "'")
 
     def get_ancestral_descriptions(self):
         pre_taric_tokens = ["", ":", ":*", ":**", ":***", ":****", ":*****", ":******", ":*******"]
