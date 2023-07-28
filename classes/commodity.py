@@ -125,16 +125,38 @@ class Commodity(object):
                 break
 
     def get_commodity_type(self):
+        """
+
+        COMMODITY-IMP-EXP-USE
+        •	A setting of 0 means the Commodity is valid for both Imports and Exports
+        •	1 means Imports only
+        •	2 means Exports only
+
+        COMMODITY-TYPE
+        0 - All trade
+        1 - EC trade only (8 digit commodity codes)
+        2 - Third Country trade only (10 digit commodity codes)
+
+        """
         if self.end_line:
+            # If it is an end-line, then
+            # it can always be used for import and export
             self.commodity_class = "Commodity"
             self.COMMODITY_IMP_EXP_USE = "0"
+
             if self.significant_digits >= 9:
                 self.COMMODITY_TYPE = "2"
             else:
                 self.COMMODITY_TYPE = "0"
         else:
-            self.COMMODITY_IMP_EXP_USE = "2"
+            # If it is not an end-line, then
+            if self.significant_digits >= 9:
+                self.COMMODITY_IMP_EXP_USE = "1"
+            else:
+                self.COMMODITY_IMP_EXP_USE = "2"
+
             self.COMMODITY_TYPE = "1"
+
             if self.significant_digits > 4:
                 self.commodity_class = "Subheading"
             elif self.significant_digits == 4:

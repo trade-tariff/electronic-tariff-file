@@ -45,6 +45,7 @@ class Tariff(object):
         self.get_folders()
 
         # self.get_all_quotas()
+    def process(self):
         self.get_all_additional_codes()
         self.get_all_geographies()
         self.get_measure_types()
@@ -1542,3 +1543,4 @@ class Tariff(object):
         g.change_period = "week"
         self.delta = Delta(self.use_materialized_views)
         print("Delta complete")
+
