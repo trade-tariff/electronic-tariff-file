@@ -39,8 +39,7 @@ class Delta(object):
         self.delta_file_measures = open(self.measures_filename, "w")
 
     def write_commodities(self):
-        writer = csv.writer(self.delta_file_commodities, delimiter=',',
-                            quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        writer = csv.writer(self.delta_file_commodities, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         fields = [
             "Operation",
             "Commodity code",
