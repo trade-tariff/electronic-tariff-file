@@ -82,11 +82,11 @@ WHERE
     AND mc.certificate_code = c.certificate_code
     AND m.validity_start_date <= %s
     AND (m.validity_end_date IS NULL
-        OR m.validity_end_date > %s)
+        OR m.validity_end_date >= %s)
     AND c.validity_start_date <= %s
     AND (c.validity_end_date IS NULL
-        OR c.validity_end_date > %s)
+        OR c.validity_end_date >= %s)
     AND gn.validity_start_date <= %s
     AND (gn.validity_end_date IS NULL
-        OR gn.validity_end_date > %s)
+        OR gn.validity_end_date >= %s)
 ORDER BY 1

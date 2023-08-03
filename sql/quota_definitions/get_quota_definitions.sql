@@ -83,7 +83,7 @@ FROM
 WHERE
     left(ordernumber, 3) = %s
     AND m.validity_start_date <= %s
-    AND (m.validity_end_date IS NULL OR m.validity_end_date > %s)
+    AND (m.validity_end_date IS NULL OR m.validity_end_date >= %s)
 GROUP BY
     m.ordernumber,
     m.validity_start_date,

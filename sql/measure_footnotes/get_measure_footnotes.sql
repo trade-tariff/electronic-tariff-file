@@ -57,10 +57,10 @@ WHERE
     AND m.validity_start_date <= %s
     AND m.goods_nomenclature_sid = gn.goods_nomenclature_sid
     AND (m.validity_end_date IS NULL
-        OR m.validity_end_date::date > %s)
+        OR m.validity_end_date::date >= %s)
     AND gn.validity_start_date <= %s
     AND (gn.validity_end_date IS NULL
-        OR gn.validity_end_date::date > %s)
+        OR gn.validity_end_date::date >= %s)
     AND m.goods_nomenclature_item_id >= %s
     AND m.goods_nomenclature_item_id <= %s
 ORDER BY

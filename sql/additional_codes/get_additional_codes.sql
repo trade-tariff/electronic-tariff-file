@@ -54,5 +54,5 @@ select distinct ac.code, ac.description, ac.validity_start_date, ac.validity_end
 from additional_codes ac, measures m
 where ac.additional_code_sid = m.additional_code_sid
 and m.validity_start_date < %s
-and (m.validity_end_date is null or m.validity_end_date::date > %s)
+and (m.validity_end_date is null or m.validity_end_date::date >= %s)
 order by 1;
