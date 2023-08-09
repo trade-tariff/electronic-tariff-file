@@ -122,7 +122,7 @@ class Delta(object):
         rows = d.run_query(sql, params)
         if len(rows) > 0:
             for row in rows:
-                delta_commodity = DeltaCommodity(row, "New", self.use_materialized_views)
+                delta_commodity = DeltaCommodity(row, "New")
                 self.delta_commodities.append(delta_commodity)
 
     def get_commodity_change_end(self):

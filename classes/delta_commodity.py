@@ -2,8 +2,7 @@ from datetime import datetime
 
 
 class DeltaCommodity(object):
-    def __init__(self, row, operation, use_materialized_views):
-        self.use_materialized_views = use_materialized_views
+    def __init__(self, row, operation):
         self.operation = operation
         self.goods_nomenclature_item_id = row[0]
         self.productline_suffix = row[1]
