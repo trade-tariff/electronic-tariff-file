@@ -11,7 +11,7 @@ SELECT m.measure_sid,
    FROM measures m,
     modification_regulations mr
   WHERE m.measure_generating_regulation_role = 4
-  AND m.measure_generating_regulation_id::text = mr.modification_regulation_id::text
+  AND m.measure_generating_regulation_id = mr.modification_regulation_id
   AND m.measure_generating_regulation_role = mr.modification_regulation_role
   AND mr.approved_flag IS NOT FALSE
 UNION
@@ -27,13 +27,13 @@ UNION
    FROM measures m,
     base_regulations br
   WHERE m.measure_generating_regulation_role <> 4
-  AND m.measure_generating_regulation_id::text = br.base_regulation_id::text
+  AND m.measure_generating_regulation_id = br.base_regulation_id
   AND m.measure_generating_regulation_role = br.base_regulation_role
   AND br.approved_flag IS NOT FALSE
 ),
 
 additional_codes as (
-SELECT DISTINCT ON (ac.additional_code_type_id, ac.additional_code) ac.additional_code_type_id::text || ac.additional_code::text AS code,
+SELECT DISTINCT ON (ac.additional_code_type_id, ac.additional_code) ac.additional_code_type_id || ac.additional_code AS code,
     acd.description,
     ac.validity_start_date,
     ac.validity_end_date,
@@ -53,6 +53,6 @@ SELECT DISTINCT ON (ac.additional_code_type_id, ac.additional_code) ac.additiona
 select distinct ac.code, ac.description, ac.validity_start_date, ac.validity_end_date, ac.additional_code_type_description
 from additional_codes ac, measures m
 where ac.additional_code_sid = m.additional_code_sid
-and m.validity_start_date < %s
-and (m.validity_end_date is null or m.validity_end_date::date >= %s)
+and m.validity_start_date <= %s
+and (m.validity_end_date is null or m.validity_end_date >= %s)
 order by 1;
