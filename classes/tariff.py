@@ -1543,4 +1543,3 @@ class Tariff(object):
         g.change_period = "week"
         self.delta = Delta(self.use_materialized_views)
         print("Delta complete")
-
