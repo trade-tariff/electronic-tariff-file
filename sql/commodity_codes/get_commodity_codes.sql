@@ -1,4 +1,3 @@
-/* This is not complete */
 with cer as (
     select distinct on (goods_nomenclature_sid)
     goods_nomenclature_sid, goods_nomenclature_item_id, productline_suffix,
