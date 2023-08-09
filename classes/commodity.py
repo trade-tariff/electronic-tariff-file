@@ -78,9 +78,7 @@ class Commodity(object):
                     self.supplementary_units[index] = str(index + 1) + supplementary_unit
 
     def get_supp_units(self):
-        if self.export_umbrella:
-            pass
-        else:
+        if not self.export_umbrella:
             for m in self.measures:
                 if m.measure_type_id in ("109", "110"):
                     s = "2" + m.measure_components[0].measurement_unit_code
@@ -104,6 +102,8 @@ class Commodity(object):
             self.significant_digits = 10
 
     def get_seasonal_rate(self):
+        # The seasonal rates are not stored on the tariff database
+        # Instead they are pulled from an external CSV file, so they are static
         for seasonal_rate in g.seasonal_rates:
             if seasonal_rate.goods_nomenclature_sid in self.ancestors:
                 self.END_OF_SEASON_DATE = seasonal_rate.to_date
