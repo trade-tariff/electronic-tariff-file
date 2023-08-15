@@ -171,7 +171,6 @@ class Tariff(object):
         self.WRITE_FOOTNOTES = int(os.getenv('WRITE_FOOTNOTES'))
         self.WRITE_ANCILLARY_FILES = int(os.getenv('WRITE_ANCILLARY_FILES'))
         self.DEBUG_MODE = f.get_config_key('DEBUG_MODE', "int", 0)
-        self.PLACEHOLDER_FOR_EMPTY_DESCRIPTIONS = os.getenv('PLACEHOLDER_FOR_EMPTY_DESCRIPTIONS')
 
         # There is only any point in writing to AWS & sending a mail
         # if both ZIP variables are set
