@@ -1339,7 +1339,7 @@ class Tariff(object):
                 self.aws_path_certificates_csv_tuple = Zipper(self.certificate_csv_filepath, self.scope, "csv", "Certificates CSV").compress()
                 self.aws_path_quotas_csv_tuple = Zipper(self.quota_csv_filepath, self.scope, "csv", "Quotas CSV").compress()
                 self.aws_path_geographical_areas_csv_tuple = Zipper(self.geography_csv_filepath, self.scope, "csv", "Geographical areas CSV").compress()
-                self.aws_path_measure_types_csv_tuple = Zipper(self.measure_type_csv_filepath, self.scope, "csv", "Geographical areas CSV").compress()
+                self.aws_path_measure_types_csv_tuple = Zipper(self.measure_type_csv_filepath, self.scope, "csv", "Measure types CSV").compress()
                 self.aws_path_additional_codes_csv_tuple = Zipper(self.additional_code_csv_filepath, self.scope, "csv", "Additional codes CSV").compress()
                 self.aws_path_mfns_csv_tuple = Zipper(self.mfn_csv_filepath, self.scope, "csv", "Additional codes CSV").compress()
                 self.aws_path_supplementary_units_csv_tuple = Zipper(self.supplementary_units_csv_filepath, self.scope, "csv", "Additional codes CSV").compress()
