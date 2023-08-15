@@ -26,7 +26,7 @@ from classes.measure_footnote import MeasureFootnote
 from classes.seasonal_rate import SeasonalRate
 from classes.simplified_procedure_value import SimplifiedProcedureValue
 from classes.quota_definition import QuotaDefinition, QuotaExclusion, QuotaCommodity
-from classes.sendgrid_mailer import SendgridMailer
+from classes.ses_mailer import SesMailer
 from classes.zipper import Zipper
 from classes.delta import Delta
 import classes.globals as g
@@ -1534,7 +1534,7 @@ class Tariff(object):
             self.documentation_file,
             self.correlation_file
         ]
-        s = SendgridMailer(subject, self.html_content, attachment_list)
+        s = SesMailer(subject, self.html_content, attachment_list)
         s.send()
 
     def create_delta(self):
