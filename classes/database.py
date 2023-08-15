@@ -16,11 +16,14 @@ class Database:
         # self.database_url = os.getenv('DATABASE_UK')
         if scope is None:
             self.database_url = g.DATABASE
+            self.search_path = "uk,public"
         else:
             if scope == "xi":
-                self.database_url = os.getenv('DATABASE_EU')
+                self.database_url = os.getenv("DATABASE_EU")
+                self.search_path = "xi,public"
             else:
-                self.database_url = os.getenv('DATABASE_UK')
+                self.database_url = os.getenv("DATABASE_UK")
+                self.search_path = "uk,public"
 
         self.conn = None
 
@@ -29,11 +32,15 @@ class Database:
         try:
             if self.conn is None:
                 self.conn = psycopg2.connect(self.database_url)
+                with self.conn.cursor() as cur:
+                    initial_query = "SET search_path = " + self.search_path + ";"
+                    cur.execute(initial_query)
+                    cur.close()
         except psycopg2.DatabaseError as e:
             logging.error(e)
             sys.exit()
         finally:
-            logging.info('Connection opened successfully.')
+            logging.info("Connection opened successfully.")
 
     def close_connection(self):
         self.conn = None
@@ -66,4 +73,4 @@ class Database:
         finally:
             if self.conn:
                 self.conn.close()
-                logging.info('Database connection closed.')
+                logging.info("Database connection closed.")
