@@ -1,20 +1,42 @@
-with cer as (
-    select distinct on (goods_nomenclature_sid)
-    goods_nomenclature_sid, goods_nomenclature_item_id, productline_suffix,
-    number_indents, description,
-    validity_start_date, validity_end_date,
-    description_start_date, description_end_date,
-    indent_start_date, indent_end_date
-    from utils.materialized_commodities_new
-    where validity_start_date <= %s
-    and validity_end_date >= %s
-    and indent_start_date <= %s
-    and indent_end_date >= %s
-    and description_start_date <= %s
-    and description_end_date >= %s
-    and goods_nomenclature_item_id >= %s
-    and goods_nomenclature_item_id <= %s
-    order by goods_nomenclature_sid, description_start_date desc, indent_start_date desc
-) select * from cer
-where cer.goods_nomenclature_item_id not in (select goods_nomenclature_item_id from hidden_goods_nomenclatures)
-order by goods_nomenclature_item_id, productline_suffix
+WITH commodities AS (
+    SELECT DISTINCT ON (goods_nomenclature_sid)
+        gn.goods_nomenclature_sid,
+        gn.goods_nomenclature_item_id,
+        gn.producline_suffix AS productline_suffix,
+        gni.number_indents,
+        gnd.description,
+        gn.validity_start_date,
+        COALESCE(gn.validity_end_date, '2999-12-31'::date::timestamp without time zone) AS validity_end_date,
+        gndp.validity_start_date AS description_start_date,
+        COALESCE(gndp.validity_end_date, '2999-12-31'::date::timestamp without time zone) AS description_end_date,
+        gni.validity_start_date AS indent_start_date,
+        COALESCE(gni.validity_end_date, '2999-12-31'::date::timestamp without time zone) AS indent_end_date
+    FROM goods_nomenclatures gn
+    JOIN goods_nomenclature_description_periods gndp ON gndp.goods_nomenclature_sid = gn.goods_nomenclature_sid
+    JOIN goods_nomenclature_descriptions gnd ON gndp.goods_nomenclature_description_period_sid = gnd.goods_nomenclature_description_period_sid
+    JOIN goods_nomenclature_indents gni ON gn.goods_nomenclature_sid = gni.goods_nomenclature_sid
+    WHERE
+        gnd.description IS NOT NULL
+        AND gn.validity_start_date <= %s
+        AND (gn.validity_end_date IS NULL OR gn.validity_end_date >= %s)
+        AND gni.validity_start_date <= %s
+        AND (gni.validity_end_date IS NULL OR gni.validity_end_date >= %s)
+        AND gndp.validity_start_date <= %s
+        AND (gndp.validity_end_date IS NULL OR gndp.validity_end_date >= %s)
+        AND gn.goods_nomenclature_item_id >= %s
+        AND gn.goods_nomenclature_item_id <= %s
+    ORDER BY
+        goods_nomenclature_sid,
+        description_start_date DESC,
+        indent_start_date DESC
+)
+
+SELECT *
+FROM commodities
+WHERE commodities.goods_nomenclature_item_id NOT IN (
+    SELECT goods_nomenclature_item_id
+    FROM hidden_goods_nomenclatures
+)
+ORDER BY
+    goods_nomenclature_item_id,
+    productline_suffix;
