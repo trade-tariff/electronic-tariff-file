@@ -10,9 +10,6 @@ load_dotenv()
 
 
 class SesMailer(object):
-    SUBJECT = "CDS data load {edition}"
-    EMAIL_CONTENT = open("resources/email_template.html", "r").read()
-
     def __init__(self, subject, content, attachments=[]):
         self._subject = subject
         self._attachments = attachments
