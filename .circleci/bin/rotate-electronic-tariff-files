@@ -18,6 +18,15 @@ function day() {
   echo "$1" | cut -d'/' -f3
 }
 
+# This function queries the S3 bucket for all objects whose key contain 'electronic_tariff_file'.
+# After querying, it filters the results using 'grep' to match keys that follow the pattern of 
+# 'uk/reporting/YYYY/MM/DD/electronic_tariff_file/', which represents a date-based path. This is
+# actually defensive an unnecessary, as the query already filters for keys that contain this substring.
+#
+# You can read the specification for jmes path queries here: https://jmespath.org/tutorial.html
+#
+# Using 'awk', the function then further filters the results to match keys that are older than 
+# the specified date, effectively giving us keys that are candidates for deletion.
 function fetch_candidate_keys() {
   year=$(year "$1")
   month=$(month "$1")
@@ -30,6 +39,14 @@ function fetch_candidate_keys() {
     | awk -F'/' "(\$3 <= $year && \$4 <= $month && \$5 < $day)"
 }
 
+# After the raw keys are obtained, they are passed through several transformations.
+# - 'tr -d '"': Removes all double quote characters.
+# - 'tr ',' '\n'': Transforms comma-separated lines into newline-separated lines.
+# - 'sed 's/^ //'': Removes any leading whitespace from each line.
+# Lastly, 'jq' is used to convert the flat list of keys into a JSON-formatted list where each key 
+# is an object with a "Key" attribute.
+#
+# This is essentially the required format for the AWS S3 delete-objects command.
 function transform_candidate_keys() {
   while IFS= read -r line; do
     echo "$line"
