@@ -63,6 +63,7 @@ jobs:
       - image: cimg/base:current-22.04
     steps:
       - checkout
+      - aws-cli/install
       - run:
           name: "Rotate electronic tariff files"
           command: |
