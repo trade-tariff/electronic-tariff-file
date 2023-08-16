@@ -29,6 +29,7 @@ jobs:
       - run:
           name: "Prepare database"
           command: |
+            set -o xtrace
             aws s3 cp s3://$DATABASE_BACKUPS_BUCKET_NAME/snapshots/tariff-merged-production.sql.zip .
 
             unzip tariff-merged-production.sql.zip
