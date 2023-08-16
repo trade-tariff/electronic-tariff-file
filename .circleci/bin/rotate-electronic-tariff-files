@@ -1,49 +1,53 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 
 BUCKET_NAME=${BUCKET_NAME:-trade-tariff-reporting}
 
 function 6_weeks_ago() {
-  date -d "6 weeks ago" +"%Y/%m/%d"
+  date --date="6 weeks ago" +"%Y/%m/%d"
 }
 
 function year() {
-  echo "$1" | cut -d'/' -f1
+  echo "$1" | cut --delimiter='/' --fields=1
 }
 
 function month() {
-  echo "$1" | cut -d'/' -f2
+  echo "$1" | cut --delimiter='/' --fields=2
 }
 
 function day() {
-  echo "$1" | cut -d'/' -f3
+  echo "$1" | cut --delimiter='/' --fields=3
 }
 
 # This function queries the S3 bucket for all objects whose key contain 'electronic_tariff_file'.
-# After querying, it filters the results using 'grep' to match keys that follow the pattern of 
+# After querying, it filters the results using 'grep' to match keys that follow the pattern of
 # 'uk/reporting/YYYY/MM/DD/electronic_tariff_file/', which represents a date-based path. This is
 # actually defensive an unnecessary, as the query already filters for keys that contain this substring.
 #
 # You can read the specification for jmes path queries here: https://jmespath.org/tutorial.html
 #
-# Using 'awk', the function then further filters the results to match keys that are older than 
+# We use raw input to prevent jq from parsing the input as JSON.
+# We use null input to generate output without relying on external JSON input.
+#
+# Using 'awk', the function then further filters the results to match keys that are older than
 # the specified date, effectively giving us keys that are candidates for deletion.
+# We rely on lexical comparison to determine which keys are older than the specified date.
 function fetch_candidate_keys() {
-  year=$(year "$1")
-  month=$(month "$1")
-  day=$(day "$1")
+  local year=$(year "$1")
+  local month=$(month "$1")
+  local day=$(day "$1")
 
   aws s3api list-objects \
     --bucket "$BUCKET_NAME" \
     --query "Contents[?contains(Key, 'electronic_tariff_file')].Key" \
-    | grep -E 'uk/reporting/[0-9]{4}/[0-9]{2}/[0-9]{2}/electronic_tariff_file/' \
-    | awk -F'/' "(\$3 <= $year && \$4 <= $month && \$5 < $day)"
+    | grep --extended-regexp 'uk/reporting/[0-9]{4}/[0-9]{2}/[0-9]{2}/electronic_tariff_file/' \
+    | awk -F'/' "(\$3\"/\"\$4\"/\"\$5 < \"$year/$month/$day\")"
 }
 
 # After the raw keys are obtained, they are passed through several transformations.
 # - 'tr -d '"': Removes all double quote characters.
 # - 'tr ',' '\n'': Transforms comma-separated lines into newline-separated lines.
 # - 'sed 's/^ //'': Removes any leading whitespace from each line.
-# Lastly, 'jq' is used to convert the flat list of keys into a JSON-formatted list where each key 
+# Lastly, 'jq' is used to convert the flat list of keys into a JSON-formatted list where each key
 # is an object with a "Key" attribute.
 #
 # This is essentially the required format for the AWS S3 delete-objects command.
@@ -51,27 +55,24 @@ function transform_candidate_keys() {
   while IFS= read -r line; do
     echo "$line"
   done \
-    | tr -d '"' \
+    | tr --delete '"' \
     | tr ',' '\n' \
     | sed 's/^ //' \
-    | jq -nR '[inputs | { "Key": . }] | map(select(.Key != "")) | map(.Key |= sub("^\\s+"; ""))'
+    | jq --null-input --raw-input '[inputs | { "Key": . }] | map(select(.Key != "")) | map(.Key |= sub("^\\s+"; ""))'
 }
 
-
 function rotate() {
-  older_than=$(6_weeks_ago)
-  keys_to_delete=$(fetch_candidate_keys "$older_than" | transform_candidate_keys)
+  local older_than=$(6_weeks_ago)
+  local keys_to_delete=$(fetch_candidate_keys "$older_than" | transform_candidate_keys)
+  local delete_list=$(echo "$keys_to_delete" | jq --compact-output '{Objects: .}')
 
-  if [[ -z "$keys_to_delete" ]]; then
+  if [[ "$delete_list" == '{"Objects":[]}' ]]; then
     echo "No files to delete"
     exit 0
   fi
 
   echo "Deleting files older than $older_than"
-  echo "$keys_to_delete"
-
-  delete_list=$(echo "$keys_to_delete" | jq -c '{Objects: .}')
-
+  echo "$delete_list"
   aws s3api delete-objects \
     --bucket "$BUCKET_NAME" \
     --delete "$delete_list"
