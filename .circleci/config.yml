@@ -58,13 +58,36 @@ jobs:
             touch .env
             source venv/bin/activate
             python create.py uk
+  rotate:
+    docker:
+      - image: cimg/base:current-22.04
+    steps:
+      - checkout
+      - run:
+          name: "Rotate electronic tariff files"
+          command: |
+            .circleci/bin/rotate-electronic-tariff-files
 
 workflows:
   ci:
     jobs:
-      - email:
+      - test:
           context: electronic-tariff-file
           filters:
             branches:
               ignore:
                 - main
+  thursday:
+    triggers:
+      - schedule:
+          cron: "30 08 * * 4"
+          filters:
+            branches:
+              only:
+                - main
+    jobs:
+      - email:
+          context: electronic-tariff-file
+
+      - rotate:
+          context: electronic-tariff-file
