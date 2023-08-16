@@ -4,13 +4,8 @@ orbs:
   aws-cli: circleci/aws-cli@2.0.3
   slack: circleci/slack@4.3.0
 
-jobs:
-  test:
-    docker:
-      - image: cimg/python:3.10.7
-      - image: cimg/postgres:15.4
-    environment:
-      SEND_MAIL: 0
+commands:
+  common_steps:
     steps:
       - checkout
       - restore_cache:
@@ -30,24 +25,44 @@ jobs:
           name: "Prepare database"
           command: |
             aws s3 cp s3://$DATABASE_BACKUPS_BUCKET_NAME/snapshots/tariff-merged-production.sql.zip .
-
             unzip tariff-merged-production.sql.zip
-
             createdb -h localhost -U postgres tariff_development
-
             psql -h localhost -U postgres tariff_development < tariff-merged-production-postgres.sql
+
+jobs:
+  test:
+    docker:
+      - image: cimg/python:3.10.7
+      - image: cimg/postgres:15.4
+    environment:
+      SEND_MAIL: 0
+      DEBUG_MODE: 1
+    steps:
+      - common_steps
       - run:
           name: "Integrate functionality"
           command: |
             touch .env
             source venv/bin/activate
-            export DEBUG_MODE=1
+            python create.py uk
+
+  email:
+    docker:
+      - image: cimg/python:3.10.7
+      - image: cimg/postgres:15.4
+    steps:
+      - common_steps
+      - run:
+          name: "Production run and send emails"
+          command: |
+            touch .env
+            source venv/bin/activate
             python create.py uk
 
 workflows:
   ci:
     jobs:
-      - test:
+      - email:
           context: electronic-tariff-file
           filters:
             branches:
