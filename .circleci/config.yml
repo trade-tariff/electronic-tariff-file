@@ -36,13 +36,13 @@ jobs:
             createdb -h localhost -U postgres tariff_development
 
             psql -h localhost -U postgres tariff_development < tariff-merged-production-postgres.sql
-      # - run:
-      #     name: "Integrate functionality"
-      #     command: |
-      #       touch .env
-      #       source venv/bin/activate
-      #       export DEBUG_MODE=1
-      #       python create.py uk
+      - run:
+          name: "Integrate functionality"
+          command: |
+            touch .env
+            source venv/bin/activate
+            export DEBUG_MODE=1
+            python create.py uk
 
 workflows:
   ci:
