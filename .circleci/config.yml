@@ -1,0 +1,94 @@
+version: 2.1
+
+orbs:
+  aws-cli: circleci/aws-cli@2.0.3
+  slack: circleci/slack@4.3.0
+
+commands:
+  common_steps:
+    steps:
+      - checkout
+      - restore_cache:
+          key: deps-1.0.0-{{ checksum "requirements.txt" }}
+      - run:
+          name: "Setup environment"
+          command: |
+            python -m venv venv
+            source venv/bin/activate
+            pip install -r requirements.txt
+      - save_cache:
+          key: deps-1.0.0-{{ checksum "requirements.txt" }}
+          paths:
+            - "venv"
+      - aws-cli/install
+      - run:
+          name: "Prepare database"
+          command: |
+            aws s3 cp s3://$DATABASE_BACKUPS_BUCKET_NAME/snapshots/tariff-merged-production.sql.zip .
+            unzip tariff-merged-production.sql.zip
+            createdb -h localhost -U postgres tariff_development
+            psql -h localhost -U postgres tariff_development < tariff-merged-production-postgres.sql
+
+jobs:
+  test:
+    docker:
+      - image: cimg/python:3.10.7
+      - image: cimg/postgres:15.4
+    environment:
+      SEND_MAIL: 0
+      DEBUG_MODE: 1
+    steps:
+      - common_steps
+      - run:
+          name: "Integrate functionality"
+          command: |
+            touch .env
+            source venv/bin/activate
+            python create.py uk
+
+  email:
+    docker:
+      - image: cimg/python:3.10.7
+      - image: cimg/postgres:15.4
+    steps:
+      - common_steps
+      - run:
+          name: "Production run and send emails"
+          command: |
+            touch .env
+            source venv/bin/activate
+            python create.py uk
+  rotate:
+    docker:
+      - image: cimg/base:current-22.04
+    steps:
+      - checkout
+      - aws-cli/install
+      - run:
+          name: "Rotate electronic tariff files"
+          command: |
+            .circleci/bin/rotate-electronic-tariff-files
+
+workflows:
+  ci:
+    jobs:
+      - test:
+          context: electronic-tariff-file
+          filters:
+            branches:
+              ignore:
+                - main
+  thursday:
+    triggers:
+      - schedule:
+          cron: "30 08 * * 4"
+          filters:
+            branches:
+              only:
+                - main
+    jobs:
+      - email:
+          context: electronic-tariff-file
+
+      - rotate:
+          context: electronic-tariff-file

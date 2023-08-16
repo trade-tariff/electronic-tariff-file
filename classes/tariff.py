@@ -171,7 +171,6 @@ class Tariff(object):
         self.WRITE_FOOTNOTES = int(os.getenv('WRITE_FOOTNOTES'))
         self.WRITE_ANCILLARY_FILES = int(os.getenv('WRITE_ANCILLARY_FILES'))
         self.DEBUG_MODE = f.get_config_key('DEBUG_MODE', "int", 0)
-        self.PLACEHOLDER_FOR_EMPTY_DESCRIPTIONS = os.getenv('PLACEHOLDER_FOR_EMPTY_DESCRIPTIONS')
 
         # There is only any point in writing to AWS & sending a mail
         # if both ZIP variables are set
@@ -184,9 +183,13 @@ class Tariff(object):
             self.CREATE_7Z = 0
             self.CREATE_ZIP = 0
             message = "You are running in debug mode\n"
-            question = "Are you sure you want to continue?\n\n"
-            if f.yesno_question(message, question) is False:
-                sys.exit()
+            message += "The following variables are set to 0:\n"
+            message += "- WRITE_TO_AWS\n"
+            message += "- SEND_MAIL\n"
+            message += "- CREATE_7Z\n"
+            message += "- CREATE_ZIP\n"
+            message += "\n"
+            print(message)
         else:
             if self.CREATE_7Z == 0 or self.CREATE_ZIP == 0:
                 self.WRITE_TO_AWS = 0
