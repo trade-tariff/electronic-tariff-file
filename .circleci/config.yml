@@ -48,7 +48,7 @@ workflows:
   ci:
     jobs:
       - test:
-          context: trade-tariff
+          context: electronic-tariff-file
           filters:
             branches:
               ignore:
