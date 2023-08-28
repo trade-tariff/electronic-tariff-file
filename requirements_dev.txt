@@ -1,2 +1,2 @@
-autopep8==2.0.2
+autopep8==2.0.4
 flake8==6.1.0
