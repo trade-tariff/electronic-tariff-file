@@ -15,7 +15,7 @@ psycopg2-binary==2.9.7
 py7zr==0.20.6
 pybcj==1.0.1
 pycodestyle==2.11.0
-pycryptodomex==3.18.0
+pycryptodomex==3.19.0
 pyflakes==3.1.0
 pyminizip==0.2.6
 pyppmd==1.0.0
