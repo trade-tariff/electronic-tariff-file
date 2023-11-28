@@ -24,10 +24,10 @@ commands:
       - run:
           name: "Prepare database"
           command: |
-            aws s3 cp s3://$DATABASE_BACKUPS_BUCKET_NAME/snapshots/tariff-merged-production.sql.zip .
-            unzip tariff-merged-production.sql.zip
-            createdb -h localhost -U postgres tariff_development
-            psql -h localhost -U postgres tariff_development < tariff-merged-production-postgres.sql
+            wget --user $BASIC_USER --password $BASIC_PASSWORD $DUMP_URL
+            gunzip tariff-merged-staging.sql.gz
+            createdb -h localhost -U postgres electronic_tariff_file
+            psql -h localhost -U postgres electronic_tariff_file < tariff-merged-staging.sql
 
 jobs:
   test:
