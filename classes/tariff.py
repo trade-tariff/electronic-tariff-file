@@ -162,7 +162,6 @@ class Tariff(object):
             g.complete_tariff = True
 
         self.BUCKET_NAME = os.getenv('BUCKET_NAME')
-        self.bucket_url = "https://" + self.BUCKET_NAME + ".s3.amazonaws.com/"
         self.bucket_url = "https://reporting.trade-tariff.service.gov.uk/"
 
         self.INCLUDE_ADDITIONAL_SUPPLEMENTARY_UNITS = int(os.getenv('INCLUDE_ADDITIONAL_SUPPLEMENTARY_UNITS'))
@@ -1532,13 +1531,16 @@ class Tariff(object):
         self.send_email_message()
 
     def send_email_message(self):
+        print("Sending email")
         subject = "Issue of updated HMRC Electronic Tariff File for " + g.SNAPSHOT_DATE
         attachment_list = [
             self.documentation_file,
             self.correlation_file
         ]
         s = SesMailer(subject, self.html_content, attachment_list)
-        s.send()
+        result = s.send()
+        print(result)
+        print("Email sent")
 
     def create_delta(self):
         print("Creating delta")
