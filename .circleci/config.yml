@@ -68,6 +68,14 @@ workflows:
             branches:
               ignore:
                 - main
+
+      - email:
+          context: electronic-tariff-file
+          filters:
+            branches:
+              ignore:
+                - main
+
   thursday:
     triggers:
       - schedule:
