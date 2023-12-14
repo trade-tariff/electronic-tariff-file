@@ -32,6 +32,9 @@ class SesMailer(object):
 
                 message.attach(attachment)
 
+        print("Sending email to: {}".format(self._to_emails))
+        print("Subject: {}".format(self._subject))
+        print("Content: {}".format(self._content))
         return self._client.send_raw_email(
             Source=self._from_email,
             Destinations=self._to_emails.split(","),
