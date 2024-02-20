@@ -25,9 +25,10 @@ commands:
           name: "Prepare database"
           command: |
             wget --user $BASIC_USER --password $BASIC_PASSWORD $DUMP_URL
-            gunzip tariff-merged-staging.sql.gz
             createdb -h localhost -U postgres electronic_tariff_file
-            psql -h localhost -U postgres electronic_tariff_file < tariff-merged-staging.sql
+
+            GZ_DB_FILENAME=$(basename $DUMP_URL) # extract filename from DB URL
+            gunzip -c $GZ_DB_FILENAME | psql -h localhost -U postgres electronic_tariff_file
 
 jobs:
   test:
