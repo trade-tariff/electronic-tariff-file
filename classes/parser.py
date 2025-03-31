@@ -27,8 +27,10 @@ class Parser(object):
                 matches = re.search(pattern, subdir).regs
                 if len(matches) > 0:
                     match = matches[0]
-                    date_part = subdir[match[0]:match[1]]
-                    filename = "hmrc-tariff-ascii-{date_part}.txt".format(date_part=date_part)
+                    date_part = subdir[match[0] : match[1]]
+                    filename = "hmrc-tariff-ascii-{date_part}.txt".format(
+                        date_part=date_part
+                    )
                     break
 
         if filename is None:

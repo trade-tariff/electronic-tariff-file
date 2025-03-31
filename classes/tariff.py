@@ -45,6 +45,7 @@ class Tariff(object):
         self.get_folders()
 
         # self.get_all_quotas()
+
     def process(self):
         self.get_all_additional_codes()
         self.get_all_geographies()
@@ -74,7 +75,9 @@ class Tariff(object):
         for c in g.commodities_dict:
             g.commodities_dict[c].get_commodity_type()
             if g.commodities_dict[c].writable:
-                g.commodities_dict[c].get_supplementary_units(self.INCLUDE_ADDITIONAL_SUPPLEMENTARY_UNITS)
+                g.commodities_dict[c].get_supplementary_units(
+                    self.INCLUDE_ADDITIONAL_SUPPLEMENTARY_UNITS
+                )
                 g.commodities_dict[c].get_seasonal_rate()
                 g.commodities_dict[c].check_end_use()
                 g.commodities_dict[c].get_ancestral_descriptions()
@@ -106,23 +109,25 @@ class Tariff(object):
             try:
                 datetime.strptime(d, date_format)
                 g.SNAPSHOT_DATE = d
-                g.COMPARISON_DATE = datetime.strptime(d, '%Y-%m-%d') - timedelta(days=7)
-                d2 = datetime.strptime(d, '%Y-%m-%d')
-                g.SNAPSHOT_DAY = d2.strftime('%d')
-                g.SNAPSHOT_MONTH = d2.strftime('%m')
-                g.SNAPSHOT_YEAR = d2.strftime('%Y')
+                g.COMPARISON_DATE = datetime.strptime(d, "%Y-%m-%d") - timedelta(days=7)
+                d2 = datetime.strptime(d, "%Y-%m-%d")
+                g.SNAPSHOT_DAY = d2.strftime("%d")
+                g.SNAPSHOT_MONTH = d2.strftime("%m")
+                g.SNAPSHOT_YEAR = d2.strftime("%Y")
 
             except ValueError:
-                print("This is the incorrect date string format. It should be YYYY-MM-DD")
+                print(
+                    "This is the incorrect date string format. It should be YYYY-MM-DD"
+                )
                 sys.exit()
         else:
             d = datetime.now()
-            g.SNAPSHOT_DATE = d.strftime('%Y-%m-%d')
+            g.SNAPSHOT_DATE = d.strftime("%Y-%m-%d")
             g.COMPARISON_DATE = d - timedelta(days=7)
 
-            g.SNAPSHOT_DAY = d.strftime('%d')
-            g.SNAPSHOT_MONTH = d.strftime('%m')
-            g.SNAPSHOT_YEAR = d.strftime('%Y')
+            g.SNAPSHOT_DAY = d.strftime("%d")
+            g.SNAPSHOT_MONTH = d.strftime("%m")
+            g.SNAPSHOT_YEAR = d.strftime("%Y")
 
     def get_scope(self):
         # Takes arguments from the command line to identify
@@ -137,11 +142,11 @@ class Tariff(object):
             print("Please specify the country scope (uk or xi)")
             sys.exit()
 
-        load_dotenv('.env')
+        load_dotenv(".env")
         if self.scope == "uk":
-            g.DATABASE = os.getenv('DATABASE_UK')
+            g.DATABASE = os.getenv("DATABASE_UK")
         else:
-            g.DATABASE = os.getenv('DATABASE_EU')
+            g.DATABASE = os.getenv("DATABASE_EU")
 
     def get_additional_supplementary_units(self):
         g.additional_supplememtary_units = {}
@@ -152,29 +157,31 @@ class Tariff(object):
             g.additional_supplememtary_units = json.load(f)
 
     def get_config(self):
-        load_dotenv('.env')
-        self.use_materialized_views = int(os.getenv('USE_MATERIALIZED_VIEWS'))
-        self.min_code = os.getenv('MIN_CODE')
-        self.max_code = os.getenv('MAX_CODE')
+        load_dotenv(".env")
+        self.use_materialized_views = int(os.getenv("USE_MATERIALIZED_VIEWS"))
+        self.min_code = os.getenv("MIN_CODE")
+        self.max_code = os.getenv("MAX_CODE")
         if self.min_code != "0000000000" or self.max_code != "9999999999":
             g.complete_tariff = False
         else:
             g.complete_tariff = True
 
-        self.BUCKET_NAME = os.getenv('BUCKET_NAME')
+        self.BUCKET_NAME = os.getenv("BUCKET_NAME")
         self.bucket_url = "https://reporting.trade-tariff.service.gov.uk/"
 
-        self.INCLUDE_ADDITIONAL_SUPPLEMENTARY_UNITS = int(os.getenv('INCLUDE_ADDITIONAL_SUPPLEMENTARY_UNITS'))
-        self.WRITE_MEASURES = int(os.getenv('WRITE_MEASURES'))
-        self.WRITE_ADDITIONAL_CODES = int(os.getenv('WRITE_ADDITIONAL_CODES'))
-        self.WRITE_FOOTNOTES = int(os.getenv('WRITE_FOOTNOTES'))
-        self.WRITE_ANCILLARY_FILES = int(os.getenv('WRITE_ANCILLARY_FILES'))
-        self.DEBUG_MODE = f.get_config_key('DEBUG_MODE', "int", 0)
+        self.INCLUDE_ADDITIONAL_SUPPLEMENTARY_UNITS = int(
+            os.getenv("INCLUDE_ADDITIONAL_SUPPLEMENTARY_UNITS")
+        )
+        self.WRITE_MEASURES = int(os.getenv("WRITE_MEASURES"))
+        self.WRITE_ADDITIONAL_CODES = int(os.getenv("WRITE_ADDITIONAL_CODES"))
+        self.WRITE_FOOTNOTES = int(os.getenv("WRITE_FOOTNOTES"))
+        self.WRITE_ANCILLARY_FILES = int(os.getenv("WRITE_ANCILLARY_FILES"))
+        self.DEBUG_MODE = f.get_config_key("DEBUG_MODE", "int", 0)
 
         # There is only any point in writing to AWS & sending a mail
         # if both ZIP variables are set
-        self.CREATE_7Z = f.get_config_key('CREATE_7Z', "int", 0)
-        self.CREATE_ZIP = f.get_config_key('CREATE_ZIP', "int", 0)
+        self.CREATE_7Z = f.get_config_key("CREATE_7Z", "int", 0)
+        self.CREATE_ZIP = f.get_config_key("CREATE_ZIP", "int", 0)
 
         if self.DEBUG_MODE:
             self.WRITE_TO_AWS = 0
@@ -195,8 +202,8 @@ class Tariff(object):
                 self.SEND_MAIL = 0
             else:
                 # We will only ever send the email if write to AWS is set to true
-                self.WRITE_TO_AWS = f.get_config_key('WRITE_TO_AWS', "int", 0)
-                self.SEND_MAIL = f.get_config_key('SEND_MAIL', "int", 0)
+                self.WRITE_TO_AWS = f.get_config_key("WRITE_TO_AWS", "int", 0)
+                self.SEND_MAIL = f.get_config_key("SEND_MAIL", "int", 0)
                 if self.WRITE_TO_AWS == 0:
                     self.SEND_MAIL = 0
 
@@ -207,8 +214,7 @@ class Tariff(object):
                 self.SEND_MAIL = False
                 self.WRITE_TO_AWS = False
                 message = "The lowest code that this will be run against is {min_code} and the highest is {max_code}\n\n".format(
-                    min_code=self.min_code,
-                    max_code=self.max_code
+                    min_code=self.min_code, max_code=self.max_code
                 )
                 message += "If you choose to continue, then:\n\n- no files will be uploaded to AWS\n- no email will be sent.\n\n"
                 question = "Are you sure you want to continue?\n\n"
@@ -227,7 +233,9 @@ class Tariff(object):
                     msg = "Are you sure you want to continue?\n\n"
 
                     questions = [
-                        inquirer.Confirm("proceed_with_messaging_status", message=msg, default=True),
+                        inquirer.Confirm(
+                            "proceed_with_messaging_status", message=msg, default=True
+                        ),
                     ]
                     answers = inquirer.prompt(questions)
                     if answers["proceed_with_messaging_status"] is False:
@@ -241,8 +249,13 @@ class Tariff(object):
         self.data_out_folder = os.path.join(self.data_folder, "out")
         self.export_folder = os.path.join(self.current_folder, "_export")
         self.documentation_folder = os.path.join(self.current_folder, "documentation")
-        self.documentation_file = os.path.join(self.documentation_folder, "Documentation on tariff CSV data files.docx")
-        self.correlation_file = os.path.join(self.documentation_folder, "Ascii file and CDS measure type correlation table 1.1.docx")
+        self.documentation_file = os.path.join(
+            self.documentation_folder, "Documentation on tariff CSV data files.docx"
+        )
+        self.correlation_file = os.path.join(
+            self.documentation_folder,
+            "Ascii file and CDS measure type correlation table 1.1.docx",
+        )
 
         self.filename = "hmrc-tariff-ascii-" + g.SNAPSHOT_DATE + ".txt"
 
@@ -250,7 +263,7 @@ class Tariff(object):
         os.makedirs(self.export_folder, exist_ok=True)
 
         # Make the date-specific folder
-        date_time_obj = datetime.strptime(g.SNAPSHOT_DATE, '%Y-%m-%d')
+        date_time_obj = datetime.strptime(g.SNAPSHOT_DATE, "%Y-%m-%d")
         self.year = date_time_obj.strftime("%Y")
         self.month = date_time_obj.strftime("%b").lower()
         self.month2 = date_time_obj.strftime("%m").lower()
@@ -281,12 +294,20 @@ class Tariff(object):
 
         # Measures CSV extract filename
         self.measure_csv_filename = self.filename.replace(".txt", ".csv")
-        self.measure_csv_filename = self.measure_csv_filename.replace("ascii", "measures")
-        self.measure_csv_filepath = os.path.join(self.csv_folder, self.measure_csv_filename)
+        self.measure_csv_filename = self.measure_csv_filename.replace(
+            "ascii", "measures"
+        )
+        self.measure_csv_filepath = os.path.join(
+            self.csv_folder, self.measure_csv_filename
+        )
 
         # Commodities CSV extract filename
-        self.commodity_csv_filename = self.measure_csv_filename.replace("measures", "commodities")
-        self.commodity_csv_filepath = os.path.join(self.csv_folder, self.commodity_csv_filename)
+        self.commodity_csv_filename = self.measure_csv_filename.replace(
+            "measures", "commodities"
+        )
+        self.commodity_csv_filepath = os.path.join(
+            self.csv_folder, self.commodity_csv_filename
+        )
 
         if self.WRITE_ANCILLARY_FILES:
             # MFN (103 / 105) CSV extract filename
@@ -295,40 +316,72 @@ class Tariff(object):
             self.mfn_csv_filepath = os.path.join(self.csv_folder, self.mfn_csv_filename)
 
             # Supplementary units (109, 110, 111)
-            self.supplementary_units_csv_filename = self.filename.replace(".txt", ".csv")
-            self.supplementary_units_csv_filename = self.supplementary_units_csv_filename.replace("ascii", "supplementary_units")
-            self.supplementary_units_csv_filepath = os.path.join(self.csv_folder, self.supplementary_units_csv_filename)
+            self.supplementary_units_csv_filename = self.filename.replace(
+                ".txt", ".csv"
+            )
+            self.supplementary_units_csv_filename = (
+                self.supplementary_units_csv_filename.replace(
+                    "ascii", "supplementary_units"
+                )
+            )
+            self.supplementary_units_csv_filepath = os.path.join(
+                self.csv_folder, self.supplementary_units_csv_filename
+            )
 
             # Footnotes CSV extract filename
-            self.footnote_csv_filename = self.measure_csv_filename.replace("measures", "footnotes")
-            self.footnote_csv_filepath = os.path.join(self.csv_folder, self.footnote_csv_filename)
+            self.footnote_csv_filename = self.measure_csv_filename.replace(
+                "measures", "footnotes"
+            )
+            self.footnote_csv_filepath = os.path.join(
+                self.csv_folder, self.footnote_csv_filename
+            )
 
             # Certificates CSV extract filename
-            self.certificate_csv_filename = self.measure_csv_filename.replace("measures", "certificates")
-            self.certificate_csv_filepath = os.path.join(self.csv_folder, self.certificate_csv_filename)
+            self.certificate_csv_filename = self.measure_csv_filename.replace(
+                "measures", "certificates"
+            )
+            self.certificate_csv_filepath = os.path.join(
+                self.csv_folder, self.certificate_csv_filename
+            )
 
             # Quotas CSV extract filename
-            self.quota_csv_filename = self.measure_csv_filename.replace("measures", "quotas")
-            self.quota_csv_filepath = os.path.join(self.csv_folder, self.quota_csv_filename)
+            self.quota_csv_filename = self.measure_csv_filename.replace(
+                "measures", "quotas"
+            )
+            self.quota_csv_filepath = os.path.join(
+                self.csv_folder, self.quota_csv_filename
+            )
 
             # Geography CSV extract filename
-            self.geography_csv_filename = self.measure_csv_filename.replace("measures", "geography")
-            self.geography_csv_filepath = os.path.join(self.csv_folder, self.geography_csv_filename)
+            self.geography_csv_filename = self.measure_csv_filename.replace(
+                "measures", "geography"
+            )
+            self.geography_csv_filepath = os.path.join(
+                self.csv_folder, self.geography_csv_filename
+            )
 
             # Measure type CSV extract filename
-            self.measure_type_csv_filename = self.measure_csv_filename.replace("measures", "measure_type")
-            self.measure_type_csv_filepath = os.path.join(self.csv_folder, self.measure_type_csv_filename)
+            self.measure_type_csv_filename = self.measure_csv_filename.replace(
+                "measures", "measure_type"
+            )
+            self.measure_type_csv_filepath = os.path.join(
+                self.csv_folder, self.measure_type_csv_filename
+            )
 
             # Additional code CSV extract filename
-            self.additional_code_csv_filename = self.measure_csv_filename.replace("measures", "additional_code")
-            self.additional_code_csv_filepath = os.path.join(self.csv_folder, self.additional_code_csv_filename)
+            self.additional_code_csv_filename = self.measure_csv_filename.replace(
+                "measures", "additional_code"
+            )
+            self.additional_code_csv_filepath = os.path.join(
+                self.csv_folder, self.additional_code_csv_filename
+            )
 
     def get_geographical_areas_lookup(self):
         self.start_timer("Getting geographical areas")
         g.geographical_areas = []
         filename = os.path.join(self.reference_folder, "geographical_areas.csv")
         with open(filename) as csv_file:
-            csv_reader = csv.reader(csv_file, delimiter=',')
+            csv_reader = csv.reader(csv_file, delimiter=",")
             for row in csv_reader:
                 if len(row) >= 3:
                     geographical_area = GeographicalArea(row[0], row[1], row[2])
@@ -341,7 +394,7 @@ class Tariff(object):
         g.measure_types = {}
         filename = os.path.join(self.reference_folder, "measure_types.csv")
         with open(filename) as csv_file:
-            csv_reader = csv.reader(csv_file, delimiter=',')
+            csv_reader = csv.reader(csv_file, delimiter=",")
             for row in csv_reader:
                 if len(row) >= 4:
                     measure_type = MeasureType(row[0], row[1], row[2], row[3])
@@ -353,7 +406,7 @@ class Tariff(object):
         g.supplementary_unit_dict = {}
         filename = os.path.join(self.reference_folder, "supplementary_units.csv")
         with open(filename) as csv_file:
-            csv_reader = csv.reader(csv_file, delimiter=',')
+            csv_reader = csv.reader(csv_file, delimiter=",")
             for row in csv_reader:
                 g.supplementary_unit_dict[row[0] + row[1]] = row[2]
         self.end_timer("Getting supplementary units")
@@ -420,12 +473,7 @@ class Tariff(object):
         ) select * from cer
         where cer.goods_nomenclature_item_id not in (select goods_nomenclature_item_id from hidden_goods_nomenclatures);
         """
-        params = [
-            g.SNAPSHOT_DATE,
-            g.SNAPSHOT_DATE,
-            g.SNAPSHOT_DATE,
-            g.SNAPSHOT_DATE
-        ]
+        params = [g.SNAPSHOT_DATE, g.SNAPSHOT_DATE, g.SNAPSHOT_DATE, g.SNAPSHOT_DATE]
         d = Database()
         rows = d.run_query(sql, params)
         for row in rows:
@@ -457,7 +505,7 @@ class Tariff(object):
             g.SNAPSHOT_DATE,
             g.SNAPSHOT_DATE,
             self.min_code,
-            self.max_code
+            self.max_code,
         ]
         rows = d.run_query(sql, params)
         for row in rows:
@@ -474,16 +522,17 @@ class Tariff(object):
         self.start_timer("Getting measure excluded geographical areas")
         self.measure_excluded_geographical_areas = []
         if self.use_materialized_views:
-            sql = SqlQuery("excluded_geographical_areas", "get_measure_excluded_geographical_areas_mv.sql").sql
+            sql = SqlQuery(
+                "excluded_geographical_areas",
+                "get_measure_excluded_geographical_areas_mv.sql",
+            ).sql
         else:
-            sql = SqlQuery("excluded_geographical_areas", "get_measure_excluded_geographical_areas.sql").sql
+            sql = SqlQuery(
+                "excluded_geographical_areas",
+                "get_measure_excluded_geographical_areas.sql",
+            ).sql
         d = Database()
-        params = [
-            g.SNAPSHOT_DATE,
-            g.SNAPSHOT_DATE,
-            g.SNAPSHOT_DATE,
-            g.SNAPSHOT_DATE
-        ]
+        params = [g.SNAPSHOT_DATE, g.SNAPSHOT_DATE, g.SNAPSHOT_DATE, g.SNAPSHOT_DATE]
         rows = d.run_query(sql, params)
         for row in rows:
             measure_excluded_geographical_area = MeasureExcludedGeographicalArea()
@@ -491,18 +540,24 @@ class Tariff(object):
             measure_excluded_geographical_area.excluded_geographical_area = row[1]
             measure_excluded_geographical_area.geographical_area_sid = row[2]
 
-            self.measure_excluded_geographical_areas.append(measure_excluded_geographical_area)
+            self.measure_excluded_geographical_areas.append(
+                measure_excluded_geographical_area
+            )
 
         # Assign the exclusions to the measures
         for mega in self.measure_excluded_geographical_areas:
-            self.measures_dict[mega.measure_sid].measure_excluded_geographical_areas.append(mega)
+            self.measures_dict[
+                mega.measure_sid
+            ].measure_excluded_geographical_areas.append(mega)
 
         self.end_timer("Getting measure excluded geographical areas")
 
     def assign_commodity_footnotes(self):
         self.start_timer("Assigning footnotes to commodities")
         for footnote_association in g.commodity_footnotes:
-            g.commodities_dict[footnote_association.goods_nomenclature_sid].footnotes.append(footnote_association)
+            g.commodities_dict[
+                footnote_association.goods_nomenclature_sid
+            ].footnotes.append(footnote_association)
 
         for commodity in self.commodities:
             commodity.append_footnotes_to_description()
@@ -515,7 +570,7 @@ class Tariff(object):
         g.seasonal_rates = []
         filename = os.path.join(self.reference_folder, "seasonal_rates.csv")
         with open(filename) as csv_file:
-            csv_reader = csv.reader(csv_file, delimiter=',')
+            csv_reader = csv.reader(csv_file, delimiter=",")
             for row in csv_reader:
                 seasonal_rate = SeasonalRate(row[0], row[1], row[2], row[3], row[4])
                 g.seasonal_rates.append(seasonal_rate)
@@ -523,7 +578,11 @@ class Tariff(object):
         # Get the IDs of the comm code tiers included
         for rate in g.seasonal_rates:
             for commodity in self.commodities:
-                if commodity.goods_nomenclature_item_id == rate.goods_nomenclature_item_id and commodity.productline_suffix == "80":
+                if (
+                    commodity.goods_nomenclature_item_id
+                    == rate.goods_nomenclature_item_id
+                    and commodity.productline_suffix == "80"
+                ):
                     rate.goods_nomenclature_sid = commodity.goods_nomenclature_sid
                     break
 
@@ -534,7 +593,7 @@ class Tariff(object):
         g.spvs = []
         filename = os.path.join(self.reference_folder, "spvs.csv")
         with open(filename) as csv_file:
-            csv_reader = csv.reader(csv_file, delimiter=',')
+            csv_reader = csv.reader(csv_file, delimiter=",")
             for row in csv_reader:
                 spv = SimplifiedProcedureValue(row[0], row[1])
                 g.spvs.append(spv)
@@ -556,7 +615,7 @@ class Tariff(object):
             g.SNAPSHOT_DATE,
             g.SNAPSHOT_DATE,
             self.min_code,
-            self.max_code
+            self.max_code,
         ]
         rows = d.run_query(sql, params)
         self.commodities = []
@@ -583,7 +642,7 @@ class Tariff(object):
             g.SNAPSHOT_DATE,
             g.SNAPSHOT_DATE,
             self.min_code,
-            self.max_code
+            self.max_code,
         ]
         rows = d.run_query(sql, params)
         self.measures_dict = {}
@@ -615,7 +674,7 @@ class Tariff(object):
             g.SNAPSHOT_DATE,
             g.SNAPSHOT_DATE,
             self.min_code,
-            self.max_code
+            self.max_code,
         ]
         rows = d.run_query(sql, params)
         self.measure_components = []
@@ -638,7 +697,7 @@ class Tariff(object):
             g.SNAPSHOT_DATE,
             g.SNAPSHOT_DATE,
             self.min_code,
-            self.max_code
+            self.max_code,
         ]
         rows = d.run_query(sql, params)
         self.measure_conditions = []
@@ -693,9 +752,18 @@ class Tariff(object):
         self.start_timer("Assign the measures to the commodities")
         for m in self.measures_dict:
             measure_sid = self.measures_dict[m].measure_sid
-            if measure_sid not in g.commodities_dict[self.measures_dict[m].goods_nomenclature_sid].measure_sids:
-                g.commodities_dict[self.measures_dict[m].goods_nomenclature_sid].measures.append(self.measures_dict[m])
-                g.commodities_dict[self.measures_dict[m].goods_nomenclature_sid].measure_sids.append(self.measures_dict[m].measure_sid)
+            if (
+                measure_sid
+                not in g.commodities_dict[
+                    self.measures_dict[m].goods_nomenclature_sid
+                ].measure_sids
+            ):
+                g.commodities_dict[
+                    self.measures_dict[m].goods_nomenclature_sid
+                ].measures.append(self.measures_dict[m])
+                g.commodities_dict[
+                    self.measures_dict[m].goods_nomenclature_sid
+                ].measure_sids.append(self.measures_dict[m].measure_sid)
 
         # Inherit the measures to the end lines that share them
         self.end_timer("Assign the measures to the commodities")
@@ -777,27 +845,52 @@ class Tariff(object):
         self.commodity_header += week_num
 
     def update_commodity_control_record(self):
-        self.TOTAL_RECORD_COUNT = self.CM_RECORD_COUNT + self.CA_RECORD_COUNT + self.ME_RECORD_COUNT + self.MD_RECORD_COUNT + self.MX_RECORD_COUNT + self.TOTAL_RECORD_COUNT
+        self.TOTAL_RECORD_COUNT = (
+            self.CM_RECORD_COUNT
+            + self.CA_RECORD_COUNT
+            + self.ME_RECORD_COUNT
+            + self.MD_RECORD_COUNT
+            + self.MX_RECORD_COUNT
+            + self.TOTAL_RECORD_COUNT
+        )
         self.commodity_control_record = "CO"
         self.commodity_control_record += str(self.CM_RECORD_COUNT).zfill(7)
         self.commodity_control_record += str(self.CA_RECORD_COUNT).zfill(7)
         self.commodity_control_record += str(self.ME_RECORD_COUNT).zfill(7)
         self.commodity_control_record += str(self.MD_RECORD_COUNT).zfill(7)
         self.commodity_control_record += "MXCOUNT"  # str(self.MX_RECORD_COUNT).zfill(7)
-        self.commodity_control_record += "TOTAL_COUNT"  # str(self.TOTAL_RECORD_COUNT).zfill(11)
+        self.commodity_control_record += (
+            "TOTAL_COUNT"  # str(self.TOTAL_RECORD_COUNT).zfill(11)
+        )
 
     def write_icl_vme_file(self):
         self.start_timer("Writing commodities")
         f = open(self.filepath_icl_vme, "w")
-        field_names = ["commodity__sid", "commodity__code", "measure__sid", "measure__type__id",
-                       "measure__type__description", "measure__additional_code__code",
-                       "measure__additional_code__description", "measure__duty_expression",
-                       "measure__effective_start_date", "measure__effective_end_date",
-                       "measure__reduction_indicator", "measure__footnotes", "measure__conditions",
-                       "measure__geographical_area__sid", "measure__geographical_area__id",
-                       "measure__geographical_area__description", "measure__excluded_geographical_areas__ids",
-                       "measure__excluded_geographical_areas__descriptions", "measure__quota__order_number",
-                       "trade__direction", "measure_group_code", "measure_type_code", "tax_type_code"]
+        field_names = [
+            "commodity__sid",
+            "commodity__code",
+            "measure__sid",
+            "measure__type__id",
+            "measure__type__description",
+            "measure__additional_code__code",
+            "measure__additional_code__description",
+            "measure__duty_expression",
+            "measure__effective_start_date",
+            "measure__effective_end_date",
+            "measure__reduction_indicator",
+            "measure__footnotes",
+            "measure__conditions",
+            "measure__geographical_area__sid",
+            "measure__geographical_area__id",
+            "measure__geographical_area__description",
+            "measure__excluded_geographical_areas__ids",
+            "measure__excluded_geographical_areas__descriptions",
+            "measure__quota__order_number",
+            "trade__direction",
+            "measure_group_code",
+            "measure_type_code",
+            "tax_type_code",
+        ]
 
         measure_file_header_row = ",".join(field_names) + CommonString.line_feed
 
@@ -807,7 +900,9 @@ class Tariff(object):
         if self.WRITE_ANCILLARY_FILES:
             mfn_csv_file = open(self.mfn_csv_filepath, "w+")
             mfn_csv_file.write(measure_file_header_row)
-            supplementary_units_csv_file = open(self.supplementary_units_csv_filepath, "w+")
+            supplementary_units_csv_file = open(
+                self.supplementary_units_csv_filepath, "w+"
+            )
             supplementary_units_csv_file.write(measure_file_header_row)
 
         # Write the main header record
@@ -840,8 +935,14 @@ class Tariff(object):
                 if self.WRITE_MEASURES:
                     for m in g.commodities_dict[c].measures:
                         tmp = m.measure_record_for_csv
-                        tmp = tmp.replace("GOODS_NOMENCLATURE_SID", str(g.commodities_dict[c].goods_nomenclature_sid))
-                        tmp = tmp.replace("GOODS_NOMENCLATURE_ITEM_ID", g.commodities_dict[c].goods_nomenclature_item_id)
+                        tmp = tmp.replace(
+                            "GOODS_NOMENCLATURE_SID",
+                            str(g.commodities_dict[c].goods_nomenclature_sid),
+                        )
+                        tmp = tmp.replace(
+                            "GOODS_NOMENCLATURE_ITEM_ID",
+                            g.commodities_dict[c].goods_nomenclature_item_id,
+                        )
                         if g.commodities_dict[c].end_line:
                             measure_csv_file.write(tmp + "\n")
                             if self.WRITE_ANCILLARY_FILES:
@@ -854,7 +955,9 @@ class Tariff(object):
                             if m.ORIGIN_COUNTRY_GROUP_CODE == "EXPAND":
                                 for member in m.members:
                                     self.ME_RECORD_COUNT += 1
-                                    tmp = m.measure_record.replace("EXPAND", member + "    ")
+                                    tmp = m.measure_record.replace(
+                                        "EXPAND", member + "    "
+                                    )
                                     f.write(tmp + "\n")
                             else:
                                 self.ME_RECORD_COUNT += 1
@@ -863,7 +966,13 @@ class Tariff(object):
                                     for mega in m.measure_excluded_geographical_areas:
                                         self.MX_RECORD_COUNT += 1
                                         if m.measure_template != "":
-                                            f.write(m.measure_template.replace("$$", mega.excluded_geographical_area) + "\n")
+                                            f.write(
+                                                m.measure_template.replace(
+                                                    "$$",
+                                                    mega.excluded_geographical_area,
+                                                )
+                                                + "\n"
+                                            )
 
         self.update_commodity_control_record()
         f.write(self.commodity_control_record + "\n")
@@ -890,7 +999,7 @@ class Tariff(object):
         self.update_counts()
 
     def update_counts(self):
-        file1 = open(self.filepath_icl_vme, 'r')
+        file1 = open(self.filepath_icl_vme, "r")
         count = 0
         self.CM_RECORD_COUNT = 0
         self.CA_RECORD_COUNT = 0
@@ -924,7 +1033,13 @@ class Tariff(object):
             elif line[0:2] == "MD":
                 self.MD_RECORD_COUNT += 1
 
-        self.TOTAL_RECORD_COUNT = self.CM_RECORD_COUNT + self.CA_RECORD_COUNT + self.ME_RECORD_COUNT + self.MX_RECORD_COUNT + self.MD_RECORD_COUNT
+        self.TOTAL_RECORD_COUNT = (
+            self.CM_RECORD_COUNT
+            + self.CA_RECORD_COUNT
+            + self.ME_RECORD_COUNT
+            + self.MX_RECORD_COUNT
+            + self.MD_RECORD_COUNT
+        )
 
         file1.close()
         print("TOTAL RECORDS")
@@ -983,13 +1098,21 @@ class Tariff(object):
 
     def end_loop_timer(self, msg):
         self.loop_toc = time.perf_counter()
-        msg = msg.upper() + " - Completed in " + "{:.1f}".format(self.loop_toc - self.loop_tic) + " seconds\n"
+        msg = (
+            msg.upper()
+            + " - Completed in "
+            + "{:.1f}".format(self.loop_toc - self.loop_tic)
+            + " seconds\n"
+        )
         print(msg + "\n")
         self.message_string += msg + "\n"
 
     def get_all_footnotes(self):
         self.footnote_csv_file = open(self.footnote_csv_filepath, "w+")
-        self.footnote_csv_file.write('"footnote__id","footnote__description","start__date","end__date","footnote__type"' + CommonString.line_feed)
+        self.footnote_csv_file.write(
+            '"footnote__id","footnote__description","start__date","end__date","footnote__type"'
+            + CommonString.line_feed
+        )
         print("\n")
         self.start_timer("Getting and writing all footnotes for CSV export")
         self.measures = []
@@ -1009,7 +1132,7 @@ class Tariff(object):
             g.SNAPSHOT_DATE,
             g.SNAPSHOT_DATE,
             g.SNAPSHOT_DATE,
-            g.SNAPSHOT_DATE
+            g.SNAPSHOT_DATE,
         ]
         rows = d.run_query(sql, params)
         self.all_footnotes = []
@@ -1031,7 +1154,10 @@ class Tariff(object):
     def get_all_certificates(self):
         self.start_timer("Getting and writing all certificates for CSV export")
         self.certificate_csv_file = open(self.certificate_csv_filepath, "w+")
-        self.certificate_csv_file.write('"certificate__id","certificate__description","start__date","end__date"' + CommonString.line_feed)
+        self.certificate_csv_file.write(
+            '"certificate__id","certificate__description","start__date","end__date"'
+            + CommonString.line_feed
+        )
         self.measures = []
         if self.use_materialized_views:
             sql = SqlQuery("certificates", "get_certificates_mv.sql").sql
@@ -1045,7 +1171,7 @@ class Tariff(object):
             g.SNAPSHOT_DATE,
             g.SNAPSHOT_DATE,
             g.SNAPSHOT_DATE,
-            g.SNAPSHOT_DATE
+            g.SNAPSHOT_DATE,
         ]
         rows = d.run_query(sql, params)
         self.all_certificates = []
@@ -1066,16 +1192,15 @@ class Tariff(object):
     def get_measure_types(self):
         self.start_timer("Getting all measure types for CSV export")
         self.measure_type_csv_file = open(self.measure_type_csv_filepath, "w+")
-        self.measure_type_csv_file.write('"measure_type_id","description"' + CommonString.line_feed)
+        self.measure_type_csv_file.write(
+            '"measure_type_id","description"' + CommonString.line_feed
+        )
         if self.use_materialized_views:
             sql = SqlQuery("measure_types", "get_measure_types_mv.sql").sql
         else:
             sql = SqlQuery("measure_types", "get_measure_types.sql").sql
         d = Database()
-        params = [
-            g.SNAPSHOT_DATE,
-            g.SNAPSHOT_DATE
-        ]
+        params = [g.SNAPSHOT_DATE, g.SNAPSHOT_DATE]
         rows = d.run_query(sql, params)
         self.measure_types = []
         for row in rows:
@@ -1092,7 +1217,9 @@ class Tariff(object):
     def write_measure_types(self):
         self.start_timer("Writing measure types for CSV export")
         self.measure_type_csv_file = open(self.measure_type_csv_filepath, "w+")
-        self.measure_type_csv_file.write('"measure_type_id","description"' + CommonString.line_feed)
+        self.measure_type_csv_file.write(
+            '"measure_type_id","description"' + CommonString.line_feed
+        )
 
         for measure_type in self.measure_types:
             self.measure_type_csv_file.write(measure_type.csv_string)
@@ -1103,7 +1230,10 @@ class Tariff(object):
     def write_all_additional_codes(self):
         self.start_timer("Writing all additional codes for CSV export")
         self.additional_code_csv_file = open(self.additional_code_csv_filepath, "w+")
-        self.additional_code_csv_file.write('"additional code","description","start date","end date","type description"' + CommonString.line_feed)
+        self.additional_code_csv_file.write(
+            '"additional code","description","start date","end date","type description"'
+            + CommonString.line_feed
+        )
 
         for additional_code in self.all_additional_codes:
             self.additional_code_csv_file.write(additional_code.csv_string)
@@ -1118,10 +1248,7 @@ class Tariff(object):
         else:
             sql = SqlQuery("additional_codes", "get_additional_codes.sql").sql
         d = Database()
-        params = [
-            g.SNAPSHOT_DATE,
-            g.SNAPSHOT_DATE
-        ]
+        params = [g.SNAPSHOT_DATE, g.SNAPSHOT_DATE]
         rows = d.run_query(sql, params)
         self.all_additional_codes = []
         g.all_additional_codes_dict = {}
@@ -1149,7 +1276,8 @@ class Tariff(object):
         self.start_timer("Getting and writing all quota definitions for CSV export")
         self.quota_csv_file = open(self.quota_csv_filepath, "w+")
         self.quota_csv_file.write(
-            '"quota__order__number__id","definition__start__date","definition__end__date","initial__volume","unit","critical__state","critical__threshold","quota__type","origins","origin__exclusions","commodities"' + CommonString.line_feed
+            '"quota__order__number__id","definition__start__date","definition__end__date","initial__volume","unit","critical__state","critical__threshold","quota__type","origins","origin__exclusions","commodities"'
+            + CommonString.line_feed
         )
         self.quota_commodities = []
 
@@ -1163,7 +1291,7 @@ class Tariff(object):
             g.SNAPSHOT_DATE,
             g.SNAPSHOT_DATE,
             g.SNAPSHOT_DATE,
-            g.SNAPSHOT_DATE
+            g.SNAPSHOT_DATE,
         ]
         rows = d.run_query(sql, params)
         for row in rows:
@@ -1212,7 +1340,7 @@ class Tariff(object):
             g.SNAPSHOT_DATE,
             quota_order_number_range_licenced,
             g.SNAPSHOT_DATE,
-            g.SNAPSHOT_DATE
+            g.SNAPSHOT_DATE,
         ]
         rows = d.run_query(sql, params)
         self.all_quota_definitions = []
@@ -1230,13 +1358,19 @@ class Tariff(object):
             quota_definition.origins = row[9]
             # Assign the exclusions to the definitions
             for exclusion in self.quota_exclusions:
-                if exclusion.quota_order_number_sid == quota_definition.quota_order_number_sid:
+                if (
+                    exclusion.quota_order_number_sid
+                    == quota_definition.quota_order_number_sid
+                ):
                     quota_definition.exclusions = exclusion.exclusions
                     break
 
             # Assign the commodities to the definitions
             for quota_commodity in self.quota_commodities:
-                if quota_commodity.quota_order_number_id == quota_definition.quota_order_number_id:
+                if (
+                    quota_commodity.quota_order_number_id
+                    == quota_definition.quota_order_number_id
+                ):
                     quota_definition.commodities = quota_commodity.commodities
                     break
 
@@ -1253,7 +1387,8 @@ class Tariff(object):
 
     def get_all_geographies(self):
         self.start_timer("Getting all geographical areas for CSV export")
-        sql = """
+        sql = (
+            """
         with cte_geography as (
             SELECT g.geographical_area_sid,
             geo1.geographical_area_id,
@@ -1279,8 +1414,12 @@ class Tariff(object):
             geographical_areas ga2
             WHERE ga1.geographical_area_sid = gam.geographical_area_group_sid
             AND ga2.geographical_area_sid = gam.geographical_area_sid
-            and gam.validity_start_date <= '""" + g.SNAPSHOT_DATE + """'
-            and (gam.validity_end_date is null or gam.validity_end_date > '""" + g.SNAPSHOT_DATE + """')
+            and gam.validity_start_date <= '"""
+            + g.SNAPSHOT_DATE
+            + """'
+            and (gam.validity_end_date is null or gam.validity_end_date > '"""
+            + g.SNAPSHOT_DATE
+            + """')
         )
         select g.geographical_area_sid, g.geographical_area_id, g.description, g.area_type,
         string_agg(distinct g2.child_id, '|' order by g2.child_id) as members
@@ -1289,6 +1428,7 @@ class Tariff(object):
         group by g.geographical_area_sid, g.geographical_area_id, g.description, g.area_type
         order by 2;
         """
+        )
         d = Database()
         rows = d.run_query(sql)
         self.all_geographies = []
@@ -1303,14 +1443,19 @@ class Tariff(object):
             geographical_area.get_csv_string()
 
             self.all_geographies.append(geographical_area)
-            g.all_geographies_dict[geographical_area.geographical_area_sid] = geographical_area
+            g.all_geographies_dict[
+                geographical_area.geographical_area_sid
+            ] = geographical_area
 
         self.end_timer("Getting all geographical areas for CSV export")
 
     def write_all_geographies(self):
         self.start_timer("Writing all geographical areas for CSV export")
         self.geography_csv_file = open(self.geography_csv_filepath, "w+")
-        self.geography_csv_file.write('"geographical_area_id","description","area_type","members"' + CommonString.line_feed)
+        self.geography_csv_file.write(
+            '"geographical_area_id","description","area_type","members"'
+            + CommonString.line_feed
+        )
         for geographical_area in self.all_geographies:
             self.geography_csv_file.write(geographical_area.csv_string)
 
@@ -1331,20 +1476,61 @@ class Tariff(object):
     def zip_and_upload(self):
         if self.CREATE_ZIP or self.CREATE_7Z:
             print("Zipping file")
-            self.aws_path_icl_vme_tuple = Zipper(self.filepath_icl_vme, self.scope, "icl_vme", "ICL VME file").compress()
-            self.aws_path_measures_csv_tuple = Zipper(self.measure_csv_filepath, self.scope, "csv", "Measures CSV").compress()
-            self.aws_path_commodities_csv_tuple = Zipper(self.commodity_csv_filepath, self.scope, "csv", "Commodities CSV").compress()
+            self.aws_path_icl_vme_tuple = Zipper(
+                self.filepath_icl_vme, self.scope, "icl_vme", "ICL VME file"
+            ).compress()
+            self.aws_path_measures_csv_tuple = Zipper(
+                self.measure_csv_filepath, self.scope, "csv", "Measures CSV"
+            ).compress()
+            self.aws_path_commodities_csv_tuple = Zipper(
+                self.commodity_csv_filepath, self.scope, "csv", "Commodities CSV"
+            ).compress()
             if self.WRITE_ANCILLARY_FILES:
-                self.aws_path_mfn_csv_tuple = Zipper(self.mfn_csv_filepath, self.scope, "csv", "Third country duty CSV").compress()
-                self.aws_path_supplementary_units_csv_tuple = Zipper(self.supplementary_units_csv_filepath, self.scope, "csv", "Supplementary units CSV").compress()
-                self.aws_path_footnotes_csv_tuple = Zipper(self.footnote_csv_filepath, self.scope, "csv", "Footnotes CSV").compress()
-                self.aws_path_certificates_csv_tuple = Zipper(self.certificate_csv_filepath, self.scope, "csv", "Certificates CSV").compress()
-                self.aws_path_quotas_csv_tuple = Zipper(self.quota_csv_filepath, self.scope, "csv", "Quotas CSV").compress()
-                self.aws_path_geographical_areas_csv_tuple = Zipper(self.geography_csv_filepath, self.scope, "csv", "Geographical areas CSV").compress()
-                self.aws_path_measure_types_csv_tuple = Zipper(self.measure_type_csv_filepath, self.scope, "csv", "Measure types CSV").compress()
-                self.aws_path_additional_codes_csv_tuple = Zipper(self.additional_code_csv_filepath, self.scope, "csv", "Additional codes CSV").compress()
-                self.aws_path_mfns_csv_tuple = Zipper(self.mfn_csv_filepath, self.scope, "csv", "Additional codes CSV").compress()
-                self.aws_path_supplementary_units_csv_tuple = Zipper(self.supplementary_units_csv_filepath, self.scope, "csv", "Additional codes CSV").compress()
+                self.aws_path_mfn_csv_tuple = Zipper(
+                    self.mfn_csv_filepath, self.scope, "csv", "Third country duty CSV"
+                ).compress()
+                self.aws_path_supplementary_units_csv_tuple = Zipper(
+                    self.supplementary_units_csv_filepath,
+                    self.scope,
+                    "csv",
+                    "Supplementary units CSV",
+                ).compress()
+                self.aws_path_footnotes_csv_tuple = Zipper(
+                    self.footnote_csv_filepath, self.scope, "csv", "Footnotes CSV"
+                ).compress()
+                self.aws_path_certificates_csv_tuple = Zipper(
+                    self.certificate_csv_filepath, self.scope, "csv", "Certificates CSV"
+                ).compress()
+                self.aws_path_quotas_csv_tuple = Zipper(
+                    self.quota_csv_filepath, self.scope, "csv", "Quotas CSV"
+                ).compress()
+                self.aws_path_geographical_areas_csv_tuple = Zipper(
+                    self.geography_csv_filepath,
+                    self.scope,
+                    "csv",
+                    "Geographical areas CSV",
+                ).compress()
+                self.aws_path_measure_types_csv_tuple = Zipper(
+                    self.measure_type_csv_filepath,
+                    self.scope,
+                    "csv",
+                    "Measure types CSV",
+                ).compress()
+                self.aws_path_additional_codes_csv_tuple = Zipper(
+                    self.additional_code_csv_filepath,
+                    self.scope,
+                    "csv",
+                    "Additional codes CSV",
+                ).compress()
+                self.aws_path_mfns_csv_tuple = Zipper(
+                    self.mfn_csv_filepath, self.scope, "csv", "Additional codes CSV"
+                ).compress()
+                self.aws_path_supplementary_units_csv_tuple = Zipper(
+                    self.supplementary_units_csv_filepath,
+                    self.scope,
+                    "csv",
+                    "Additional codes CSV",
+                ).compress()
             else:
                 self.aws_path_mfn_csv_tuple = ("n/a", "n/a")
                 self.aws_path_supplementary_units_csv_tuple = ("n/a", "n/a")
@@ -1358,12 +1544,25 @@ class Tariff(object):
                 self.aws_path_supplementary_units_csv_tuple = ("n/a", "n/a")
 
         # Delta description files
-        self.aws_path_commodities_delta_tuple = Zipper(self.delta.commodities_filename, self.scope, "delta", "Changes to commodity codes").compress()
-        self.aws_path_measures_delta_tuple = Zipper(self.delta.measures_filename, self.scope, "delta", "Changes to measures").compress()
+        self.aws_path_commodities_delta_tuple = Zipper(
+            self.delta.commodities_filename,
+            self.scope,
+            "delta",
+            "Changes to commodity codes",
+        ).compress()
+        self.aws_path_measures_delta_tuple = Zipper(
+            self.delta.measures_filename, self.scope, "delta", "Changes to measures"
+        ).compress()
         print("Zipping complete")
 
     def create_email_message(self):
-        if self.SEND_MAIL == 0 or self.CREATE_7Z == 0 or self.CREATE_ZIP == 0 or self.WRITE_TO_AWS == 0 or self.DEBUG_MODE:
+        if (
+            self.SEND_MAIL == 0
+            or self.CREATE_7Z == 0
+            or self.CREATE_ZIP == 0
+            or self.WRITE_TO_AWS == 0
+            or self.DEBUG_MODE
+        ):
             return
 
         self.html_content = """
@@ -1502,7 +1701,8 @@ class Tariff(object):
         <p style="color:#000">Thank you,</p>
         <p style="color:#000">The Online Tariff Team.</p>""".format(
             snapshot_date=g.SNAPSHOT_DATE,
-            commodity_changes=self.bucket_url + self.aws_path_commodities_delta_tuple[1],
+            commodity_changes=self.bucket_url
+            + self.aws_path_commodities_delta_tuple[1],
             measure_changes=self.bucket_url + self.aws_path_measures_delta_tuple[1],
             icl_vme_zip=self.bucket_url + self.aws_path_icl_vme_tuple[1],
             icl_vme_7z=self.bucket_url + self.aws_path_icl_vme_tuple[0],
@@ -1516,16 +1716,23 @@ class Tariff(object):
             certificates_7z=self.bucket_url + self.aws_path_certificates_csv_tuple[0],
             quotas_zip=self.bucket_url + self.aws_path_quotas_csv_tuple[1],
             quotas_7z=self.bucket_url + self.aws_path_quotas_csv_tuple[0],
-            geographical_areas_zip=self.bucket_url + self.aws_path_geographical_areas_csv_tuple[1],
-            geographical_areas_7z=self.bucket_url + self.aws_path_geographical_areas_csv_tuple[0],
-            measure_types_zip=self.bucket_url + self.aws_path_measure_types_csv_tuple[1],
+            geographical_areas_zip=self.bucket_url
+            + self.aws_path_geographical_areas_csv_tuple[1],
+            geographical_areas_7z=self.bucket_url
+            + self.aws_path_geographical_areas_csv_tuple[0],
+            measure_types_zip=self.bucket_url
+            + self.aws_path_measure_types_csv_tuple[1],
             measure_types_7z=self.bucket_url + self.aws_path_measure_types_csv_tuple[0],
-            additional_codes_zip=self.bucket_url + self.aws_path_additional_codes_csv_tuple[1],
-            additional_codes_7z=self.bucket_url + self.aws_path_additional_codes_csv_tuple[0],
+            additional_codes_zip=self.bucket_url
+            + self.aws_path_additional_codes_csv_tuple[1],
+            additional_codes_7z=self.bucket_url
+            + self.aws_path_additional_codes_csv_tuple[0],
             mfns_zip=self.bucket_url + self.aws_path_mfns_csv_tuple[1],
             mfns_7z=self.bucket_url + self.aws_path_mfns_csv_tuple[0],
-            supplementary_units_zip=self.bucket_url + self.aws_path_supplementary_units_csv_tuple[1],
-            supplementary_units_7z=self.bucket_url + self.aws_path_supplementary_units_csv_tuple[0]
+            supplementary_units_zip=self.bucket_url
+            + self.aws_path_supplementary_units_csv_tuple[1],
+            supplementary_units_7z=self.bucket_url
+            + self.aws_path_supplementary_units_csv_tuple[0],
         )
         # And now send the message
         self.send_email_message()
@@ -1533,10 +1740,7 @@ class Tariff(object):
     def send_email_message(self):
         print("Sending email")
         subject = "Issue of updated HMRC Electronic Tariff File for " + g.SNAPSHOT_DATE
-        attachment_list = [
-            self.documentation_file,
-            self.correlation_file
-        ]
+        attachment_list = [self.documentation_file, self.correlation_file]
         s = SesMailer(subject, self.html_content, attachment_list)
         result = s.send()
         print(result)

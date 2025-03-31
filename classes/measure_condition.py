@@ -8,7 +8,9 @@ class MeasureCondition(object):
         self.condition_duty_amount = row[4]
         self.condition_monetary_unit_code = row[5] if row[5] is not None else ""
         self.condition_measurement_unit_code = row[6] if row[6] is not None else ""
-        self.condition_measurement_unit_qualifier_code = row[7] if row[7] is not None else ""
+        self.condition_measurement_unit_qualifier_code = (
+            row[7] if row[7] is not None else ""
+        )
         self.action_code = row[8]
         self.certificate_type_code = row[9] if row[9] is not None else ""
         self.certificate_code = row[10] if row[10] is not None else ""
@@ -25,7 +27,7 @@ class MeasureCondition(object):
             self.csv_string = "condition:{condition_code},certificate:{certificate},action:{action_code}".format(
                 condition_code=self.condition_code,
                 certificate=self.certificate,
-                action_code=self.action_code
+                action_code=self.action_code,
             )
         elif self.condition_duty_amount is not None:
             threshold = "{:.2f}".format(self.condition_duty_amount)
@@ -36,10 +38,9 @@ class MeasureCondition(object):
             self.csv_string = "condition:{condition_code},threshold:{threshold},action:{action_code}".format(
                 condition_code=self.condition_code,
                 threshold=threshold,
-                action_code=self.action_code
+                action_code=self.action_code,
             )
         else:
             self.csv_string = "condition:{condition_code},action:{action_code}".format(
-                condition_code=self.condition_code,
-                action_code=self.action_code
+                condition_code=self.condition_code, action_code=self.action_code
             )

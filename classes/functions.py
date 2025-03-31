@@ -2,11 +2,10 @@ from os import system, name
 import os
 import re
 import inquirer
-from colorama import init, Fore, Back, Style
+from colorama import Fore, Style
 
 
 class functions(object):
-
     @staticmethod
     def yesno_question(message, question):
         if message != "" and message is not None:
@@ -17,14 +16,13 @@ class functions(object):
             inquirer.Confirm("question", message=question, default=True),
         ]
         answers = inquirer.prompt(questions)
-        a = 1
         return answers["question"]
 
     @staticmethod
     def clear():
         # for windows
-        if name == 'nt':
-            _ = system('cls')
+        if name == "nt":
+            _ = system("cls")
         else:
             _ = system("printf '\33c\e[3J'")
 
@@ -34,7 +32,7 @@ class functions(object):
             s = os.getenv(key)
             if data_type in ("int", "integer"):
                 s = int(s)
-        except Exception as e:
+        except Exception:
             s = default
         return s
 
@@ -81,9 +79,9 @@ class functions(object):
         s = s.replace("Ο", "O")
         s = s.replace("€", "EUR")
         s = s.replace("œ", "oe")
-        s = s.replace('″', '"')
-        s = s.replace('“', '"')
-        s = s.replace('”', '"')
+        s = s.replace("″", '"')
+        s = s.replace("“", '"')
+        s = s.replace("”", '"')
         s = s.replace("−", "-")
         s = s.replace("Δ", "")
         s = s.replace("ο", "o")
@@ -93,8 +91,10 @@ class functions(object):
         # s = s.replace("", "")
         # s = s.replace("", "")
 
-        s = re.sub(r'\s+', ' ', s)  # Standardises the whitespace chars
-        s = re.sub(r'[^\x00-\x7F]+', ' ', s)  # generically removes everything over 255 in ASCII char set
+        s = re.sub(r"\s+", " ", s)  # Standardises the whitespace chars
+        s = re.sub(
+            r"[^\x00-\x7F]+", " ", s
+        )  # generically removes everything over 255 in ASCII char set
 
         if not full:
             s = s.replace("<br>", " ")

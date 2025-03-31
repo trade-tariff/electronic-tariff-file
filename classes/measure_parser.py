@@ -1,6 +1,5 @@
 import csv
 import os
-import sys
 import classes.globals as g
 
 
@@ -18,23 +17,46 @@ class MeasureParser(object):
 
     def create_csv(self):
         csv_columns = [
-            'RECORD_TYPE', 'MEASURE_GROUP_CODE', 'MEASURE_TYPE_CODE', 'TAX_TYPE_CODE',
-            'TARIFF_MEASURE_EDATE', 'TARIFF_MEASURE_ETIME', 'TARIFF_MEASURE_LDATE', 'TARIFF_MEASURE_LTIME',
-            'ORIGIN_COUNTRY_CODE', 'ORIGIN_COUNTRY_GROUP_CODE', 'ORIGIN_ADD_CHARGE_TYPE', 'DESTINATION_COUNTRY_CODE',
-            'DESTINATION_CTY_GRP_CODE', 'DESTINATION_ADD_CH_TYPE', 'RATE_1', 'RATE_2', 'RATE_3', 'RATE_4', 'RATE_5', 'DUTY_TYPE',
-            'CMDTY_MEASURE_EX_HEAD_IND', 'FREE_CIRC_DOTI_REQD_IND', 'QUOTA_NO', 'QUOTA_CODE_UK',
-            'QUOTA_UNIT_OF_QUANTITY_CODE', 'MEASURE_AMENDMENT_IND', 'line']
+            "RECORD_TYPE",
+            "MEASURE_GROUP_CODE",
+            "MEASURE_TYPE_CODE",
+            "TAX_TYPE_CODE",
+            "TARIFF_MEASURE_EDATE",
+            "TARIFF_MEASURE_ETIME",
+            "TARIFF_MEASURE_LDATE",
+            "TARIFF_MEASURE_LTIME",
+            "ORIGIN_COUNTRY_CODE",
+            "ORIGIN_COUNTRY_GROUP_CODE",
+            "ORIGIN_ADD_CHARGE_TYPE",
+            "DESTINATION_COUNTRY_CODE",
+            "DESTINATION_CTY_GRP_CODE",
+            "DESTINATION_ADD_CH_TYPE",
+            "RATE_1",
+            "RATE_2",
+            "RATE_3",
+            "RATE_4",
+            "RATE_5",
+            "DUTY_TYPE",
+            "CMDTY_MEASURE_EX_HEAD_IND",
+            "FREE_CIRC_DOTI_REQD_IND",
+            "QUOTA_NO",
+            "QUOTA_CODE_UK",
+            "QUOTA_UNIT_OF_QUANTITY_CODE",
+            "MEASURE_AMENDMENT_IND",
+            "line",
+        ]
 
         if self.prefix == "ME":
             self.csv_file = os.path.join(g.parse_folder, "measures.csv")
         else:
             self.csv_file = os.path.join(g.parse_folder, "measure_exceptions.csv")
 
-        with open(self.csv_file, 'w') as csvfile:
+        with open(self.csv_file, "w") as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
             writer.writeheader()
             for measure in self.measures:
                 writer.writerow(measure)
+
 
 class ParsedMeasure(object):
     def __init__(self, line):
