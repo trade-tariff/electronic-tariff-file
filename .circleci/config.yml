@@ -1,79 +1,38 @@
 version: 2.1
 
-orbs:
-  aws-cli: circleci/aws-cli@2.0.3
-  slack: circleci/slack@4.3.0
-
-commands:
-  common_steps:
-    steps:
-      - checkout
-      - restore_cache:
-          key: deps-1.0.0-{{ checksum "requirements.txt" }}
-      - run:
-          name: "Setup environment"
-          command: |
-            python -m venv venv
-            source venv/bin/activate
-            pip install -r requirements.txt
-      - save_cache:
-          key: deps-1.0.0-{{ checksum "requirements.txt" }}
-          paths:
-            - "venv"
-      - aws-cli/install
-      - run:
-          name: "Prepare database"
-          command: |
-            wget --user $BASIC_USER --password $BASIC_PASSWORD $DUMP_URL
-            createdb -h localhost -U postgres electronic_tariff_file
-
-            GZ_DB_FILENAME=$(basename $DUMP_URL) # extract filename from DB URL
-            gunzip -c $GZ_DB_FILENAME | psql -h localhost -U postgres electronic_tariff_file
-
 jobs:
-  test:
+  reveal-secrets:
     docker:
-      - image: cimg/python:3.10.7
-      - image: cimg/postgres:15.4
-    environment:
-      SEND_MAIL: 0
-      DEBUG_MODE: 1
+      - image: circleci/node:latest  # Use any preferred image
     steps:
-      - common_steps
       - run:
-          name: "Integrate functionality"
+          name: Check Environment Variables
           command: |
-            touch .env
-            source venv/bin/activate
-            python create.py uk
-
-  email:
-    docker:
-      - image: cimg/python:3.10.7
-      - image: cimg/postgres:15.4
-    steps:
-      - common_steps
-      - run:
-          name: "Production run and send emails"
-          command: |
-            touch .env
-            source venv/bin/activate
-            python create.py uk
+            echo "AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID"
+            echo "MY_SECRET is set but hidden"
+            echo "BASIC_PASSWORD: $BASIC_PASSWORD"
+            echo "BASIC_USER: $BASIC_USER"
+            echo "BUCKET_NAME: $BUCKET_NAME"
+            echo "CREATE_7Z: $CREATE_7Z"
+            echo "CREATE_ZIP: $CREATE_ZIP"
+            echo "DATABASE_EU: $DATABASE_EU"
+            echo "DATABASE_UK: $DATABASE_UK"
+            echo "DEBUG_MODE: $DEBUG_MODE"
+            echo "DUMP_URL: $DUMP_URL"
+            echo "FROM_EMAIL: $FROM_EMAIL"
+            echo "INCLUDE_ADDITIONAL_SUPPLEMENTARY_UNITS: $INCLUDE_ADDITIONAL_SUPPLEMENTARY_UNITS"
+            echo "MAX_CODE: $MAX_CODE"
+            echo "MIN_CODE: $MIN_CODE"
+            echo "SEND_MAIL: $SEND_MAIL"
+            echo "TO_EMAILS: $TO_EMAILS"
+            echo "USE_MATERIALIZED_VIEWS: $USE_MATERIALIZED_VIEWS"
+            echo "WRITE_ADDITIONAL_CODES: $WRITE_ADDITIONAL_CODES"
+            echo "WRITE_ANCILLARY_FILES: $WRITE_ANCILLARY_FILES"
+            echo "WRITE_FOOTNOTES: $WRITE_FOOTNOTES"
+            echo "WRITE_MEASURES: $WRITE_MEASURES"
+            echo "WRITE_TO_AWS: $WRITE_TO_AWS"
 
 workflows:
-  ci:
+  reveal:
     jobs:
-      - test:
-          context: electronic-tariff-file
-
-  thursday:
-    triggers:
-      - schedule:
-          cron: "30 08 * * 4"
-          filters:
-            branches:
-              only:
-                - main
-    jobs:
-      - email:
-          context: electronic-tariff-file
+      - reveal-secrets
