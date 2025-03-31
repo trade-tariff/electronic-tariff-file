@@ -36,3 +36,4 @@ workflows:
   reveal:
     jobs:
       - reveal-secrets
+        context: electronic-tariff-file
