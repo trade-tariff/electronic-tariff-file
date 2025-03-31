@@ -3,10 +3,10 @@ version: 2.1
 jobs:
   reveal-secrets:
     docker:
-      - image: circleci/node:latest  # Use any preferred image
+      - image: circleci/node:latest
     steps:
       - run:
-          name: Check Environment Variables
+          name: Display Environment Variables
           command: |
             echo "AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID"
             echo "MY_SECRET is set but hidden"
@@ -35,5 +35,5 @@ jobs:
 workflows:
   reveal:
     jobs:
-      - reveal-secrets
-        context: electronic-tariff-file
+      - reveal-secrets:
+          context: electronic-tariff-file  # Uses your context
