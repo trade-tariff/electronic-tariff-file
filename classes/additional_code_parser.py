@@ -1,6 +1,5 @@
 import csv
 import os
-import sys
 import classes.globals as g
 
 
@@ -18,14 +17,14 @@ class AdditionalCodeParser(object):
 
     def create_csv(self):
         csv_file = os.path.join(g.parse_folder, "additional_codes.csv")
-        csv_columns = [
-            'RECORD_TYPE', 'EC_SUPP_COUNT', 'CODE_STRING', 'line']
+        csv_columns = ["RECORD_TYPE", "EC_SUPP_COUNT", "CODE_STRING", "line"]
 
-        with open(csv_file, 'w') as csvfile:
+        with open(csv_file, "w") as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
             writer.writeheader()
             for additional_code in self.additional_codes:
                 writer.writerow(additional_code)
+
 
 class ParsedAdditionalCode(object):
     def __init__(self, line):
@@ -42,7 +41,7 @@ class ParsedAdditionalCode(object):
 
         self.CODE_STRING = ""
         for i in range(0, ac_count):
-            self.CODE_STRING += self.line[6 + (i * 4): 6 + (i * 4) + 4] + ":"
+            self.CODE_STRING += self.line[6 + (i * 4) : 6 + (i * 4) + 4] + ":"
         self.CODE_STRING = self.CODE_STRING.strip(":")
 
         self.line = ""

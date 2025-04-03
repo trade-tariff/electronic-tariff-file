@@ -12,15 +12,15 @@ class Zipper(object):
     def __init__(self, source_filename, scope, remote_folder, message):
         # Always compresses to the same place with the default
         # file extension for the compression type
-        load_dotenv('.env')
-        self.password = f.get_config_key('PASSWORD', "str", "")
-        self.DEBUG_MODE = f.get_config_key('DEBUG_MODE', "int", 0)
+        load_dotenv(".env")
+        self.password = f.get_config_key("PASSWORD", "str", "")
+        self.DEBUG_MODE = f.get_config_key("DEBUG_MODE", "int", 0)
         if self.DEBUG_MODE:
             self.create_7z = False
             self.create_zip = False
         else:
-            self.create_7z = f.get_config_key('CREATE_7Z', "int", 0)
-            self.create_zip = f.get_config_key('CREATE_ZIP', "int", 0)
+            self.create_7z = f.get_config_key("CREATE_7Z", "int", 0)
+            self.create_zip = f.get_config_key("CREATE_ZIP", "int", 0)
 
         self.compress_level = 9
         self.scope = scope
@@ -36,7 +36,7 @@ class Zipper(object):
             if g.complete_tariff is False:
                 self.write_to_aws = False
             else:
-                self.write_to_aws = f.get_config_key('WRITE_TO_AWS', "int", 0)
+                self.write_to_aws = f.get_config_key("WRITE_TO_AWS", "int", 0)
         else:
             self.write_to_aws = False
 
@@ -64,10 +64,15 @@ class Zipper(object):
         if os.path.exists(self.archive):
             os.remove(self.archive)
 
-        with py7zr.SevenZipFile(self.archive, 'w') as archive:
+        with py7zr.SevenZipFile(self.archive, "w") as archive:
             archive.write(self.source_filename, self.base_filename)
 
-        self.aws_path = os.path.join(self.scope, "electronic_tariff_file", self.remote_folder, self.archive_base_filename)
+        self.aws_path = os.path.join(
+            self.scope,
+            "electronic_tariff_file",
+            self.remote_folder,
+            self.archive_base_filename,
+        )
         self.aws_path = os.path.join(
             self.scope,
             "reporting",
@@ -76,9 +81,13 @@ class Zipper(object):
             g.SNAPSHOT_DAY,
             "electronic_tariff_file",
             self.remote_folder,
-            self.archive_base_filename
+            self.archive_base_filename,
         )
-        self.load_to_aws("Loading {0} (7z) to AWS bucket".format(self.message), self.archive, self.aws_path)
+        self.load_to_aws(
+            "Loading {0} (7z) to AWS bucket".format(self.message),
+            self.archive,
+            self.aws_path,
+        )
         return self.aws_path
 
     def create_zip_archive(self):
@@ -90,12 +99,19 @@ class Zipper(object):
         if os.path.exists(self.archive):
             os.remove(self.archive)
 
-        zipObj = zipfile.ZipFile(self.archive, 'w')
+        zipObj = zipfile.ZipFile(self.archive, "w")
         compression = zipfile.ZIP_DEFLATED
-        zipObj.write(self.source_filename, arcname=self.base_filename, compress_type=compression)
+        zipObj.write(
+            self.source_filename, arcname=self.base_filename, compress_type=compression
+        )
         zipObj.close()
 
-        self.aws_path = os.path.join(self.scope, "electronic_tariff_file", self.remote_folder, self.archive_base_filename)
+        self.aws_path = os.path.join(
+            self.scope,
+            "electronic_tariff_file",
+            self.remote_folder,
+            self.archive_base_filename,
+        )
         self.aws_path = os.path.join(
             self.scope,
             "reporting",
@@ -104,9 +120,13 @@ class Zipper(object):
             g.SNAPSHOT_DAY,
             "electronic_tariff_file",
             self.remote_folder,
-            self.archive_base_filename
+            self.archive_base_filename,
         )
-        self.load_to_aws("Loading {0} (ZIP) to AWS bucket".format(self.message), self.archive, self.aws_path)
+        self.load_to_aws(
+            "Loading {0} (ZIP) to AWS bucket".format(self.message),
+            self.archive,
+            self.aws_path,
+        )
         return self.aws_path
 
     def load_to_aws(self, msg, file, aws_path):

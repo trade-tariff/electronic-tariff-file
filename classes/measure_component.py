@@ -14,7 +14,9 @@ class MeasureComponent(object):
 
         self.UNIT_OF_QUANTITY_CODE = "000"  # Three digits
         self.QUANTITY_CODE = "000"  # Three digits (always 000)
-        self.UNIT_ACCOUNT = "0"  # One digit (the currency: 0 if ad valorem, 1 if specific (or 2))
+        self.UNIT_ACCOUNT = (
+            "0"  # One digit (the currency: 0 if ad valorem, 1 if specific (or 2))
+        )
         self.SPECIFIC_RATE = "0000000000"  # Ten digits
         self.AD_VALOREM_RATE = "000000"
 
@@ -44,7 +46,7 @@ class MeasureComponent(object):
             # Get the measure unit from the supplementary units lookup
             try:
                 self.UNIT_OF_QUANTITY_CODE = g.supplementary_unit_dict[self.measure]
-            except Exception as e:
+            except Exception:
                 self.UNIT_OF_QUANTITY_CODE = "000"
 
             self.SPECIFIC_RATE = self.pad_multiply_value(self.duty_amount, 10)
@@ -52,7 +54,9 @@ class MeasureComponent(object):
         else:
             # This is an AD_VALOREM_RATE
             self.component_type = "advalorem"
-            self.UNIT_ACCOUNT = "0"  # Means there is no currency associated with component
+            self.UNIT_ACCOUNT = (
+                "0"  # Means there is no currency associated with component
+            )
             self.SPECIFIC_RATE = "0000000000"
             self.AD_VALOREM_RATE = self.pad_multiply_value(self.duty_amount, 6)
 
@@ -73,46 +77,84 @@ class MeasureComponent(object):
 
         if self.duty_expression_id == "01":  # Ad valorem or specific
             if self.monetary_unit_code == "":
-                self.english_component_definition += "{0:1.2f}".format(self.duty_amount) + "%"
+                self.english_component_definition += (
+                    "{0:1.2f}".format(self.duty_amount) + "%"
+                )
             else:
-                self.english_component_definition += "{0:1.3f}".format(self.duty_amount) + " " + self.monetary_unit_code
+                self.english_component_definition += (
+                    "{0:1.3f}".format(self.duty_amount) + " " + self.monetary_unit_code
+                )
                 if self.measurement_unit_code != "":
-                    self.english_component_definition += " / " + self.get_measurement_unit(self.measurement_unit_code)
+                    self.english_component_definition += (
+                        " / " + self.get_measurement_unit(self.measurement_unit_code)
+                    )
                     if self.measurement_unit_qualifier_code != "":
-                        self.english_component_definition += " / " + self.get_measurement_unit_qualifier_code()
+                        self.english_component_definition += (
+                            " / " + self.get_measurement_unit_qualifier_code()
+                        )
 
         elif self.duty_expression_id in ("04", "19", "20"):  # Plus % or amount
             if self.monetary_unit_code == "":
-                self.english_component_definition += " + {0:1.2f}".format(self.duty_amount) + "%"
+                self.english_component_definition += (
+                    " + {0:1.2f}".format(self.duty_amount) + "%"
+                )
             else:
-                self.english_component_definition += " + {0:1.3f}".format(self.duty_amount) + " " + self.monetary_unit_code
+                self.english_component_definition += (
+                    " + {0:1.3f}".format(self.duty_amount)
+                    + " "
+                    + self.monetary_unit_code
+                )
                 if self.measurement_unit_code != "":
-                    self.english_component_definition += " / " + self.get_measurement_unit(self.measurement_unit_code)
+                    self.english_component_definition += (
+                        " / " + self.get_measurement_unit(self.measurement_unit_code)
+                    )
                     if self.measurement_unit_qualifier_code != "":
-                        self.english_component_definition += " / " + self.get_measurement_unit_qualifier_code()
+                        self.english_component_definition += (
+                            " / " + self.get_measurement_unit_qualifier_code()
+                        )
 
         elif self.duty_expression_id == "12":  # Agri component
             self.english_component_definition += " + AC"
 
         elif self.duty_expression_id == "15":  # Minimum
             if self.monetary_unit_code == "":
-                self.english_component_definition += "MIN {0:1.2f}".format(self.duty_amount) + "%"
+                self.english_component_definition += (
+                    "MIN {0:1.2f}".format(self.duty_amount) + "%"
+                )
             else:
-                self.english_component_definition += "MIN {0:1.3f}".format(self.duty_amount) + " " + self.monetary_unit_code
+                self.english_component_definition += (
+                    "MIN {0:1.3f}".format(self.duty_amount)
+                    + " "
+                    + self.monetary_unit_code
+                )
                 if self.measurement_unit_code != "":
-                    self.english_component_definition += " / " + self.get_measurement_unit(self.measurement_unit_code)
+                    self.english_component_definition += (
+                        " / " + self.get_measurement_unit(self.measurement_unit_code)
+                    )
                     if self.measurement_unit_qualifier_code != "":
-                        self.english_component_definition += " / " + self.get_measurement_unit_qualifier_code()
+                        self.english_component_definition += (
+                            " / " + self.get_measurement_unit_qualifier_code()
+                        )
 
         elif self.duty_expression_id == "17":  # Maximum
             if self.monetary_unit_code == "":
-                self.english_component_definition += "MAX {0:1.2f}".format(self.duty_amount) + "%"
+                self.english_component_definition += (
+                    "MAX {0:1.2f}".format(self.duty_amount) + "%"
+                )
             else:
-                self.english_component_definition += "MAX {0:1.3f}".format(self.duty_amount) + " " + self.monetary_unit_code
+                self.english_component_definition += (
+                    "MAX {0:1.3f}".format(self.duty_amount)
+                    + " "
+                    + self.monetary_unit_code
+                )
                 if self.measurement_unit_code != "":
-                    self.english_component_definition += " / " + self.get_measurement_unit(self.measurement_unit_code)
+                    self.english_component_definition += (
+                        " / " + self.get_measurement_unit(self.measurement_unit_code)
+                    )
                     if self.measurement_unit_qualifier_code != "":
-                        self.english_component_definition += " / " + self.get_measurement_unit_qualifier_code()
+                        self.english_component_definition += (
+                            " / " + self.get_measurement_unit_qualifier_code()
+                        )
 
         elif self.duty_expression_id == "21":  # Sugar duty
             self.english_component_definition += " + SD"
@@ -121,16 +163,19 @@ class MeasureComponent(object):
             self.english_component_definition += " + FD"
 
         elif self.duty_expression_id == "99":  # Supplementary unit
-            self.english_component_definition += "{unit} ({friendly})".format(unit=self.measurement_unit_code, friendly=self.get_measurement_unit(self.measurement_unit_code))
+            self.english_component_definition += "{unit} ({friendly})".format(
+                unit=self.measurement_unit_code,
+                friendly=self.get_measurement_unit(self.measurement_unit_code),
+            )
 
     def get_duty_expression_class(self):
-        if self.duty_expression_id in ('01', '04', '19', '20'):
+        if self.duty_expression_id in ("01", "04", "19", "20"):
             self.duty_expression_class = "standard"
-        elif self.duty_expression_id in ('17', '35'):
+        elif self.duty_expression_id in ("17", "35"):
             self.duty_expression_class = "maximum"
-        elif self.duty_expression_id in ('15'):
+        elif self.duty_expression_id in ("15"):
             self.duty_expression_class = "minimum"
-        elif self.duty_expression_id in ('12', '14', '21', '25', '27', '29'):
+        elif self.duty_expression_id in ("12", "14", "21", "25", "27", "29"):
             self.duty_expression_class = "meursing"
         else:
             self.duty_expression_class = "forbidden"

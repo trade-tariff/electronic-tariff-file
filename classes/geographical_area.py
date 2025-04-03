@@ -7,7 +7,6 @@ from classes.enums import CommonString
 
 class GeographicalArea(object):
     def __init__(self, taric_area, chief_area, suppress):
-
         self.taric_area = taric_area
         self.chief_area = chief_area
         self.suppress = suppress
@@ -16,16 +15,24 @@ class GeographicalArea(object):
         if self.chief_area == "expand":
             self.has_members = True
             # Expand into members
-            sql = """
+            sql = (
+                """
             select ga_child.geographical_area_id from geographical_area_memberships gam, geographical_areas ga_parent, geographical_areas ga_child
             where ga_parent.geographical_area_sid = gam.geographical_area_group_sid
             and ga_child.geographical_area_sid = gam.geographical_area_sid
-            and ga_parent.geographical_area_id = '""" + self.taric_area + """'
-            and gam.validity_start_date < '""" + g.SNAPSHOT_DATE + """'
-            and (gam.validity_end_date is null or gam.validity_end_date > '""" + g.SNAPSHOT_DATE + """')
+            and ga_parent.geographical_area_id = '"""
+                + self.taric_area
+                + """'
+            and gam.validity_start_date < '"""
+                + g.SNAPSHOT_DATE
+                + """'
+            and (gam.validity_end_date is null or gam.validity_end_date > '"""
+                + g.SNAPSHOT_DATE
+                + """')
             and ga_child.geographical_area_id != 'EU'
             order by 1;
             """
+            )
             d = Database()
             rows = d.run_query(sql)
             for row in rows:
@@ -38,10 +45,29 @@ class GeographicalArea2(object):
     def get_csv_string(self):
         self.format_description_for_csv()
         s = ""
-        s += CommonString.quote_char + f.null_to_string(self.geographical_area_id) + CommonString.quote_char + CommonString.comma
-        s += CommonString.quote_char + f.null_to_string(self.description) + CommonString.quote_char + CommonString.comma
-        s += CommonString.quote_char + f.null_to_string(self.area_type) + CommonString.quote_char + CommonString.comma
-        s += CommonString.quote_char + f.null_to_string(self.members) + CommonString.quote_char
+        s += (
+            CommonString.quote_char
+            + f.null_to_string(self.geographical_area_id)
+            + CommonString.quote_char
+            + CommonString.comma
+        )
+        s += (
+            CommonString.quote_char
+            + f.null_to_string(self.description)
+            + CommonString.quote_char
+            + CommonString.comma
+        )
+        s += (
+            CommonString.quote_char
+            + f.null_to_string(self.area_type)
+            + CommonString.quote_char
+            + CommonString.comma
+        )
+        s += (
+            CommonString.quote_char
+            + f.null_to_string(self.members)
+            + CommonString.quote_char
+        )
         s += CommonString.line_feed
         self.csv_string = s
 
@@ -49,10 +75,10 @@ class GeographicalArea2(object):
         if self.description is None:
             self.description = ""
         # Normalise hyphens
-        self.description = re.sub(r'[‐᠆﹣－⁃−]+', '-', self.description)
+        self.description = re.sub(r"[‐᠆﹣－⁃−]+", "-", self.description)
         self.description = self.description.replace("–", "-")
 
         self.description = self.description.replace('"', "'")
-        self.description = self.description.replace('\n', " ")
-        self.description = self.description.replace('\r', " ")
-        self.description = self.description.replace('  ', " ")
+        self.description = self.description.replace("\n", " ")
+        self.description = self.description.replace("\r", " ")
+        self.description = self.description.replace("  ", " ")

@@ -65,4 +65,3 @@ WHERE
 ORDER BY
     m.measure_type_id,
     m.goods_nomenclature_item_id;
-

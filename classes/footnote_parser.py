@@ -1,6 +1,5 @@
 import csv
 import os
-import sys
 import classes.globals as g
 
 
@@ -19,10 +18,18 @@ class FootnoteParser(object):
     def create_csv(self):
         csv_file = os.path.join(g.parse_folder, "footnotes.csv")
         csv_columns = [
-            'RECORD_TYPE', 'FOOTNOTE_NUMBER', 'FOOTNOTE_EDATE', 'FOOTNOTE_ETIME',
-            'FOOTNOTE_LDATE', 'FOOTNOTE_LTIME', 'FOOTNOTE_LENGTH', 'FOOTNOTE_TEXT', 'line']
+            "RECORD_TYPE",
+            "FOOTNOTE_NUMBER",
+            "FOOTNOTE_EDATE",
+            "FOOTNOTE_ETIME",
+            "FOOTNOTE_LDATE",
+            "FOOTNOTE_LTIME",
+            "FOOTNOTE_LENGTH",
+            "FOOTNOTE_TEXT",
+            "line",
+        ]
 
-        with open(csv_file, 'w') as csvfile:
+        with open(csv_file, "w") as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
             writer.writeheader()
             for footnote in self.footnotes:

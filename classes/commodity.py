@@ -39,7 +39,9 @@ class Commodity(object):
         self.additional_codes = []
         self.additional_code_string = ""
         self.ancestry_string_length = ""
-        self.commodity__code__pls = self.goods_nomenclature_item_id + "-" + self.productline_suffix
+        self.commodity__code__pls = (
+            self.goods_nomenclature_item_id + "-" + self.productline_suffix
+        )
 
         self.get_significant_digits()
         self.format_dates()
@@ -50,11 +52,7 @@ class Commodity(object):
 
     def get_supplementary_units(self, include_additional=False):
         # Set the default: 1st is always kilogram, 2nd and 3rd are initially empty
-        self.supplementary_units = [
-            "1023",
-            "0000",
-            "0000"
-        ]
+        self.supplementary_units = ["1023", "0000", "0000"]
 
         if include_additional:
             try:
@@ -63,19 +61,23 @@ class Commodity(object):
                 self.supplementary_units[0] = item["unit1"]
                 self.supplementary_units[1] = item["unit2"]
                 self.supplementary_units[2] = item["unit3"]
-            except Exception as e:
+            except Exception:
                 found_chief_units = False
         if not include_additional or found_chief_units is False:
             supplementary_units_list = []
             for m in self.measures:
                 if m.is_supplementary_unit:
-                    supplementary_units_list.append(m.measure_components[0].UNIT_OF_QUANTITY_CODE)
+                    supplementary_units_list.append(
+                        m.measure_components[0].UNIT_OF_QUANTITY_CODE
+                    )
             supplementary_units_list = list(set(supplementary_units_list))
             if len(supplementary_units_list) > 0:
                 index = 0
                 for supplementary_unit in supplementary_units_list:
                     index += 1
-                    self.supplementary_units[index] = str(index + 1) + supplementary_unit
+                    self.supplementary_units[index] = (
+                        str(index + 1) + supplementary_unit
+                    )
 
     def get_supp_units(self):
         if not self.export_umbrella:
@@ -187,14 +189,28 @@ class Commodity(object):
         self.description_csv = self.description.replace('"', "'")
 
     def get_ancestral_descriptions(self):
-        pre_taric_tokens = ["", ":", ":*", ":**", ":***", ":****", ":*****", ":******", ":*******"]
+        pre_taric_tokens = [
+            "",
+            ":",
+            ":*",
+            ":**",
+            ":***",
+            ":****",
+            ":*****",
+            ":******",
+            ":*******",
+        ]
         self.ancestral_tokens = []
         self.ancestral_significant_digits = []
         self.ancestral_descriptions = []
         for ancestor in self.ancestors:
             if g.commodities_dict[ancestor].number_indents > 0:
-                self.ancestral_descriptions.append(g.commodities_dict[ancestor].description)
-                self.ancestral_significant_digits.append(g.commodities_dict[ancestor].significant_digits)
+                self.ancestral_descriptions.append(
+                    g.commodities_dict[ancestor].description
+                )
+                self.ancestral_significant_digits.append(
+                    g.commodities_dict[ancestor].significant_digits
+                )
         self.ancestral_descriptions.reverse()
         self.ancestral_significant_digits.reverse()
         self.ancestral_descriptions.append(self.description)
@@ -213,7 +229,9 @@ class Commodity(object):
                         self.ancestry_string += " - "
                     self.ancestry_string += self.ancestral_descriptions[i]
             else:
-                self.ancestry_string += pre_taric_tokens[i] + self.ancestral_descriptions[i]
+                self.ancestry_string += (
+                    pre_taric_tokens[i] + self.ancestral_descriptions[i]
+                )
 
         # Shorten extremely long ancestry strings
         if len(self.ancestry_string) > 2200:
@@ -229,7 +247,10 @@ class Commodity(object):
                 self.export_umbrella = True
             else:
                 for child in self.children:
-                    if g.commodities_dict[child].end_line and g.commodities_dict[child].significant_digits >= 9:
+                    if (
+                        g.commodities_dict[child].end_line
+                        and g.commodities_dict[child].significant_digits >= 9
+                    ):
                         self.export_umbrella = True
                         break
 
@@ -286,7 +307,11 @@ class Commodity(object):
 
         if len(self.additional_codes) > 0:
             self.additional_codes = sorted(self.additional_codes)
-            self.additional_code_string = "CA" + str(len(self.additional_codes)).zfill(4) + "".join(self.additional_codes)
+            self.additional_code_string = (
+                "CA"
+                + str(len(self.additional_codes)).zfill(4)
+                + "".join(self.additional_codes)
+            )
         else:
             self.additional_code_string = ""
         self.get_additional_code_indicator()
@@ -340,9 +365,11 @@ class Commodity(object):
         ancestors_reversed.reverse()
         ancestors_commodity__code__pls = []
         for ancestor in ancestors_reversed:
-            ancestors_commodity__code__pls.append(g.commodities_dict[ancestor].commodity__code__pls)
+            ancestors_commodity__code__pls.append(
+                g.commodities_dict[ancestor].commodity__code__pls
+            )
         Q = '"'
-        s = ''
+        s = ""
         s = str(self.goods_nomenclature_sid) + ","
         s += Q + self.goods_nomenclature_item_id + Q + ","
         s += Q + self.productline_suffix + Q + ","
