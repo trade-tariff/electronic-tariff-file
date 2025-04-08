@@ -1,5 +1,3 @@
-from datetime import datetime
-
 import classes.globals as g
 
 
@@ -30,7 +28,13 @@ class Measure(object):
         self.certificates = []
         self.measure_excluded_geographical_areas = []
         self.measure_record = ""
-        self.compound_key = self.goods_nomenclature_item_id + "_" + self.measure_type_id + "_" + self.geographical_area_id
+        self.compound_key = (
+            self.goods_nomenclature_item_id
+            + "_"
+            + self.measure_type_id
+            + "_"
+            + self.geographical_area_id
+        )
         self.is_duplicate = False
         self.duty_records = []
         self.measure_component_string = ""
@@ -53,16 +57,20 @@ class Measure(object):
         if self.additional_code == "":
             self.additional_code_description = ""
         else:
-            self.additional_code_description = g.all_additional_codes_dict[self.additional_code].description
+            self.additional_code_description = g.all_additional_codes_dict[
+                self.additional_code
+            ].description
 
     def get_geographical_area_description(self):
         try:
-            self.geographical_area_description = g.all_geographies_dict[self.geographical_area_sid].description
-        except Exception as e:
+            self.geographical_area_description = g.all_geographies_dict[
+                self.geographical_area_sid
+            ].description
+        except Exception:
             self.geographical_area_description = "Not found"
 
     def check_for_supplementary_unit(self):
-        su_types = ['109', '110', '111']
+        su_types = ["109", "110", "111"]
         if self.measure_type_id in su_types:
             self.is_supplementary_unit = True
         else:
@@ -136,23 +144,29 @@ class Measure(object):
             self.TARIFF_MEASURE_LDATE = "00000000"
 
     def check_suppressed_geo_areas(self):
-        suppressed_areas = ['1006']
-        self.is_suppressed = True if self.geographical_area_id in suppressed_areas else False
+        suppressed_areas = ["1006"]
+        self.is_suppressed = (
+            True if self.geographical_area_id in suppressed_areas else False
+        )
 
     def check_for_gsp_membership(self):
-        gsp_areas = ['2005', '2020', '2027']
-        dcts_areas = ['1060', '1061', '1062']
+        gsp_areas = ["2005", "2020", "2027"]
+        dcts_areas = ["1060", "1061", "1062"]
         gsp_areas += dcts_areas
         self.is_gsp = True if self.geographical_area_id in gsp_areas else False
 
     def check_measure_type(self):
-        trade_remedy_measure_types = ['551', '552', '553', '554']
-        mfn_measure_types = ['103', '105']
-        supplementary_unit_measure_types = ['109', '110', '111']
+        trade_remedy_measure_types = ["551", "552", "553", "554"]
+        mfn_measure_types = ["103", "105"]
+        supplementary_unit_measure_types = ["109", "110", "111"]
 
-        self.is_trade_remedy = True if self.measure_type_id in trade_remedy_measure_types else False
+        self.is_trade_remedy = (
+            True if self.measure_type_id in trade_remedy_measure_types else False
+        )
         self.is_mfn = True if self.measure_type_id in mfn_measure_types else False
-        self.is_supplementary_unit = True if self.measure_type_id in supplementary_unit_measure_types else False
+        self.is_supplementary_unit = (
+            True if self.measure_type_id in supplementary_unit_measure_types else False
+        )
 
     def check_for_erga_omnes(self):
         self.is_erga_omnes = True if self.geographical_area_id == "1011" else False
@@ -164,18 +178,34 @@ class Measure(object):
             self.get_excise_measure_codes()
         else:
             if self.measure_type_id in g.measure_types:
-                self.MEASURE_GROUP_CODE = g.measure_types[self.measure_type_id].measure_group_code
-                self.MEASURE_TYPE_CODE = g.measure_types[self.measure_type_id].measure_type_code
+                self.MEASURE_GROUP_CODE = g.measure_types[
+                    self.measure_type_id
+                ].measure_group_code
+                self.MEASURE_TYPE_CODE = g.measure_types[
+                    self.measure_type_id
+                ].measure_type_code
                 self.TAX_TYPE_CODE = g.measure_types[self.measure_type_id].tax_type_code
             else:
                 found = False
                 for measure_type in g.measure_types:
                     if g.measure_types[measure_type].certificate_code != "":
-                        if self.measure_type_id == g.measure_types[measure_type].taric_measure_type:
-                            if g.measure_types[measure_type].certificate_code in self.certificates:
-                                self.MEASURE_GROUP_CODE = g.measure_types[measure_type].measure_group_code
-                                self.MEASURE_TYPE_CODE = g.measure_types[measure_type].measure_type_code
-                                self.TAX_TYPE_CODE = g.measure_types[measure_type].tax_type_code
+                        if (
+                            self.measure_type_id
+                            == g.measure_types[measure_type].taric_measure_type
+                        ):
+                            if (
+                                g.measure_types[measure_type].certificate_code
+                                in self.certificates
+                            ):
+                                self.MEASURE_GROUP_CODE = g.measure_types[
+                                    measure_type
+                                ].measure_group_code
+                                self.MEASURE_TYPE_CODE = g.measure_types[
+                                    measure_type
+                                ].measure_type_code
+                                self.TAX_TYPE_CODE = g.measure_types[
+                                    measure_type
+                                ].tax_type_code
                                 found = True
                                 break
 
@@ -314,7 +344,11 @@ class Measure(object):
 
     def get_measure_record(self):
         self.get_amendment_indicator()
-        if self.MEASURE_GROUP_CODE != "" and self.is_suppressed is False and self.is_duplicate is False:
+        if (
+            self.MEASURE_GROUP_CODE != ""
+            and self.is_suppressed is False
+            and self.is_duplicate is False
+        ):
             self.measure_record = "ME" + self.divider
             self.measure_record += self.MEASURE_GROUP_CODE + self.divider
             self.measure_record += self.MEASURE_TYPE_CODE + self.divider
@@ -339,7 +373,12 @@ class Measure(object):
             self.measure_record += "000" + self.divider
             self.measure_record += self.MEASURE_AMENDMENT_IND + self.divider
             if self.ORIGIN_COUNTRY_GROUP_CODE != "    ":
-                self.measure_template = "MX" + self.measure_record[2:38] + "$$" + self.measure_record[40:185]
+                self.measure_template = (
+                    "MX"
+                    + self.measure_record[2:38]
+                    + "$$"
+                    + self.measure_record[40:185]
+                )
             else:
                 self.measure_template = ""
         else:
@@ -357,7 +396,7 @@ class Measure(object):
                         self.MEASURE_AMENDMENT_IND = "N"
                     else:
                         self.MEASURE_AMENDMENT_IND = "A"
-                except Exception as e:
+                except Exception:
                     self.MEASURE_AMENDMENT_IND = " "
             else:
                 self.MEASURE_AMENDMENT_IND = " "
@@ -366,11 +405,15 @@ class Measure(object):
         self.excluded_area_string = ""
         self.excluded_area_description_string = ""
         if len(self.measure_excluded_geographical_areas) > 0:
-            self.measure_excluded_geographical_areas.sort(key=lambda x: x.excluded_geographical_area, reverse=False)
+            self.measure_excluded_geographical_areas.sort(
+                key=lambda x: x.excluded_geographical_area, reverse=False
+            )
             area_ids = []
             area_descriptions = []
             for area in self.measure_excluded_geographical_areas:
-                area.description = g.all_geographies_dict[area.geographical_area_sid].description
+                area.description = g.all_geographies_dict[
+                    area.geographical_area_sid
+                ].description
                 area_ids.append(area.excluded_geographical_area)
                 area_descriptions.append(area.description)
             self.excluded_area_string = "|".join(area_ids)
@@ -399,7 +442,9 @@ class Measure(object):
                 component_strings.append(measure_component.english_component_definition)
 
             self.measure_component_string = " ".join(component_strings)
-            self.measure_component_string = self.measure_component_string.replace("  ", " ").strip()
+            self.measure_component_string = self.measure_component_string.replace(
+                "  ", " "
+            ).strip()
 
     def get_measure_record_for_csv(self):
         self.get_excluded_area_string()
@@ -426,7 +471,11 @@ class Measure(object):
         s += Q + self.geographical_area_description + Q + ","
         s += Q + self.excluded_area_string + Q + ","
         s += Q + self.excluded_area_description_string + Q + ","
-        s += Q + self.ordernumber + Q + "," if self.ordernumber != "000000" else Q + Q + ","
+        s += (
+            Q + self.ordernumber + Q + ","
+            if self.ordernumber != "000000"
+            else Q + Q + ","
+        )
         s += Q + self.trade_direction + Q + ","
 
         s += Q + self.MEASURE_GROUP_CODE + Q + ","

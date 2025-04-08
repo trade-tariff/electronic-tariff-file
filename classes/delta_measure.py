@@ -1,6 +1,3 @@
-from datetime import datetime
-
-
 class DeltaMeasure(object):
     def __init__(self, row, operation, use_materialized_views):
         self.use_materialized_views = use_materialized_views

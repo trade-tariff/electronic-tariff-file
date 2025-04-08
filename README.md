@@ -16,7 +16,7 @@
 
 `python create.py uk`
 
-`python create.py uk 4 5` 
+`python create.py uk 4 5`
 
 #### Arguments
 - argument 1 is the scope [uk|xi],

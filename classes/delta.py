@@ -32,54 +32,71 @@ class Delta(object):
 
     def open_delta_file(self):
         folder = g.delta_folder
-        self.commodities_filename = os.path.join(folder, "commodities_{}.csv".format(self.to_date_string))
-        self.measures_filename = os.path.join(folder, "measures_{}.csv".format(self.to_date_string))
+        self.commodities_filename = os.path.join(
+            folder, "commodities_{}.csv".format(self.to_date_string)
+        )
+        self.measures_filename = os.path.join(
+            folder, "measures_{}.csv".format(self.to_date_string)
+        )
 
         self.delta_file_commodities = open(self.commodities_filename, "w")
         self.delta_file_measures = open(self.measures_filename, "w")
 
     def write_commodities(self):
-        writer = csv.writer(self.delta_file_commodities, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        writer = csv.writer(
+            self.delta_file_commodities,
+            delimiter=",",
+            quotechar='"',
+            quoting=csv.QUOTE_MINIMAL,
+        )
         fields = [
             "Operation",
             "Commodity code",
             "Product line suffix",
             "Description",
             "Start date",
-            "End date"
+            "End date",
         ]
         writer.writerow(fields)
         for delta_commodity in self.delta_commodities:
-            writer.writerow([
-                delta_commodity.operation,
-                delta_commodity.goods_nomenclature_item_id,
-                delta_commodity.productline_suffix,
-                delta_commodity.description,
-                delta_commodity.validity_start_date,
-                delta_commodity.validity_end_date
-            ])
+            writer.writerow(
+                [
+                    delta_commodity.operation,
+                    delta_commodity.goods_nomenclature_item_id,
+                    delta_commodity.productline_suffix,
+                    delta_commodity.description,
+                    delta_commodity.validity_start_date,
+                    delta_commodity.validity_end_date,
+                ]
+            )
 
     def write_measures(self):
-        writer = csv.writer(self.delta_file_measures, delimiter=',',
-                            quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        writer = csv.writer(
+            self.delta_file_measures,
+            delimiter=",",
+            quotechar='"',
+            quoting=csv.QUOTE_MINIMAL,
+        )
         fields = [
             "Operation",
             "Commodity code",
             "Geographical area",
             "Measure type",
             "Start date",
-            "End date"
+            "End date",
         ]
         writer.writerow(fields)
         for delta_measure in self.delta_measures:
-            writer.writerow([
-                delta_measure.operation,
-                delta_measure.goods_nomenclature_item_id,
-                delta_measure.geographical_area_id,
-                delta_measure.measure_type_description,
-                delta_measure.validity_start_date_string,
-                delta_measure.validity_end_date_string
-            ])
+            writer.writerow(
+                [
+                    delta_measure.operation,
+                    delta_measure.goods_nomenclature_item_id,
+                    delta_measure.geographical_area_id,
+                    delta_measure.measure_type_description,
+                    delta_measure.validity_start_date_string,
+                    delta_measure.validity_end_date_string,
+                ]
+            )
 
     def close_delta_file(self):
         self.delta_file_commodities.close()
@@ -89,16 +106,16 @@ class Delta(object):
         g.change_date = g.change_date.replace("/", "-")
         g.change_date = g.change_date.replace(" ", "-")
 
-        self.to_date = datetime.strptime(g.change_date, '%Y-%m-%d')
-        if (g.change_period == "week"):
+        self.to_date = datetime.strptime(g.change_date, "%Y-%m-%d")
+        if g.change_period == "week":
             self.from_date = self.to_date - timedelta(days=7)
-        elif (g.change_period == "month"):
+        elif g.change_period == "month":
             self.from_date = self.to_date - monthdelta(1)
         else:
             self.from_date = self.to_date - timedelta(days=1)
 
-        self.from_date_string = datetime.strftime(self.from_date, '%Y-%m-%d')
-        self.to_date_string = datetime.strftime(self.to_date, '%Y-%m-%d')
+        self.from_date_string = datetime.strftime(self.from_date, "%Y-%m-%d")
+        self.to_date_string = datetime.strftime(self.to_date, "%Y-%m-%d")
 
     def get_commodity_change_new(self):
         sql = """
@@ -114,10 +131,7 @@ class Delta(object):
         )
         select * from cte order by goods_nomenclature_item_id;
         """
-        params = [
-            self.from_date,
-            self.to_date
-        ]
+        params = [self.from_date, self.to_date]
         d = Database()
         rows = d.run_query(sql, params)
         if len(rows) > 0:
@@ -140,10 +154,7 @@ class Delta(object):
         select * from cte order by goods_nomenclature_item_id;
 
         """
-        params = [
-            self.from_date,
-            self.to_date
-        ]
+        params = [self.from_date, self.to_date]
         d = Database()
         rows = d.run_query(sql, params)
         if len(rows) > 0:
@@ -156,10 +167,7 @@ class Delta(object):
             sql = SqlQuery("measure_changes", "get_measure_changes_mv.sql").sql
         else:
             sql = SqlQuery("measure_changes", "get_measure_changes.sql").sql
-        params = [
-            self.from_date_string,
-            self.to_date_string
-        ]
+        params = [self.from_date_string, self.to_date_string]
         d = Database()
         rows = d.run_query(sql, params)
         if len(rows) > 0:

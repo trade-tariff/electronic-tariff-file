@@ -12,7 +12,7 @@ class Database:
     """PostgreSQL Database class."""
 
     def __init__(self, scope=None):
-        load_dotenv('.env')
+        load_dotenv(".env")
         # self.database_url = os.getenv('DATABASE_UK')
         if scope is None:
             self.database_url = g.DATABASE

@@ -1,0 +1,109 @@
+name: CI workflow
+
+on:
+  push:
+    branches-ignore:
+      - main
+  pull_request:
+    branches-ignore:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: eu-west-2
+  IAM_ROLE_ARN: arn:aws:iam::382373577178:role/GithubActions-ETF-Role
+  SECRET_NAME: electronic-tariff-file-configuration
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3'
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pre-commit-
+
+      - uses: trade-tariff/trade-tariff-tools/.github/actions/setup-ssh@main
+        with:
+          ssh-key: ${{ secrets.PRIVATE_SSH_KEY }}
+
+      - run: pip install pre-commit
+      - run: pre-commit run --all-files
+
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    -  uses: actions/checkout@v4
+
+    - name: Cache Python dependencies
+      uses: actions/cache@v4
+      with:
+        key: deps-1.0.0-${{ hashFiles('requirements.txt') }}
+        path: venv
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install dependencies
+      run: |
+        python -m venv venv
+        source venv/bin/activate
+        pip install --upgrade pip
+        pip install -r requirements.txt
+        sudo apt-get update && sudo apt-get install -y jq postgresql-client
+
+    - name: Fetch Secrets from AWS Secrets Manager
+      uses: trade-tariff/trade-tariff-tools/.github/actions/fetch-secrets@main
+      with:
+        secret-name: ${{ env.SECRET_NAME }}
+
+    - name: Load and override variables
+      shell: bash
+      run: |
+        source .env
+
+        echo "DEBUG_MODE=1" >> "$GITHUB_ENV"
+        echo "SEND_MAIL=0" >> "$GITHUB_ENV"
+
+    - name: Prepare database
+      shell: bash
+      run: |
+        source .env
+        createdb -h localhost -U postgres electronic_tariff_file
+
+        curl --silent -o- "$DUMP_URL" | gunzip | psql -h localhost -U postgres electronic_tariff_file
+
+    - name: Integrate functionality
+      shell: bash
+      run: |
+        source venv/bin/activate
+        source .env
+        python create.py uk
