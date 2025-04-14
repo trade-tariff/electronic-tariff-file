@@ -12,7 +12,7 @@ multivolumefile==0.2.3
 pathlib2==2.3.7.post1
 psutil==5.9.5
 psycopg2-binary==2.9.9
-py7zr==0.20.6
+py7zr==0.22.0
 pybcj==1.0.1
 pycodestyle==2.11.0
 pycryptodomex==3.19.0
