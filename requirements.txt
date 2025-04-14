@@ -10,7 +10,7 @@ mccabe==0.7.0
 MonthDelta==0.9.1
 multivolumefile==0.2.3
 pathlib2==2.3.7.post1
-psutil==5.9.5
+psutil==7.0.0
 psycopg2-binary==2.9.9
 py7zr==0.20.6
 pybcj==1.0.1
