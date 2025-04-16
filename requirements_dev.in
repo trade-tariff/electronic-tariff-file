@@ -1,0 +1,16 @@
+# Include base requirements
+-r requirements.in
+
+# Code quality & linting
+pycodestyle
+pyflakes
+flake8
+mccabe
+autopep8
+
+# Formatting & parsing
+toml
+tomli
+
+# Dependency management
+pip-tools>=7.0.0

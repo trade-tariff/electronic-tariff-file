@@ -8,7 +8,28 @@
 
   `source venv/bin/activate`
 
-- Install necessary Python modules via `pip install -r requirements.txt`
+- Install dependencies
+
+  `pip install pip-tools`
+
+  `pip-sync requirements.txt requirements_dev.txt`
+
+- Alternatively, if you're not using pip-sync, you can still use:
+
+`pip install -r requirements.txt -r requirements_dev.txt`
+
+### Dependency Management
+
+Dependencies are managed using pip-tools.
+
+**Adding dependencies**
+- Add new packages to requirements.in (runtime dependencies) or requirements_dev.in (dev-only).
+
+- Then recompile the locked .txt files:
+`pip-compile --generate-hashes --output-file=requirements.txt requirements.in`
+`pip-compile --generate-hashes --output-file=requirements_dev.txt requirements_dev.in`
+
+This ensures all versions are pinned and avoids conflicts.
 
 ## Usage
 
@@ -32,3 +53,15 @@ To create a data file for XI for today
 
 ### To parse an existing electronic Tariff file:
 `python parse.py`
+
+## Pre-commit
+Pre-commit hooks are set up for linting and security scanning.
+
+To install:
+`pre-commit install`
+
+To run all hooks manually:
+`pre-commit run --all-files`
+
+## Secrets
+Secrets are managed via AWS Secrets Manager. They are automatically fetched during CI runs using GitHub Actions.

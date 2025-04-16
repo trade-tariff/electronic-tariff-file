@@ -1,6 +1,7 @@
 import os
 import py7zr
 import zipfile
+import pyzipper
 from dotenv import load_dotenv
 from classes.aws_bucket import AwsBucket
 
@@ -99,12 +100,21 @@ class Zipper(object):
         if os.path.exists(self.archive):
             os.remove(self.archive)
 
-        zipObj = zipfile.ZipFile(self.archive, "w")
-        compression = zipfile.ZIP_DEFLATED
-        zipObj.write(
-            self.source_filename, arcname=self.base_filename, compress_type=compression
-        )
-        zipObj.close()
+        # zipObj = zipfile.ZipFile(self.archive, "w")
+        # compression = zipfile.ZIP_DEFLATED
+        # zipObj.write(
+        #     self.source_filename, arcname=self.base_filename, compress_type=compression
+        # )
+        # zipObj.close()
+
+        if self.password:
+            with pyzipper.AESZipFile(self.archive, 'w', compression=zipfile.ZIP_DEFLATED) as zipf:
+                zipf.setpassword(self.password.encode())
+                zipf.write(self.source_filename, arcname=self.base_filename)
+        else:
+            # Otherwise, use regular zipfile for non-encrypted archives
+            with zipfile.ZipFile(self.archive, 'w', compression=zipfile.ZIP_DEFLATED) as zipf:
+                zipf.write(self.source_filename, arcname=self.base_filename)
 
         self.aws_path = os.path.join(
             self.scope,

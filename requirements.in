@@ -1,0 +1,42 @@
+# AWS / cloud
+boto3
+botocore
+jmespath
+s3transfer
+
+# Environment and configuration
+python-dotenv
+
+# Database
+psycopg2-binary
+
+# Date and time utilities
+MonthDelta
+
+# Filesystem and path handling
+pathlib2
+
+# Compression and archive utilities
+inflate64
+multivolumefile
+py7zr
+pybcj
+pycryptodomex
+pyzipper
+pyppmd
+pyzstd
+
+# Cryptography
+starkbank-ecdsa
+
+# Text encoding and conversion
+Unidecode
+
+# CLI and user interface
+blessed
+colorama
+inquirer
+python-editor
+readchar
+texttable
+wcwidth
