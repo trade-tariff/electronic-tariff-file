@@ -26,7 +26,9 @@ Dependencies are managed using pip-tools.
 - Add new packages to requirements.in (runtime dependencies) or requirements_dev.in (dev-only).
 
 - Then recompile the locked .txt files:
+
 `pip-compile --generate-hashes --output-file=requirements.txt requirements.in`
+
 `pip-compile --generate-hashes --output-file=requirements_dev.txt requirements_dev.in`
 
 This ensures all versions are pinned and avoids conflicts.
@@ -46,9 +48,11 @@ This ensures all versions are pinned and avoids conflicts.
 #### Examples
 
 To create a data file for the UK for a specific date (21st July 23)
+
 `python create.py uk 2023-07-21`
 
 To create a data file for XI for today
+
 `python create.py xi`
 
 ### To parse an existing electronic Tariff file:

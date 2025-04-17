@@ -2,7 +2,7 @@ name: Thursday workflow
 
 on:
   schedule:
-    - cron: '30 08 * * 4' # Every Thursday at 08:30
+    - cron: '00 07 * * 4' # Every Thursday around 08:30
   workflow_dispatch:
     inputs:
       ref:
