@@ -10,9 +10,9 @@ blessed==1.20.0 \
     # via
     #   -r requirements.in
     #   inquirer
-boto3==1.37.34 \
-    --hash=sha256:586bfa72a00601c04067f9adcbb08ecaf63b05b7d731103f33cb2ce0d6950b1b \
-    --hash=sha256:94ca07328474db3fa605eb99b011512caa73f7161740d365a1f00cfebfb6dd90
+boto3==1.37.37 \
+    --hash=sha256:752d31105a45e3e01c8c68471db14ae439990b75a35e72b591ca528e2575b28f \
+    --hash=sha256:d125cb11e22817f7a2581bade4bf7b75247b401888890239ceb5d3e902ccaf38
     # via -r requirements.in
 botocore==1.37.37 \
     --hash=sha256:3eadde6fed95c4cb469cc39d1c3558528b7fa76d23e7e16d4bddc77250431a64 \
