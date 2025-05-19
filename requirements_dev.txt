@@ -8,9 +8,9 @@ autopep8==2.3.2 \
     --hash=sha256:89440a4f969197b69a995e4ce0661b031f455a9f776d2c5ba3dbd83466931758 \
     --hash=sha256:ce8ad498672c845a0c3de2629c15b635ec2b05ef8177a6e7c91c74f3e9b51128
     # via -r requirements_dev.in
-blessed==1.20.0 \
-    --hash=sha256:0c542922586a265e699188e52d5f5ac5ec0dd517e5a1041d90d2bbf23f906058 \
-    --hash=sha256:2cdd67f8746e048f00df47a2880f4d6acbcdb399031b604e34ba8f71d5787680
+blessed==1.21.0 \
+    --hash=sha256:ece8bbc4758ab9176452f4e3a719d70088eb5739798cd5582c9e05f2a28337ec \
+    --hash=sha256:f831e847396f5a2eac6c106f4dfadedf46c4f804733574b15fe86d2ed45a9588
     # via
     #   -r requirements.in
     #   inquirer
@@ -639,7 +639,6 @@ six==1.17.0 \
     --hash=sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274 \
     --hash=sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81
     # via
-    #   blessed
     #   pathlib2
     #   python-dateutil
 starkbank-ecdsa==2.2.0 \
