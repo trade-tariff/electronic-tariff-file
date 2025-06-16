@@ -71,16 +71,17 @@ jobs:
         key: deps-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements.in') }}
         path: |
           ~/.cache/pip
-          venv
 
     - name: Install dependencies
       run: |
         python -m venv venv
         source venv/bin/activate
+
         pip install --upgrade pip==25.0.1 pip-tools
-        pip-compile --generate-hashes --output-file=requirements_dev.txt requirements_dev.in
-        pip-sync requirements_dev.txt
-        sudo apt-get update && sudo apt-get install -y jq postgresql-client
+        pip-compile --output-file=requirements.txt requirements.in
+        pip-sync requirements.txt
+
+        sudo apt-get update && sudo apt-get install -y postgresql-client
 
     - name: Fetch Secrets from AWS Secrets Manager
       uses: trade-tariff/trade-tariff-tools/.github/actions/fetch-secrets@main
