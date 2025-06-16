@@ -1,37 +1,37 @@
 # Electronic Tariff File
 
-## Implementation steps
+## Dependency Management
 
-- Create and activate a virtual environment, e.g.
+We use `pip-tools` to manage Python dependencies in a reliable and reproducible way. Flexible dependency specifications are declared in `.in` files, and fully pinned `.txt` lock files are automatically generated and used during runtime.
 
-  `python -m venv venv/`
+Each time the workflow runs, it compiles the `.txt` files with the latest compatible versions, ensuring up-to-date environments without manual intervention.
 
-  `source venv/bin/activate`
+### How it works
 
-- Install dependencies
+1. Define top-level dependencies in `requirements.in` and `requirements_dev.in` using loose version specs (e.g., `requests`, `requests>=2.25.0`).
+2. Run `pip-compile` to resolve and pin all dependencies into `requirements.txt` and `requirements_dev.txt`.
+3. Use `pip-sync` to install exactly what’s listed in the `.txt` files—no more, no less.
 
-  `pip install pip-tools`
+To update dependencies:
 
-  `pip-sync requirements.txt requirements_dev.txt`
+```bash
+pip-compile --upgrade --output-file=requirements.txt requirements.in
+pip-compile --upgrade --output-file=requirements_dev.txt requirements_dev.in
+pip-sync requirements.txt requirements_dev.txt
+```
 
-- Alternatively, if you're not using pip-sync, you can still use:
+## Getting started for local development
 
-`pip install -r requirements.txt -r requirements_dev.txt`
+```bash
+python -m venv venv  # Create isolated Python environment
+source venv/bin/activate  # Activate environment
 
-### Dependency Management
-
-Dependencies are managed using pip-tools.
-
-**Adding dependencies**
-- Add new packages to requirements.in (runtime dependencies) or requirements_dev.in (dev-only).
-
-- Then recompile the locked .txt files:
-
-`pip-compile --generate-hashes --output-file=requirements.txt requirements.in`
-
-`pip-compile --generate-hashes --output-file=requirements_dev.txt requirements_dev.in`
-
-This ensures all versions are pinned and avoids conflicts.
+# First time setup
+pip install pip-tools  # Install dependency management tools
+pip-compile requirements.in  # Generate requirements.txt
+pip-compile requirements_dev.in  # Generate requirements_dev.txt
+pip-sync requirements.txt requirements_dev.txt  # Install all dependencies
+```
 
 ## Usage
 
@@ -42,6 +42,7 @@ This ensures all versions are pinned and avoids conflicts.
 `python create.py uk 4 5`
 
 #### Arguments
+
 - argument 1 is the scope [uk|xi],
 - argument 2 is the date, in format yyyy-mm-dd (optional). If omitted, then the current date will be used
 
@@ -56,9 +57,11 @@ To create a data file for XI for today
 `python create.py xi`
 
 ### To parse an existing electronic Tariff file:
+
 `python parse.py`
 
 ## Pre-commit
+
 Pre-commit hooks are set up for linting and security scanning.
 
 To install:
@@ -68,4 +71,5 @@ To run all hooks manually:
 `pre-commit run --all-files`
 
 ## Secrets
+
 Secrets are managed via AWS Secrets Manager. They are automatically fetched during CI runs using GitHub Actions.

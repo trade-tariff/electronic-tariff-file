@@ -19,7 +19,6 @@ env:
 jobs:
   generate-electronic-tariff-file:
     runs-on: ubuntu-latest
-
     services:
       postgres:
         image: postgres:17
@@ -47,22 +46,18 @@ jobs:
       uses: actions/cache@v4
       with:
         key: deps-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements.in') }}
-        path: |
-          ~/.cache/pip
-          venv
+        path: ~/.cache/pip
 
     - name: Install pip-tools and dependencies
       run: |
         python -m venv venv
         source venv/bin/activate
+
         pip install --upgrade pip==25.0.1 pip-tools
-        # Check if requirements.in exists, if not use requirements.txt directly
-        if [ -f "requirements.in" ]; then
-          pip-compile --generate-hashes --output-file=requirements.txt requirements.in
-          pip-sync requirements.txt
-        fi
-        pip install -r requirements.txt
-        sudo apt-get update && sudo apt-get install -y jq postgresql-client wget
+        pip-compile --output-file=requirements.txt requirements.in
+        pip-sync requirements.txt
+
+        sudo apt-get update && sudo apt-get install -y postgresql-client wget
 
     - name: Fetch Secrets from AWS Secrets Manager
       uses: trade-tariff/trade-tariff-tools/.github/actions/fetch-secrets@main
