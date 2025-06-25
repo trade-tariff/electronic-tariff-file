@@ -2,7 +2,7 @@ name: Thursday workflow
 
 on:
   schedule:
-    - cron: '00 07 * * 4' # Every Thursday around 08:30
+    - cron: '00 07 * * 4' # Every Thursday around 07:00 UTC
   workflow_dispatch:
 
 permissions:
@@ -62,6 +62,7 @@ jobs:
       uses: trade-tariff/trade-tariff-tools/.github/actions/fetch-secrets@main
       with:
         secret-name: ${{ env.SECRET_NAME }}
+        role-to-assume: ${{ env.IAM_ROLE_ARN }}
 
     - name: Prepare database
       shell: bash
