@@ -35,8 +35,8 @@ jobs:
 
       - name: Commit and push
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
+          git config user.name "trade-tariff-infrastructure-continuity"
+          git config user.email "hmrc-trade-tariff-support-g@digital.hmrc.gov.uk"
           git add .keepalive
           git commit -m "chore: keepalive $(date)" || echo "No changes to commit"
           git push origin keepalive
