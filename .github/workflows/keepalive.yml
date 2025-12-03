@@ -1,0 +1,42 @@
+name: Keep Repo Alive
+on:
+  schedule:
+    - cron: "0 0 1 1-12 *"
+  workflow_dispatch:
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout≈
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create or switch to keepalive branch
+        run: |
+          BRANCH="keepalive"
+
+          # Check if branch exists on remote
+          if git ls-remote --heads origin $BRANCH | grep $BRANCH >/dev/null; then
+            echo "Branch '$BRANCH' exists. Checking it out."
+            git checkout $BRANCH
+          else
+            echo "Branch '$BRANCH' does not exist. Creating it."
+            git checkout -b $BRANCH
+          fi
+
+      - name: Make dummy change
+        run: |
+          echo "Keepalive $(date)" > .keepalive
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add .keepalive
+          git commit -m "chore: keepalive $(date)" || echo "No changes to commit"
+          git push origin keepalive
