@@ -38,7 +38,6 @@ class Tariff(object):
     def __init__(self):
         f.clear()
         self.message_string = ""
-        #self.create_ssl_unverified_context()
         self.get_config()
         self.get_scope()
         self.get_date()
@@ -98,9 +97,6 @@ class Tariff(object):
         self.create_delta()
         self.zip_and_upload()
         self.create_email_message()
-
-    def create_ssl_unverified_context(self):
-        ssl._create_default_https_context = ssl._create_unverified_context
 
     def get_date(self):
         if len(sys.argv) > 2:
