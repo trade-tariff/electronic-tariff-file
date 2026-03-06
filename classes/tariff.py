@@ -38,7 +38,7 @@ class Tariff(object):
     def __init__(self):
         f.clear()
         self.message_string = ""
-        self.create_ssl_unverified_context()
+        #self.create_ssl_unverified_context()
         self.get_config()
         self.get_scope()
         self.get_date()
