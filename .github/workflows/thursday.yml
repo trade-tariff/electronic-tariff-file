@@ -34,7 +34,7 @@ jobs:
           --health-retries 5
 
     steps:
-    -  uses: actions/checkout@v4
+    -  uses: actions/checkout@v6
 
     - name: Setup Python
       uses: actions/setup-python@v5
@@ -83,7 +83,7 @@ jobs:
       needs: generate-electronic-tariff-file
       if: always()
       steps:
-        - uses: actions/checkout@v4
+        - uses: actions/checkout@v6
         - uses: trade-tariff/trade-tariff-tools/.github/actions/slack-notify@main
           with:
             webhook: ${{ secrets.SLACK_WEBHOOK }}
