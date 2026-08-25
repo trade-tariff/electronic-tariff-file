@@ -13,4 +13,4 @@ toml
 tomli
 
 # Dependency management
-pip-tools>=7.6.0
+pip-tools>=7.6.1
