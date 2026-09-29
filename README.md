@@ -1,5 +1,16 @@
 # Electronic Tariff File
 
+This Python application creates Electronic Tariff files in ICL VME format for
+UK and Northern Ireland data. It also parses existing files. Generation reads a
+tariff database and can publish outputs and send notifications; it is not just a
+local format converter.
+
+Use Python 3, the PostgreSQL client and an approved local tariff dataset. See
+[env.sample](env.sample) for configuration names and
+[CI configuration](.github/workflows/ci.yml) for the integration environment.
+Keep credentials and database dumps outside Git. Check output destinations before
+running a generation command against shared services.
+
 ## Dependency Management
 
 We use `pip-tools` to manage Python dependencies in a reliable and reproducible way. Flexible dependency specifications are declared in `.in` files, and fully pinned `.txt` lock files are automatically generated and used during runtime.
@@ -39,8 +50,6 @@ pip-sync requirements.txt requirements_dev.txt  # Install all dependencies
 
 `python create.py uk`
 
-`python create.py uk 4 5`
-
 #### Arguments
 
 - argument 1 is the scope [uk|xi],
@@ -56,7 +65,7 @@ To create a data file for XI for today
 
 `python create.py xi`
 
-### To parse an existing electronic Tariff file:
+### Parse an existing Electronic Tariff file
 
 `python parse.py`
 
@@ -72,4 +81,22 @@ To run all hooks manually:
 
 ## Secrets
 
-Secrets are managed via AWS Secrets Manager. They are automatically fetched during CI runs using GitHub Actions.
+CI obtains secrets through AWS Secrets Manager. A local checkout does not receive
+those secrets automatically. Use approved development access and local configuration;
+do not copy secrets into the tracked sample file.
+
+## Checks and contributions
+
+Run the configured pre-commit checks for source and documentation changes.
+The CI integration restores a database dump and runs the generator; it needs
+privileged access and is not an offline unit test. Review its target and output
+settings before triggering it.
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) for the fork workflow, review process and
+private security reporting.
+
+## Licence
+
+The code and associated documentation use the [MIT licence](LICENCE.md), with
+Crown copyright (HM Revenue & Customs). Input data and generated reports retain
+their applicable data terms.
