@@ -31,10 +31,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pre-commit-
 
-      - uses: trade-tariff/trade-tariff-tools/.github/actions/setup-ssh@main
-        with:
-          ssh-key: ${{ secrets.PRIVATE_SSH_KEY }}
-
       - run: pip install pre-commit
       - run: pre-commit run --all-files
 
